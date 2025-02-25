@@ -30,6 +30,16 @@ export default function ReactorPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   
+  // Synchronize local state with gameProgress from context
+  useEffect(() => {
+    if (gameProgress?.resources?.energy) {
+      console.log("Initializing component state from gameProgress:", gameProgress.resources.energy);
+      setEnergy(gameProgress.resources.energy.amount || 0);
+      setEnergyCapacity(gameProgress.resources.energy.capacity || 100);
+      setAutoGeneration(gameProgress.resources.energy.autoGeneration || 0);
+    }
+  }, [gameProgress]); // This will run whenever gameProgress changes
+  
   // Test saving game progress
   const testSaveProgress = async () => {
     try {
