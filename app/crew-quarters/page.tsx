@@ -2,191 +2,246 @@
 
 import { useState, useEffect } from "react"
 import { NavBar } from "@/components/ui/navbar"
-import { Users, User, Home, Wrench, Plus } from "lucide-react"
+import { Users, Brain, CpuIcon, ArrowUpCircle } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
+import { OfflineProgress } from "@/components/ui/offline-progress"
+import { ErrorBanner } from "@/components/ui/error-banner"
+import { AuthCheck } from "@/components/auth/auth-check"
+import { ErrorBoundary } from "@/components/providers/error-boundary"
+import { useAutoSave } from "@/hooks/use-auto-save"
+import { useGameLoader } from "@/hooks/use-game-loader"
 
 export default function CrewQuartersPage() {
-  const [crew, setCrew] = useState(0)
-  const [crewCapacity, setCrewCapacity] = useState(5)
-  const [awakening, setAwakening] = useState(0)
-  const [workerCrews, setWorkerCrews] = useState(0)
+  const [morale, setMorale] = useState(0)
+  const [moraleCapacity, setMoraleCapacity] = useState(50)
+  const [autoGeneration, setAutoGeneration] = useState(0)
+  const [showOfflineProgress, setShowOfflineProgress] = useState(false)
+  const [offlineGain, setOfflineGain] = useState(0)
+  const [lastOnline, setLastOnline] = useState(Date.now())
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const { shouldFlicker } = useSystemStatus()
   
-  // Auto-generate crew based on workerCrews rate (per 10 seconds)
+  // Set up auto-save
+  const { isSaving, error: autoSaveError } = useAutoSave({
+    resourceType: 'crew',
+    resourceData: {
+      amount: morale,
+      capacity: moraleCapacity,
+      autoGeneration
+    }
+  });
+  
+  // Set up game loading
+  const { isLoading, error: loadingError, offlineGains } = useGameLoader({
+    resourceType: 'crew',
+    onLoadSuccess: (data) => {
+      setMorale(data.amount || 0);
+      setMoraleCapacity(data.capacity || 50);
+      setAutoGeneration(data.autoGeneration || 0);
+      
+      if (data.offlineGain && data.offlineGain > 0) {
+        setOfflineGain(data.offlineGain);
+        setLastOnline(Date.now() - (data.timeSinceLastOnline || 0));
+        setShowOfflineProgress(true);
+      }
+    }
+  });
+  
+  // Update errors
   useEffect(() => {
-    if (workerCrews <= 0) return
+    if (autoSaveError) setSaveError(autoSaveError);
+    if (loadingError) setLoadError(loadingError);
+  }, [autoSaveError, loadingError]);
+  
+  // Auto-generate morale based on autoGeneration rate (per second)
+  useEffect(() => {
+    if (autoGeneration <= 0) return
     
     const interval = setInterval(() => {
-      setCrew(current => {
-        if (current >= crewCapacity) return current
-        const newValue = current + workerCrews * 0.1 // 1 crew per 10 seconds per worker crew
-        return newValue > crewCapacity ? crewCapacity : newValue
+      setMorale(current => {
+        const newValue = current + autoGeneration * 0.1 // Morale generates slowest
+        return newValue > moraleCapacity ? moraleCapacity : newValue
       })
     }, 1000)
     
     return () => clearInterval(interval)
-  }, [workerCrews, crewCapacity])
+  }, [autoGeneration, moraleCapacity])
   
-  // Generate crew on manual click (awakening)
-  const awakenCrew = () => {
-    if (crew >= crewCapacity) return
-    
-    // Add 0.1 to crew for each click (it takes 10 clicks to awaken 1 crew member)
-    setCrew(current => {
-      const newValue = current + 0.1
-      return newValue > crewCapacity ? crewCapacity : newValue
+  // Generate morale on manual click
+  const generateMorale = () => {
+    setMorale(current => {
+      const newValue = current + 0.3
+      return newValue > moraleCapacity ? moraleCapacity : newValue
     })
-    
-    // Increment awakening counter
-    setAwakening(current => current + 1)
   }
   
-  // Upgrade crew capacity
-  const upgradeQuarters = () => {
-    const upgradeCost = Math.floor(crewCapacity * 0.6)
+  // Upgrade morale capacity
+  const upgradeCapacity = () => {
+    const upgradeCost = Math.round(moraleCapacity * 0.8);
     
-    if (crew >= upgradeCost) {
-      setCrew(current => current - upgradeCost)
-      setCrewCapacity(current => current + 3)
+    if (morale >= upgradeCost) {
+      setMorale(current => current - upgradeCost)
+      setMoraleCapacity(current => current * 1.3)
     }
   }
   
-  // Upgrade auto awakening
-  const upgradeWorkerCrews = () => {
-    const upgradeCost = Math.floor((workerCrews + 1) * 2.5)
+  // Upgrade auto generation
+  const upgradeAutoGeneration = () => {
+    const upgradeCost = (autoGeneration + 1) * 20
     
-    if (crew >= upgradeCost && workerCrews < 5) { // max 5 worker crews
-      setCrew(current => current - upgradeCost)
-      setWorkerCrews(current => current + 1)
+    if (morale >= upgradeCost) {
+      setMorale(current => current - upgradeCost)
+      setAutoGeneration(current => current + 1)
     }
   }
   
-  // Format crew count (show as integers when whole numbers, 1 decimal when partial)
-  const formatCrewCount = (count: number) => {
-    return Number.isInteger(count) ? count.toString() : count.toFixed(1)
+  // Handle closing the offline progress notification
+  const handleCloseOfflineProgress = () => {
+    setShowOfflineProgress(false)
+    
+    // Add the offline gain to the current morale
+    setMorale(current => {
+      const newValue = current + offlineGain
+      return newValue > moraleCapacity ? moraleCapacity : newValue
+    })
   }
   
   return (
-    <main className="flex min-h-screen flex-col">
-      <NavBar />
-      
-      <div className="flex flex-col p-4 md:p-8 md:ml-64">
-        <div className="system-panel p-6 mb-6">
-          <h1 className={`text-2xl font-bold text-primary mb-4 ${shouldFlicker('crew') ? 'flickering-text' : ''}`}>Crew Quarters</h1>
-          <p className="text-muted-foreground mb-6">
-            Awaken and manage the ship's crew from cryostasis. Each crew member can be assigned to help with ship operations.
-          </p>
+    <AuthCheck>
+      <ErrorBoundary>
+        <main className="flex min-h-screen flex-col">
+          <NavBar />
           
-          {/* Resource display */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                <Users className="h-5 w-5 text-chart-3 mr-2" />
-                <span className="terminal-text">Crew Members</span>
-              </div>
-              <span className="font-mono">{formatCrewCount(crew)} / {crewCapacity}</span>
-            </div>
-            <Progress value={(crew / crewCapacity) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-3" />
-            <div className="text-xs text-muted-foreground mt-1">
-              {workerCrews > 0 && <span>+{(workerCrews * 0.1).toFixed(1)} per second (auto-awakening)</span>}
-            </div>
-          </div>
-          
-          {/* Manual button */}
-          <button 
-            onClick={awakenCrew} 
-            disabled={crew >= crewCapacity}
-            className={`system-panel w-full py-8 flex items-center justify-center mb-8 transition-colors ${
-              crew >= crewCapacity ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent/10'
-            }`}
-          >
-            <div className="flex flex-col items-center">
-              <User className={`h-12 w-12 text-chart-3 mb-2 ${shouldFlicker('crew') ? 'flickering-text' : ''}`} />
-              <span className="terminal-text">Awaken Crew Member</span>
-              <span className="text-xs text-muted-foreground mt-1">
-                {awakening % 10 === 0 ? 
-                  "Initiate awakening sequence" : 
-                  `Awakening progress: ${awakening % 10}/10`
-                }
-              </span>
-            </div>
-          </button>
-          
-          {/* Upgrades section */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold terminal-text">Upgrades</h2>
-            
-            {/* Quarters upgrade */}
-            <div 
-              className={`system-panel p-4 ${crew >= Math.floor(crewCapacity * 0.6) ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
-              onClick={upgradeQuarters}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center">
-                  <Home className="h-5 w-5 text-chart-3 mr-2" />
-                  <span>Additional Quarters</span>
-                </div>
-                <span className="font-mono text-xs">{Math.floor(crewCapacity * 0.6)} Crew</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Prepare {3} more crew quarters, increasing capacity to {crewCapacity + 3}
-              </p>
-            </div>
-            
-            {/* Worker crews upgrade */}
-            {workerCrews < 5 && (
-              <div 
-                className={`system-panel p-4 ${crew >= Math.floor((workerCrews + 1) * 2.5) ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
-                onClick={upgradeWorkerCrews}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <Wrench className="h-5 w-5 text-chart-3 mr-2" />
-                    <span>Worker Crew</span>
-                  </div>
-                  <span className="font-mono text-xs">{Math.floor((workerCrews + 1) * 2.5)} Crew</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Dedicate crew to help awaken others (+0.1 crew per second)
-                </p>
-              </div>
+          <div className="flex flex-col p-4 md:p-8 md:ml-64">
+            {(saveError || loadError) && (
+              <ErrorBanner 
+                message={saveError || loadError || 'An error occurred'} 
+                onClose={() => {
+                  setSaveError(null);
+                  setLoadError(null);
+                }}
+              />
             )}
             
-            {/* Crew assignments placeholder */}
-            <h2 className="text-lg font-semibold terminal-text pt-4 mt-6 border-t border-border">Crew Assignments</h2>
-            <p className="text-xs text-muted-foreground mb-4">
-              Assign crew to boost operations in other ship systems
-            </p>
+            {showOfflineProgress && autoGeneration > 0 && (
+              <OfflineProgress
+                resourceType="Morale"
+                gainAmount={offlineGain}
+                lastOnlineTimestamp={lastOnline}
+                onClose={handleCloseOfflineProgress}
+                colorClass="text-chart-3"
+              />
+            )}
             
-            <div className="opacity-60 system-panel p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center">
-                  <Plus className="h-5 w-5 text-chart-3 mr-2" />
-                  <span>Reactor Team</span>
-                </div>
-                <span className="font-mono text-xs">3 Crew</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Assign crew to boost reactor efficiency [Coming Soon]
+            <div className="system-panel p-6 mb-6">
+              <h1 className={`text-2xl font-bold text-primary mb-4 ${shouldFlicker('crew') ? 'flickering-text' : ''}`}>Crew Quarters</h1>
+              <p className="text-muted-foreground mb-6">
+                Monitor the ship's crew morale and schedule recreational activities to boost productivity.
               </p>
-            </div>
-            
-            <div className="opacity-60 system-panel p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center">
-                  <Plus className="h-5 w-5 text-chart-3 mr-2" />
-                  <span>Research Team</span>
+              
+              {/* Resource display */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center">
+                    <Brain className="h-5 w-5 text-chart-3 mr-2" />
+                    <span className="terminal-text">Morale</span>
+                  </div>
+                  <span className="font-mono">{morale.toFixed(1)} / {Math.floor(moraleCapacity)}</span>
                 </div>
-                <span className="font-mono text-xs">3 Crew</span>
+                <Progress value={(morale / moraleCapacity) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-3" />
+                <div className="text-xs text-muted-foreground mt-1">
+                  {autoGeneration > 0 && <span>+{(autoGeneration * 0.1).toFixed(1)} per second</span>}
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Assign crew to assist with processing [Coming Soon]
-              </p>
+              
+              {/* Manual button */}
+              <button 
+                onClick={generateMorale} 
+                className="system-panel w-full py-8 flex items-center justify-center mb-8 hover:bg-accent/10 transition-colors"
+              >
+                <div className="flex flex-col items-center">
+                  <Users className={`h-12 w-12 text-chart-3 mb-2 ${shouldFlicker('crew') ? 'flickering-text' : ''}`} />
+                  <span className="terminal-text">Boost Morale</span>
+                  <span className="text-xs text-muted-foreground mt-1">+0.3 Morale per click</span>
+                </div>
+              </button>
+              
+              {/* Upgrades section */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold terminal-text">Upgrades</h2>
+                
+                {/* Capacity upgrade */}
+                <div 
+                  className={`system-panel p-4 ${morale >= Math.round(moraleCapacity * 0.8) ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+                  onClick={upgradeCapacity}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      <ArrowUpCircle className="h-5 w-5 text-chart-3 mr-2" />
+                      <span>Quarters Expansion</span>
+                    </div>
+                    <span className="font-mono text-xs">{Math.round(moraleCapacity * 0.8)} Morale</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Improve crew living quarters to {Math.floor(moraleCapacity * 1.3)}
+                  </p>
+                </div>
+                
+                {/* Auto generation upgrade */}
+                <div 
+                  className={`system-panel p-4 ${morale >= (autoGeneration + 1) * 20 ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+                  onClick={upgradeAutoGeneration}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      <CpuIcon className="h-5 w-5 text-chart-3 mr-2" />
+                      <span>Recreation Program</span>
+                    </div>
+                    <span className="font-mono text-xs">{(autoGeneration + 1) * 20} Morale</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Add +1 automated recreation program (+0.1 Morale per second)
+                  </p>
+                </div>
+                
+                {/* Placeholder for future features */}
+                <h2 className="text-lg font-semibold terminal-text pt-4 mt-6 border-t border-border">Crew Initiatives</h2>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Special crew projects that provide unique bonuses
+                </p>
+                
+                <div className="opacity-60 system-panel p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      <Users className="h-5 w-5 text-chart-3 mr-2" />
+                      <span>Team-Building Exercise</span>
+                    </div>
+                    <span className="font-mono text-xs">80 Morale</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Temporarily boosts all resource generation by 20% [Coming Soon]
+                  </p>
+                </div>
+                
+                <div className="opacity-60 system-panel p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      <Users className="h-5 w-5 text-chart-3 mr-2" />
+                      <span>Stress Management Program</span>
+                    </div>
+                    <span className="font-mono text-xs">120 Morale</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Increases offline resource accumulation rate [Coming Soon]
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-    </main>
+        </main>
+      </ErrorBoundary>
+    </AuthCheck>
   )
 } 

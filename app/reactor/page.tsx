@@ -18,67 +18,122 @@ export default function ReactorPage() {
   const [energy, setEnergy] = useState(0)
   const [energyCapacity, setEnergyCapacity] = useState(100)
   const [autoGeneration, setAutoGeneration] = useState(0)
-  const [showOfflineProgress, setShowOfflineProgress] = useState(true)
-  const [lastOnline, setLastOnline] = useState(Date.now() - 1800000) // 30 minutes ago for demo
-  const [offlineGain, setOfflineGain] = useState(45) // Demo value
+  const [showOfflineProgress, setShowOfflineProgress] = useState(false)
+  const [offlineGain, setOfflineGain] = useState(0)
+  const [lastOnline, setLastOnline] = useState(Date.now())
   const { shouldFlicker } = useSystemStatus()
   
-  // Supabase and Clerk integration test
+  // Supabase and Clerk integration
   const { supabase, gameProgress, loadGameProgress, saveGameProgress, loading, error } = useSupabase()
   const { user, isSignedIn } = useUser()
   const [testError, setTestError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   
-  // Test saving game progress
-  const testSaveProgress = async () => {
-    try {
-      setIsSaving(true)
-      setTestError(null)
-      
-      // Create test game progress
-      const testProgress = {
-        resources: {
-          energy: { amount: energy, capacity: energyCapacity, autoGeneration },
-          insight: { amount: 10, capacity: 50, autoGeneration: 0 },
-          crew: { amount: 2, capacity: 5, workerCrews: 0 },
-          scrap: { amount: 25, capacity: 100, manufacturingBays: 0 }
-        },
-        upgrades: { reactorUpgrade1: true },
-        unlockedLogs: [1, 2, 3],
-        lastOnline: new Date().toISOString()
-      };
-      
-      await saveGameProgress(testProgress);
-      console.log("Game progress saved successfully");
-    } catch (err: any) {
-      console.error("Error saving game progress:", err);
-      setTestError(`Error saving: ${err.message || 'Unknown error'}`);
-    } finally {
-      setIsSaving(false);
+  // Load game data from API on component mount
+  useEffect(() => {
+    if (isSignedIn) {
+      loadGameData();
     }
-  };
+  }, [isSignedIn]);
   
-  // Test loading game progress
-  const testLoadProgress = async () => {
+  // Auto-save when state changes (debounced)
+  useEffect(() => {
+    if (!isSignedIn) return;
+    
+    const timer = setTimeout(() => {
+      saveCurrentGameState();
+    }, 3000); // Save 3 seconds after the last change
+    
+    return () => clearTimeout(timer);
+  }, [energy, energyCapacity, autoGeneration, isSignedIn]);
+  
+  // Load game data from the API
+  const loadGameData = async () => {
     try {
       setIsLoading(true);
       setTestError(null);
       
-      const progress = await loadGameProgress();
-      console.log("Game progress loaded:", progress);
+      // First try to load offline progress from the API
+      const response = await fetch('/api/progress');
       
-      if (progress?.resources?.energy) {
-        setEnergy(progress.resources.energy.amount || 0);
-        setEnergyCapacity(progress.resources.energy.capacity || 100);
-        setAutoGeneration(progress.resources.energy.autoGeneration || 0);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.offlineTime > 0 && data.gains && data.gains.energy > 0) {
+          // We have offline gains to show
+          setOfflineGain(data.gains.energy);
+          setLastOnline(Date.now() - (data.offlineTime * 60 * 1000)); // Convert minutes to ms
+          setShowOfflineProgress(true);
+        }
+        
+        // Update state with the latest values
+        if (data.updatedResources?.energy) {
+          setEnergy(data.updatedResources.energy.amount || 0);
+          setEnergyCapacity(data.updatedResources.energy.capacity || 100);
+          setAutoGeneration(data.updatedResources.energy.autoGeneration || 0);
+        }
+      } else {
+        // Fallback to loading from the context/database directly
+        const progress = await loadGameProgress();
+        
+        if (progress?.resources?.energy) {
+          setEnergy(progress.resources.energy.amount || 0);
+          setEnergyCapacity(progress.resources.energy.capacity || 100);
+          setAutoGeneration(progress.resources.energy.autoGeneration || 0);
+        }
       }
-      
     } catch (err: any) {
-      console.error("Error loading game progress:", err);
+      console.error("Error loading game data:", err);
       setTestError(`Error loading: ${err.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Save current game state to the API
+  const saveCurrentGameState = async () => {
+    if (!isSignedIn) return;
+    
+    try {
+      setIsSaving(true);
+      
+      const gameData = {
+        resources: {
+          energy: { 
+            amount: energy, 
+            capacity: energyCapacity, 
+            autoGeneration 
+          },
+          // Include other resources with empty/default values so we don't overwrite them
+          insight: gameProgress?.resources?.insight || { amount: 0, capacity: 50, autoGeneration: 0 },
+          crew: gameProgress?.resources?.crew || { amount: 0, capacity: 5, workerCrews: 0 },
+          scrap: gameProgress?.resources?.scrap || { amount: 0, capacity: 100, manufacturingBays: 0 }
+        },
+        upgrades: gameProgress?.upgrades || {},
+        unlockedLogs: gameProgress?.unlockedLogs || [1, 2, 3],
+        lastOnline: new Date().toISOString()
+      };
+      
+      // First try the API endpoint
+      const response = await fetch('/api/progress', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(gameData),
+      });
+      
+      if (!response.ok) {
+        // Fallback to the context method
+        await saveGameProgress(gameData);
+      }
+      
+      setTestError(null);
+    } catch (err: any) {
+      console.error("Error saving game state:", err);
+      setTestError(`Error saving: ${err.message || 'Unknown error'}`);
+    } finally {
+      setIsSaving(false);
     }
   };
   
@@ -95,16 +150,6 @@ export default function ReactorPage() {
     
     return () => clearInterval(interval)
   }, [autoGeneration, energyCapacity])
-  
-  // Save last online timestamp when unloading the page
-  // In a real implementation, this would be saved to persistent storage
-  useEffect(() => {
-    // Update last online time when the component unmounts
-    return () => {
-      // This would normally save to localStorage, IndexedDB, or backend
-      console.log("Saving last online timestamp:", Date.now())
-    }
-  }, [])
   
   // Generate energy on manual click
   const generateEnergy = () => {
@@ -135,7 +180,7 @@ export default function ReactorPage() {
   // Handle closing the offline progress notification
   const handleCloseOfflineProgress = () => {
     setShowOfflineProgress(false)
-    // In a real implementation, we would add the offline gain to the current energy
+    // Add the offline gain to the current energy
     setEnergy(current => {
       const newValue = current + offlineGain
       return newValue > energyCapacity ? energyCapacity : newValue
@@ -263,7 +308,7 @@ CREATE TRIGGER update_game_progress_updated_at
               
               <div className="flex gap-2 mt-4">
                 <button 
-                  onClick={testSaveProgress}
+                  onClick={saveCurrentGameState}
                   disabled={isSaving || !isSignedIn}
                   className={`system-panel py-2 px-4 ${isSaving || !isSignedIn ? 'opacity-50' : 'hover:bg-accent/10'}`}
                 >
@@ -275,13 +320,13 @@ CREATE TRIGGER update_game_progress_updated_at
                   ) : (
                     <div className="flex items-center">
                       <Save className="h-4 w-4 mr-2" />
-                      <span>Test Save</span>
+                      <span>Save Progress</span>
                     </div>
                   )}
                 </button>
                 
                 <button 
-                  onClick={testLoadProgress}
+                  onClick={loadGameData}
                   disabled={isLoading || !isSignedIn}
                   className={`system-panel py-2 px-4 ${isLoading || !isSignedIn ? 'opacity-50' : 'hover:bg-accent/10'}`}
                 >
@@ -293,7 +338,7 @@ CREATE TRIGGER update_game_progress_updated_at
                   ) : (
                     <div className="flex items-center">
                       <RefreshCw className="h-4 w-4 mr-2" />
-                      <span>Test Load</span>
+                      <span>Load Progress</span>
                     </div>
                   )}
                 </button>
