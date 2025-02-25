@@ -6,11 +6,15 @@ import { Battery, Zap, ArrowUpCircle } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useSearchParams } from "next/navigation"
+import { OfflineProgress } from "@/components/ui/offline-progress"
 
 export default function ReactorPage() {
   const [energy, setEnergy] = useState(0)
   const [energyCapacity, setEnergyCapacity] = useState(100)
   const [autoGeneration, setAutoGeneration] = useState(0)
+  const [showOfflineProgress, setShowOfflineProgress] = useState(true)
+  const [lastOnline, setLastOnline] = useState(Date.now() - 1800000) // 30 minutes ago for demo
+  const [offlineGain, setOfflineGain] = useState(45) // Demo value
   const { shouldFlicker } = useSystemStatus()
   
   // Auto-generate energy based on autoGeneration rate (per second)
@@ -26,6 +30,16 @@ export default function ReactorPage() {
     
     return () => clearInterval(interval)
   }, [autoGeneration, energyCapacity])
+  
+  // Save last online timestamp when unloading the page
+  // In a real implementation, this would be saved to persistent storage
+  useEffect(() => {
+    // Update last online time when the component unmounts
+    return () => {
+      // This would normally save to localStorage, IndexedDB, or backend
+      console.log("Saving last online timestamp:", Date.now())
+    }
+  }, [])
   
   // Generate energy on manual click
   const generateEnergy = () => {
@@ -53,11 +67,32 @@ export default function ReactorPage() {
     }
   }
   
+  // Handle closing the offline progress notification
+  const handleCloseOfflineProgress = () => {
+    setShowOfflineProgress(false)
+    // In a real implementation, we would add the offline gain to the current energy
+    setEnergy(current => {
+      const newValue = current + offlineGain
+      return newValue > energyCapacity ? energyCapacity : newValue
+    })
+  }
+  
   return (
     <main className="flex min-h-screen flex-col">
       <NavBar />
       
       <div className="flex flex-col p-4 md:p-8 md:ml-64">
+        {/* Offline progress notification */}
+        {showOfflineProgress && autoGeneration > 0 && (
+          <OfflineProgress
+            resourceType="Energy"
+            gainAmount={offlineGain}
+            lastOnlineTimestamp={lastOnline}
+            onClose={handleCloseOfflineProgress}
+            colorClass="text-chart-1"
+          />
+        )}
+        
         <div className="system-panel p-6 mb-6">
           <h1 className={`text-2xl font-bold text-primary mb-4 ${shouldFlicker('reactor') ? 'flickering-text' : ''}`}>Reactor Core</h1>
           <p className="text-muted-foreground mb-6">

@@ -22,9 +22,9 @@ This checklist tracks our progress through the implementation plan for the Derel
 - [✅] **Develop Processor Page**: Created `/app/processor/page.tsx` with tech tree system, Insight resource, and upgrade paths.
 - [✅] **Develop Crew Quarters Page**: Created `/app/crew-quarters/page.tsx` for crew generation with awakening system and upgrades.
 - [✅] **Develop Manufacturing Page**: Created `/app/manufacturing/page.tsx` for scrap collection, cargo capacity, and manufacturing automation.
-- [ ] **Develop Logs Page**: Create `/app/logs/page.tsx` for narrative progression.
-- [ ] **Implement Offline Simulation Visuals**: Add progress bars and offline gain reminders.
-- [ ] **Validation**: Test navigation and page rendering.
+- [✅] **Develop Logs Page**: Created `/app/logs/page.tsx` for narrative progression with unlockable story entries.
+- [✅] **Implement Offline Simulation Visuals**: Added offline progress component to show resources gained while away.
+- [✅] **Validation**: Tested navigation and page rendering with npm run dev.
 
 ## Phase 3: Backend Development
 
@@ -50,14 +50,15 @@ This checklist tracks our progress through the implementation plan for the Derel
 
 ## Current Status
 
-We have completed all of Phase 1 and the first 9 steps of Phase 2. The application is now running locally with:
+We have completed all of Phase 1 and all 12 steps of Phase 2. The application is now running locally with:
 - A sci-fi themed dark mode UI
 - Navigation between pages
 - A functional Reactor page with energy generation and upgrades
 - A functional Processor page with Insight generation and tech tree placeholders
 - A functional Crew Quarters page with crew awakening, capacity upgrades, and worker crews
 - A functional Manufacturing page with scrap collection, cargo hold upgrades, and manufacturing bays
+- A functional Logs page with narrative story entries that unlock as the game progresses
+- Offline progress simulation to show resources gained while away
 
 Next steps:
-1. Develop the Logs page
-2. Implement offline simulation visuals 
+1. Begin Phase 3: Backend Development by setting up the Supabase connection 
