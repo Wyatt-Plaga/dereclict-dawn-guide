@@ -6,7 +6,7 @@ Below is the step-by-step plan broken into five phases. Each step cites the corr
 
 1.  **Clone Starter Kit**: Clone the CodeGuide Starter Pro repo from `https://github.com/codeGuide-dev/codeguide-starter-pro` into your working directory (**Starter Kit: Project Repo Structure**).
 
-2.  **Create Branches**: Initialize a Git repository if not already done, and create `dev` and `main` branches to enforce version control best practices (**PRD Section 1.4**).
+2.  **Create Branches**: Initialize a Git repository if not already done, and create `develop` and `main` branches to enforce version control best practices (**PRD Section 1.4**).
 
 3.  **Install Node.js**: Confirm Node.js is installed (recommended version per project requirements, e.g., Node LTS). Validate by running `node -v`. (**Tech Stack: Environment Setup**)
 
