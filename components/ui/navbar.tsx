@@ -45,20 +45,11 @@ export function NavBar() {
       </div>
       
       <div className="hidden md:block mt-auto pt-4 border-t border-border">
-        <div className="text-xs text-muted-foreground">
-          <p className={`terminal-text ${shouldFlicker('status') ? 'flickering-text' : ''}`}>{statusText}</p>
+        <div className="text-xs text-muted-foreground w-full">
+          <p className={`terminal-text ${shouldFlicker('status') ? 'flickering-text' : ''} w-full text-center`}>{statusText}</p>
         </div>
         
-        {/* For demonstration purposes - in real game this would change based on progress */}
-        <div className="flex justify-end mt-2">
-          <button 
-            onClick={() => window.location.href = "?debug=1"} 
-            className="text-muted-foreground hover:text-primary p-1"
-            title="Debug Mode"
-          >
-            <Settings className="h-3 w-3" />
-          </button>
-        </div>
+        {/* Settings cog button removed as requested */}
       </div>
     </nav>
   )
