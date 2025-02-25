@@ -17,10 +17,11 @@ This checklist tracks our progress through the implementation plan for the Derel
 - [✅] **Implement Global Layout**: Updated `/app/layout.tsx` to include global layout with dark theme.
 - [✅] **Configure Tailwind CSS**: Updated `/app/globals.css` with dark, sci-fi theme.
 - [✅] **Create Navigation Component**: Created `/components/ui/navbar.tsx` with links to all game pages.
+- [✅] **UI Improvements**: Enhanced the navigation sidebar by removing the settings cog and improving the System Status display.
 - [✅] **Develop Reactor Page**: Created `/app/reactor/page.tsx` with energy generation functionality.
-- [ ] **Develop Processor Page**: Create `/app/processor/page.tsx` with tech tree system.
-- [ ] **Develop Crew Quarters Page**: Create `/app/crew-quarters/page.tsx` for crew generation.
-- [ ] **Develop Manufacturing Page**: Create `/app/manufacturing/page.tsx` for resource collection.
+- [✅] **Develop Processor Page**: Created `/app/processor/page.tsx` with tech tree system, Insight resource, and upgrade paths.
+- [✅] **Develop Crew Quarters Page**: Created `/app/crew-quarters/page.tsx` for crew generation with awakening system and upgrades.
+- [✅] **Develop Manufacturing Page**: Created `/app/manufacturing/page.tsx` for scrap collection, cargo capacity, and manufacturing automation.
 - [ ] **Develop Logs Page**: Create `/app/logs/page.tsx` for narrative progression.
 - [ ] **Implement Offline Simulation Visuals**: Add progress bars and offline gain reminders.
 - [ ] **Validation**: Test navigation and page rendering.
@@ -49,14 +50,14 @@ This checklist tracks our progress through the implementation plan for the Derel
 
 ## Current Status
 
-We have completed all of Phase 1 and the first 5 steps of Phase 2. The application is now running locally with:
+We have completed all of Phase 1 and the first 9 steps of Phase 2. The application is now running locally with:
 - A sci-fi themed dark mode UI
 - Navigation between pages
 - A functional Reactor page with energy generation and upgrades
+- A functional Processor page with Insight generation and tech tree placeholders
+- A functional Crew Quarters page with crew awakening, capacity upgrades, and worker crews
+- A functional Manufacturing page with scrap collection, cargo hold upgrades, and manufacturing bays
 
 Next steps:
-1. Develop the Processor page
-2. Develop the Crew Quarters page
-3. Develop the Manufacturing page
-4. Develop the Logs page
-5. Implement offline simulation visuals 
+1. Develop the Logs page
+2. Implement offline simulation visuals 
