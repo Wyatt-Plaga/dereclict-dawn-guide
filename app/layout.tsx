@@ -4,6 +4,10 @@ import './globals.css'
 import TanstackClientProvider from '@/components/providers/tanstack-client-provider'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { SystemStatusProvider } from '@/components/providers/system-status-provider'
+import ClerkClientProvider from '@/components/providers/clerk-client-provider'
+import { SupabaseProvider } from '@/utils/supabase/context'
+import { ClerkLoaded, ClerkLoading } from '@clerk/nextjs'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -30,9 +34,20 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <SystemStatusProvider>
-            <TanstackClientProvider>{children}</TanstackClientProvider>
-          </SystemStatusProvider>
+          <ClerkClientProvider>
+            <ClerkLoading>
+              <div className="flex flex-col items-center justify-center min-h-screen bg-background">
+                <LoadingSpinner size={36} text="Initializing systems..." />
+              </div>
+            </ClerkLoading>
+            <ClerkLoaded>
+              <SystemStatusProvider>
+                <SupabaseProvider>
+                  <TanstackClientProvider>{children}</TanstackClientProvider>
+                </SupabaseProvider>
+              </SystemStatusProvider>
+            </ClerkLoaded>
+          </ClerkClientProvider>
         </ThemeProvider>
       </body>
     </html>

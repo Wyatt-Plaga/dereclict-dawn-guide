@@ -5,9 +5,22 @@ import Stripe from 'stripe';
 import type { Database, Tables, TablesInsert } from '@/types/database.types';
 
 export function createAdminClient() {
+    // Get environment variables
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    // Log partial values for debugging (be careful not to log full sensitive values)
+    console.log(`[DEBUG] Admin - Supabase URL exists: ${!!supabaseUrl}`)
+    console.log(`[DEBUG] Admin - Service key exists: ${!!supabaseServiceKey}`)
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+        console.error('Admin Supabase credentials missing in environment variables')
+        throw new Error('Admin Supabase credentials missing')
+    }
+
     const supabase = createClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
+        supabaseUrl,
+        supabaseServiceKey
     )
 
     return supabase
@@ -22,10 +35,20 @@ const TRIAL_PERIOD_DAYS = 0;
 
 // Note: supabaseAdmin uses the SERVICE_ROLE_KEY which you must only use in a secure server-side context
 // as it has admin privileges and overwrites RLS policies!
-export const supabaseAdmin = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+export const supabaseAdmin = (() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    console.log(`[DEBUG] supabaseAdmin - URL exists: ${!!supabaseUrl}`);
+    console.log(`[DEBUG] supabaseAdmin - Key exists: ${!!supabaseServiceKey}`);
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+        console.error('supabaseAdmin credentials missing');
+        throw new Error('Supabase admin credentials missing');
+    }
+    
+    return createClient<Database>(supabaseUrl, supabaseServiceKey);
+})();
 
 const upsertProductRecord = async (product: Stripe.Product) => {
     const productData: Product = {
