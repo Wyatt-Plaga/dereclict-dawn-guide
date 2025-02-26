@@ -2,8 +2,13 @@
 
 import { useSession } from "@clerk/nextjs";
 import { SupabaseClient, createClient } from "@supabase/supabase-js";
-import { createContext, useContext, useMemo, ReactNode, useState, useEffect } from "react";
+import { createContext, useContext, useMemo, ReactNode, useState, useEffect, useCallback } from "react";
 import { displayErrorToast, validateGameData } from "@/utils/error-handling";
+import debounce from 'lodash.debounce';
+// @ts-ignore
+import { useBeforeUnload } from 'react-use';
+import { useSaveStatus } from "@/components/providers/save-status-provider";
+import { calculateOfflineProgress } from "@/utils/offline-progress";
 
 // Define game state types
 export interface ResourceState {
@@ -42,8 +47,19 @@ interface SupabaseContextType {
     gameProgress: GameProgress | null;
     loadGameProgress: () => Promise<GameProgress | null>;
     saveGameProgress: (progress: GameProgress) => Promise<void>;
+    triggerSave: (progress: GameProgress) => void;
     loading: boolean;
     error: string | null;
+    offlineGains: {
+        minutesPassed: number;
+        gains: {
+            energy: number;
+            insight: number;
+            crew: number;
+            scrap: number;
+        };
+    } | null;
+    dismissOfflineGains: () => void;
 }
 
 // Default game state
@@ -64,8 +80,11 @@ const SupabaseContext = createContext<SupabaseContextType>({
     gameProgress: null,
     loadGameProgress: async () => null,
     saveGameProgress: async () => {},
+    triggerSave: () => {},
     loading: false,
-    error: null
+    error: null,
+    offlineGains: null,
+    dismissOfflineGains: () => {}
 });
 
 export function SupabaseProvider({ children }: { children: ReactNode }) {
@@ -73,6 +92,18 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     const [gameProgress, setGameProgress] = useState<GameProgress | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { setSaving, setSaved, setError: setSaveError } = useSaveStatus();
+    
+    // Add state for offline progress
+    const [offlineGains, setOfflineGains] = useState<{
+        minutesPassed: number;
+        gains: {
+            energy: number;
+            insight: number;
+            crew: number;
+            scrap: number;
+        };
+    } | null>(null);
 
     // Create the Supabase client
     const supabase = useMemo(() => {
@@ -132,6 +163,73 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         }
     }, [session, supabase]);
 
+    // Create a debounced save function
+    const debouncedSaveProgress = useMemo(() => 
+        debounce(async (progress: GameProgress) => {
+            try {
+                setSaving(); // Set status to saving
+                
+                // First save to localStorage as backup
+                localStorage.setItem('gameProgressBackup', JSON.stringify({
+                    ...progress,
+                    lastSaved: new Date().toISOString()
+                }));
+                
+                // Then save to Supabase if user is authenticated
+                if (supabase && session?.user?.id) {
+                    await saveGameProgress(progress);
+                }
+                
+                setSaved(); // Set status to saved
+            } catch (error) {
+                console.error('Error in debounced save:', error);
+                setSaveError(error instanceof Error ? error.message : 'Unknown error saving game');
+            }
+        }, 2000), // 2 second debounce
+        [supabase, session]
+    );
+
+    // Set up interval save
+    useEffect(() => {
+        if (!gameProgress) return;
+        
+        const intervalId = setInterval(() => {
+            // Save current game state every 30 seconds
+            if (gameProgress) {
+                // Use a callback to ensure we have the latest state
+                saveGameProgress({
+                    ...gameProgress,
+                    lastOnline: new Date().toISOString()
+                }).then(() => {
+                    console.log("Interval save completed at", new Date().toTimeString());
+                    setSaved(); // Set status to saved
+                }).catch(error => {
+                    console.error("Interval save failed:", error);
+                    setSaveError(error instanceof Error ? error.message : 'Error during interval save');
+                });
+            }
+        }, 30000); // 30 seconds
+        
+        return () => clearInterval(intervalId);
+    }, [gameProgress]);
+    
+    // Save on page unload
+    useBeforeUnload(() => {
+        if (gameProgress) {
+            // Cancel debounce and save immediately
+            debouncedSaveProgress.cancel();
+            
+            // Save to localStorage synchronously (this will work during unload)
+            localStorage.setItem('gameProgressBackup', JSON.stringify({
+                ...gameProgress,
+                lastOnline: new Date().toISOString(),
+                lastSaved: new Date().toISOString()
+            }));
+        }
+        
+        return true; // Return true to satisfy the type requirement
+    });
+
     const loadGameProgress = async (): Promise<GameProgress | null> => {
         if (!supabase || !session?.user?.id) {
             if (!supabase) setError('Supabase client not initialized');
@@ -142,6 +240,18 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         try {
             setLoading(true);
             console.log('[DEBUG] Loading game progress for user:', session.user.id);
+            
+            // Check for local backup first
+            let localBackup: GameProgress | null = null;
+            const localBackupJson = localStorage.getItem('gameProgressBackup');
+            if (localBackupJson) {
+                try {
+                    localBackup = JSON.parse(localBackupJson) as GameProgress;
+                    console.log('[DEBUG] Found local backup from:', new Date(localBackup.lastOnline));
+                } catch (e) {
+                    console.error('Failed to parse local backup:', e);
+                }
+            }
             
             const { data, error } = await supabase
                 .from('game_progress')
@@ -193,14 +303,54 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
                 }
             }
 
-            console.log('Game progress loaded:', data);
             // Map database format to our application format
-            const progress: GameProgress = {
-                resources: data.resources as ResourceState,
-                upgrades: data.upgrades as Record<string, boolean>,
-                unlockedLogs: data.unlocked_logs as number[],
-                lastOnline: data.last_online
-            };
+            let progress: GameProgress;
+            
+            if (data) {
+                progress = {
+                    resources: data.resources as ResourceState,
+                    upgrades: data.upgrades as Record<string, boolean>,
+                    unlockedLogs: data.unlocked_logs as number[],
+                    lastOnline: data.last_online
+                };
+                
+                // Compare with local backup and use the most recent one
+                if (localBackup && new Date(localBackup.lastOnline) > new Date(progress.lastOnline)) {
+                    console.log('[DEBUG] Local backup is more recent, using that instead');
+                    progress = localBackup;
+                }
+            } else if (localBackup) {
+                // No data from server but we have a local backup
+                progress = localBackup;
+            } else {
+                // Default new game progress
+                progress = { ...defaultGameProgress };
+            }
+            
+            // Calculate offline progress
+            const { updatedResources, minutesPassed, gains } = calculateOfflineProgress(progress);
+            
+            // Only show offline progress if significant time has passed and there are gains
+            const hasGains = Object.values(gains).some(value => value > 0);
+            if (minutesPassed > 0 && hasGains) {
+                setOfflineGains({ minutesPassed, gains });
+                progress.resources = updatedResources;
+            }
+            
+            // Update the server with the new values
+            if (minutesPassed > 0) {
+                try {
+                    await supabase
+                        .from('game_progress')
+                        .update({
+                            resources: updatedResources,
+                            last_online: new Date().toISOString()
+                        })
+                        .eq('user_id', session.user.id);
+                } catch (e) {
+                    console.error('Failed to update server with offline progress:', e);
+                }
+            }
 
             setGameProgress(progress);
             return progress;
@@ -291,6 +441,34 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    // Function to trigger the debounced save
+    const triggerSave = useCallback((progress: GameProgress) => {
+        try {
+            console.log("Triggering save...", new Date().toTimeString());
+            setSaving(); // Update save status to indicate saving is in progress
+            
+            // Update the state immediately
+            setGameProgress(progress);
+            
+            // Save to localStorage as immediate backup
+            localStorage.setItem('gameProgressBackup', JSON.stringify({
+                ...progress,
+                lastSaved: new Date().toISOString()
+            }));
+            
+            // Schedule the save with debounce
+            debouncedSaveProgress(progress);
+        } catch (error) {
+            console.error("Error in triggerSave:", error);
+            setSaveError(error instanceof Error ? error.message : 'Unknown error saving game');
+        }
+    }, [debouncedSaveProgress]);
+    
+    // Function to dismiss offline gains notification
+    const dismissOfflineGains = useCallback(() => {
+        setOfflineGains(null);
+    }, []);
+
     // Load game progress on session change
     useEffect(() => {
         if (isLoaded && session && supabase) {
@@ -303,14 +481,32 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         }
     }, [isLoaded, session, supabase]);
 
+    // Try to load from localStorage on initial mount if there is no game progress yet
+    useEffect(() => {
+        if (!gameProgress && isLoaded && !session) {
+            const localBackup = localStorage.getItem('gameProgressBackup');
+            if (localBackup) {
+                try {
+                    const parsedBackup = JSON.parse(localBackup) as GameProgress;
+                    setGameProgress(parsedBackup);
+                } catch (error) {
+                    console.error('Error parsing local backup:', error);
+                }
+            }
+        }
+    }, [gameProgress, isLoaded, session]);
+
     return (
         <SupabaseContext.Provider value={{ 
             supabase, 
             gameProgress, 
             loadGameProgress, 
             saveGameProgress,
+            triggerSave,
             loading,
-            error
+            error,
+            offlineGains,
+            dismissOfflineGains
         }}>
             {children}
         </SupabaseContext.Provider>
@@ -318,7 +514,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 }
 
 // Hook to use the Supabase client and game state
-export function useSupabase() {
+export const useSupabase = () => {
     const context = useContext(SupabaseContext);
     if (context === undefined) {
         throw new Error('useSupabase must be used within a SupabaseProvider');

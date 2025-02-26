@@ -13,6 +13,7 @@ import { useSupabase } from "@/utils/supabase/context"
 import { useUser } from "@clerk/nextjs"
 import { ErrorBanner } from "@/components/ui/error-banner"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { updateResource } from "@/utils/game-helpers"
 
 export default function ReactorPage() {
   const [energy, setEnergy] = useState(0)
@@ -24,7 +25,7 @@ export default function ReactorPage() {
   const { shouldFlicker } = useSystemStatus()
   
   // Supabase and Clerk integration test
-  const { supabase, gameProgress, loadGameProgress, saveGameProgress, loading, error } = useSupabase()
+  const { supabase, gameProgress, loadGameProgress, saveGameProgress, triggerSave, loading, error } = useSupabase()
   const { user, isSignedIn } = useUser()
   const [testError, setTestError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -97,14 +98,34 @@ export default function ReactorPage() {
     if (autoGeneration <= 0) return
     
     const interval = setInterval(() => {
-      setEnergy(current => {
-        const newValue = current + autoGeneration
-        return newValue > energyCapacity ? energyCapacity : newValue
-      })
-    }, 1000)
+      if (!gameProgress) return;
+      
+      // Get current values from gameProgress to stay in sync
+      const currentAmount = gameProgress.resources.energy?.amount || 0;
+      const currentCapacity = gameProgress.resources.energy?.capacity || 100;
+      const autoGen = gameProgress.resources.energy?.autoGeneration || 0;
+      
+      // Only proceed if we have auto generation
+      if (autoGen <= 0) return;
+      
+      // Calculate new energy value respecting capacity
+      const newValue = Math.min(currentAmount + autoGen, currentCapacity);
+      
+      // Use updateResource to handle state update and trigger save
+      const updatedProgress = updateResource(
+        gameProgress,
+        'energy',
+        'amount',
+        newValue,
+        triggerSave
+      );
+      
+      // Update local state for UI
+      setEnergy(newValue);
+    }, 1000);
     
-    return () => clearInterval(interval)
-  }, [autoGeneration, energyCapacity])
+    return () => clearInterval(interval);
+  }, [autoGeneration, energyCapacity, gameProgress, triggerSave]);
   
   // Save last online timestamp when unloading the page
   // In a real implementation, this would be saved to persistent storage
@@ -118,29 +139,103 @@ export default function ReactorPage() {
   
   // Generate energy on manual click
   const generateEnergy = () => {
-    setEnergy(current => {
-      const newValue = current + 1
-      return newValue > energyCapacity ? energyCapacity : newValue
-    })
+    if (!gameProgress) return;
+    
+    // Get current values from gameProgress
+    const currentAmount = gameProgress.resources.energy?.amount || 0;
+    const currentCapacity = gameProgress.resources.energy?.capacity || 100;
+    
+    // Calculate new energy value with +1 increment, respecting capacity
+    const newValue = Math.min(currentAmount + 1, currentCapacity);
+    
+    console.log(`Generating energy: ${currentAmount} -> ${newValue}`);
+    
+    // Update and save automatically using helper function
+    updateResource(
+      gameProgress,
+      'energy',
+      'amount',
+      newValue,
+      triggerSave
+    );
+    
+    // Update local state for UI
+    setEnergy(newValue);
   }
   
   // Upgrade energy capacity
   const upgradeCapacity = () => {
-    if (energy >= energyCapacity * 0.8) {
-      setEnergy(current => current - energyCapacity * 0.8)
-      setEnergyCapacity(current => current * 1.5)
+    if (!gameProgress) return;
+    
+    const currentAmount = gameProgress.resources.energy?.amount || 0;
+    const currentCapacity = gameProgress.resources.energy?.capacity || 100;
+    const upgradeCost = currentCapacity * 0.8;
+    
+    if (currentAmount >= upgradeCost) {
+      // Calculate new values
+      const newAmount = currentAmount - upgradeCost;
+      const newCapacity = currentCapacity * 1.5;
+      
+      // Update energy amount first
+      const updatedProgress1 = updateResource(
+        gameProgress,
+        'energy',
+        'amount',
+        newAmount,
+        () => {} // Don't trigger save yet to batch updates
+      );
+      
+      // Then update capacity and trigger save
+      const updatedProgress2 = updateResource(
+        updatedProgress1,
+        'energy',
+        'capacity',
+        newCapacity,
+        triggerSave
+      );
+      
+      // Update local state for UI
+      setEnergy(newAmount);
+      setEnergyCapacity(newCapacity);
     }
-  }
+  };
   
   // Upgrade auto generation
   const upgradeAutoGeneration = () => {
-    const upgradeCost = (autoGeneration + 1) * 20
+    if (!gameProgress) return;
     
-    if (energy >= upgradeCost) {
-      setEnergy(current => current - upgradeCost)
-      setAutoGeneration(current => current + 1)
+    const currentAmount = gameProgress.resources.energy?.amount || 0;
+    const currentAutoGen = gameProgress.resources.energy?.autoGeneration || 0;
+    const upgradeCost = (currentAutoGen + 1) * 20;
+    
+    if (currentAmount >= upgradeCost) {
+      // Calculate new values
+      const newAmount = currentAmount - upgradeCost;
+      const newAutoGen = currentAutoGen + 1;
+      
+      // Update energy amount first
+      const updatedProgress1 = updateResource(
+        gameProgress,
+        'energy',
+        'amount',
+        newAmount,
+        () => {} // Don't trigger save yet to batch updates
+      );
+      
+      // Then update auto generation and trigger save
+      const updatedProgress2 = updateResource(
+        updatedProgress1,
+        'energy',
+        'autoGeneration',
+        newAutoGen,
+        triggerSave
+      );
+      
+      // Update local state for UI
+      setEnergy(newAmount);
+      setAutoGeneration(newAutoGen);
     }
-  }
+  };
   
   // Handle closing the offline progress notification
   const handleCloseOfflineProgress = () => {
@@ -313,11 +408,14 @@ CREATE TRIGGER update_game_progress_updated_at
             {/* Offline progress notification */}
             {showOfflineProgress && autoGeneration > 0 && (
               <OfflineProgress
-                resourceType="Energy"
-                gainAmount={offlineGain}
-                lastOnlineTimestamp={lastOnline}
+                minutesPassed={30} // Demo value (30 minutes)
+                gains={{
+                  energy: offlineGain,
+                  insight: 0,
+                  crew: 0,
+                  scrap: 0
+                }}
                 onClose={handleCloseOfflineProgress}
-                colorClass="text-chart-1"
               />
             )}
             

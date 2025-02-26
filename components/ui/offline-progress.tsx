@@ -1,77 +1,112 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
-import { Clock, XCircle } from 'lucide-react'
+import { useState, useEffect } from "react"
+import { X, Clock, Zap, Brain, Users, Wrench } from "lucide-react"
 
 interface OfflineProgressProps {
-  resourceType: string
-  gainAmount: number
-  lastOnlineTimestamp: number  // in milliseconds since epoch
-  onClose: () => void
-  colorClass?: string
+  minutesPassed: number;
+  gains: {
+    energy: number;
+    insight: number;
+    crew: number;
+    scrap: number;
+  };
+  onClose: () => void;
 }
 
-export function OfflineProgress({
-  resourceType,
-  gainAmount,
-  lastOnlineTimestamp,
-  onClose,
-  colorClass = 'text-primary'
+export function OfflineProgress({ 
+  minutesPassed, 
+  gains, 
+  onClose 
 }: OfflineProgressProps) {
-  const [visible, setVisible] = useState(true)
-  const [timeAway, setTimeAway] = useState('')
-  
-  useEffect(() => {
-    // Calculate time away
-    const now = Date.now()
-    const diffMs = now - lastOnlineTimestamp
-    const diffMinutes = Math.floor(diffMs / 60000)
-    
-    if (diffMinutes < 60) {
-      setTimeAway(`${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''}`)
-    } else {
-      const diffHours = Math.floor(diffMinutes / 60)
-      const remainingMinutes = diffMinutes % 60
-      
-      if (remainingMinutes === 0) {
-        setTimeAway(`${diffHours} hour${diffHours !== 1 ? 's' : ''}`)
-      } else {
-        setTimeAway(`${diffHours} hour${diffHours !== 1 ? 's' : ''} and ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''}`)
-      }
-    }
-  }, [lastOnlineTimestamp])
+  const [visible, setVisible] = useState(true);
   
   const handleClose = () => {
-    setVisible(false)
-    onClose()
-  }
+    setVisible(false);
+    // Delay actual close for animation
+    setTimeout(onClose, 300);
+  };
   
-  if (!visible) return null
+  // Auto-dismiss after 15 seconds if not interacted with
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleClose();
+    }, 15000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // Format time in hours and minutes
+  const timeAway = minutesPassed >= 60 
+    ? `${Math.floor(minutesPassed / 60)}h ${minutesPassed % 60}m`
+    : `${minutesPassed}m`;
+  
+  if (!visible) return null;
   
   return (
-    <div className="system-panel p-4 mb-4 relative">
-      <button 
-        onClick={handleClose} 
-        className="absolute top-2 right-2 text-muted-foreground hover:text-primary"
-        aria-label="Close"
-      >
-        <XCircle className="h-4 w-4" />
-      </button>
-      
-      <div className="flex items-start mb-2">
-        <Clock className={`h-5 w-5 ${colorClass} mr-2 mt-0.5`} />
-        <div>
-          <h3 className="text-sm font-medium">While you were away...</h3>
-          <p className="text-xs text-muted-foreground">You've been gone for {timeAway}</p>
+    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 animate-fade-in">
+      <div className="system-panel max-w-md w-full p-6 m-4 animate-slide-up">
+        <div className="flex justify-between items-start mb-4">
+          <h2 className="text-xl font-bold text-primary">While You Were Away</h2>
+          <button onClick={handleClose} className="text-muted-foreground hover:text-primary">
+            <X className="h-5 w-5" />
+          </button>
         </div>
-      </div>
-      
-      <div className="mt-3 pt-3 border-t border-border">
-        <div className="flex items-center justify-between">
-          <span className="text-xs">Generated:</span>
-          <span className={`font-mono text-sm ${colorClass}`}>+{Math.floor(gainAmount)} {resourceType}</span>
+        
+        <div className="mb-4 flex items-center text-muted-foreground">
+          <Clock className="h-4 w-4 mr-2" />
+          <span>You were away for {timeAway}</span>
         </div>
+        
+        <div className="space-y-3 my-6">
+          {gains.energy > 0 && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Zap className="h-5 w-5 text-chart-1 mr-2" />
+                <span>Energy</span>
+              </div>
+              <span className="font-mono">+{Math.floor(gains.energy)}</span>
+            </div>
+          )}
+          
+          {gains.insight > 0 && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Brain className="h-5 w-5 text-chart-2 mr-2" />
+                <span>Insight</span>
+              </div>
+              <span className="font-mono">+{Math.floor(gains.insight)}</span>
+            </div>
+          )}
+          
+          {gains.crew > 0 && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Users className="h-5 w-5 text-chart-3 mr-2" />
+                <span>Crew</span>
+              </div>
+              <span className="font-mono">+{Math.floor(gains.crew)}</span>
+            </div>
+          )}
+          
+          {gains.scrap > 0 && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Wrench className="h-5 w-5 text-chart-4 mr-2" />
+                <span>Scrap</span>
+              </div>
+              <span className="font-mono">+{Math.floor(gains.scrap)}</span>
+            </div>
+          )}
+        </div>
+        
+        <button 
+          onClick={handleClose}
+          className="w-full system-panel-button py-2 flex justify-center items-center"
+        >
+          Collect Resources
+        </button>
       </div>
     </div>
-  )
+  );
 } 
