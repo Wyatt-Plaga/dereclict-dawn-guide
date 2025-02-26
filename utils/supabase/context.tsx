@@ -39,6 +39,7 @@ export interface GameProgress {
     upgrades: Record<string, boolean>;
     unlockedLogs: number[];
     lastOnline: string; // ISO timestamp
+    page_timestamps?: Record<string, string>; // Timestamps for when each page was last visited
 }
 
 // Context interface including game state functionality
@@ -49,6 +50,7 @@ interface SupabaseContextType {
     saveGameProgress: (progress: GameProgress) => Promise<void>;
     triggerSave: (progress: GameProgress) => void;
     unlockLog: (logId: number) => void;
+    updatePageTimestamp: (pageName: string) => void; // Add function to update page timestamps
     loading: boolean;
     error: string | null;
     offlineGains: {
@@ -73,7 +75,13 @@ const defaultGameProgress: GameProgress = {
     },
     upgrades: {},
     unlockedLogs: [1, 2, 3], // Initial unlocked logs
-    lastOnline: new Date().toISOString()
+    lastOnline: new Date().toISOString(),
+    page_timestamps: {
+        reactor: new Date().toISOString(),
+        processor: new Date().toISOString(),
+        "crew-quarters": new Date().toISOString(),
+        manufacturing: new Date().toISOString()
+    }
 };
 
 const SupabaseContext = createContext<SupabaseContextType>({
@@ -83,6 +91,7 @@ const SupabaseContext = createContext<SupabaseContextType>({
     saveGameProgress: async () => {},
     triggerSave: () => {},
     unlockLog: () => {},
+    updatePageTimestamp: () => {}, // Add to default context
     loading: false,
     error: null,
     offlineGains: null,
@@ -273,7 +282,8 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
                             resources: defaultGameProgress.resources,
                             upgrades: defaultGameProgress.upgrades,
                             unlocked_logs: defaultGameProgress.unlockedLogs,
-                            last_online: defaultGameProgress.lastOnline
+                            last_online: defaultGameProgress.lastOnline,
+                            page_timestamps: defaultGameProgress.page_timestamps
                         }])
                         .select();
 
@@ -288,7 +298,8 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
                         resources: newData[0].resources as ResourceState,
                         upgrades: newData[0].upgrades as Record<string, boolean>,
                         unlockedLogs: newData[0].unlocked_logs as number[],
-                        lastOnline: newData[0].last_online
+                        lastOnline: newData[0].last_online,
+                        page_timestamps: newData[0].page_timestamps as Record<string, string>
                     };
 
                     setGameProgress(progress);
@@ -313,7 +324,8 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
                     resources: data.resources as ResourceState,
                     upgrades: data.upgrades as Record<string, boolean>,
                     unlockedLogs: data.unlocked_logs as number[],
-                    lastOnline: data.last_online
+                    lastOnline: data.last_online,
+                    page_timestamps: data.page_timestamps as Record<string, string>
                 };
                 
                 // Compare with local backup and use the most recent one
@@ -347,6 +359,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
                         .update({
                             resources: updatedResources,
                             last_online: new Date().toISOString()
+                            // Don't update page_timestamps here as they need to remain unchanged
                         })
                         .eq('user_id', session.user.id);
                 } catch (e) {
@@ -407,7 +420,8 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
                         resources: progress.resources,
                         upgrades: progress.upgrades,
                         unlocked_logs: progress.unlockedLogs,
-                        last_online: new Date().toISOString()
+                        last_online: new Date().toISOString(),
+                        page_timestamps: progress.page_timestamps || {} // Save page timestamps
                     })
                     .eq('user_id', session.user.id);
                     
@@ -422,7 +436,8 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
                         resources: progress.resources,
                         upgrades: progress.upgrades,
                         unlocked_logs: progress.unlockedLogs,
-                        last_online: new Date().toISOString()
+                        last_online: new Date().toISOString(),
+                        page_timestamps: progress.page_timestamps || {} // Save page timestamps
                     });
                     
                 error = insertError;
@@ -526,6 +541,45 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         }
     }, [gameProgress, triggerSave]);
 
+    // Add the updatePageTimestamp function in the SupabaseProvider component
+    const updatePageTimestamp = useCallback((pageName: string) => {
+        if (!gameProgress) return;
+        
+        const currentTime = new Date().toISOString();
+        
+        // Check if the timestamp actually needs to be updated
+        // Only update if it doesn't exist or if it's been at least 1 minute since last update
+        const existingTimestamp = gameProgress.page_timestamps?.[pageName];
+        const shouldUpdate = !existingTimestamp || 
+            (new Date(currentTime).getTime() - new Date(existingTimestamp).getTime() > 60000);
+            
+        if (!shouldUpdate) {
+            console.log(`Skipping timestamp update for ${pageName} - updated recently`);
+            return;
+        }
+        
+        // Create updated page timestamps
+        const updatedTimestamps = {
+            ...(gameProgress.page_timestamps || {}),
+            [pageName]: currentTime
+        };
+        
+        // Update the game progress with new timestamp
+        const updatedProgress = {
+            ...gameProgress,
+            page_timestamps: updatedTimestamps
+        };
+        
+        // Save the updated progress
+        setGameProgress(updatedProgress);
+        
+        // Only trigger save if we're modifying an existing timestamp
+        // to avoid unnecessary saves when first loading a page
+        if (gameProgress.page_timestamps && gameProgress.page_timestamps[pageName]) {
+            triggerSave(updatedProgress);
+        }
+    }, [gameProgress, triggerSave]);
+
     return (
         <SupabaseContext.Provider value={{ 
             supabase, 
@@ -534,6 +588,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
             saveGameProgress,
             triggerSave,
             unlockLog,
+            updatePageTimestamp,
             loading,
             error,
             offlineGains,

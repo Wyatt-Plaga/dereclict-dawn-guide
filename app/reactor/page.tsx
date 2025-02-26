@@ -19,17 +19,37 @@ export default function ReactorPage() {
   const [energy, setEnergy] = useState(0)
   const [energyCapacity, setEnergyCapacity] = useState(100)
   const [autoGeneration, setAutoGeneration] = useState(0)
-  const [showOfflineProgress, setShowOfflineProgress] = useState(true)
-  const [lastOnline, setLastOnline] = useState(Date.now() - 1800000) // 30 minutes ago for demo
-  const [offlineGain, setOfflineGain] = useState(45) // Demo value
   const { shouldFlicker } = useSystemStatus()
   
   // Supabase and Clerk integration test
-  const { supabase, gameProgress, loadGameProgress, saveGameProgress, triggerSave, loading, error } = useSupabase()
+  const { 
+    supabase, 
+    gameProgress, 
+    loadGameProgress, 
+    saveGameProgress, 
+    triggerSave, 
+    loading, 
+    error, 
+    updatePageTimestamp, 
+    offlineGains,
+    dismissOfflineGains 
+  } = useSupabase()
   const { user, isSignedIn } = useUser()
   const [testError, setTestError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  
+  // Track if we've already updated the page timestamp
+  const [timestampUpdated, setTimestampUpdated] = useState(false);
+  
+  // Update the page timestamp only once when the component mounts and gameProgress is available
+  useEffect(() => {
+    if (gameProgress && !timestampUpdated) {
+      // Record that the player visited the reactor page
+      updatePageTimestamp('reactor');
+      setTimestampUpdated(true);
+    }
+  }, [gameProgress, timestampUpdated, updatePageTimestamp]);
   
   // Synchronize local state with gameProgress from context
   useEffect(() => {
@@ -57,7 +77,11 @@ export default function ReactorPage() {
         },
         upgrades: { reactorUpgrade1: true },
         unlockedLogs: [1, 2, 3],
-        lastOnline: new Date().toISOString()
+        lastOnline: new Date().toISOString(),
+        page_timestamps: {
+          ...gameProgress?.page_timestamps,
+          reactor: new Date().toISOString()
+        }
       };
       
       await saveGameProgress(testProgress);
@@ -95,45 +119,46 @@ export default function ReactorPage() {
   
   // Auto-generate energy based on autoGeneration rate (per second)
   useEffect(() => {
-    if (autoGeneration <= 0) return
+    // Don't set up interval if no auto generation or no game progress
+    if (autoGeneration <= 0 || !gameProgress) return;
+    
+    console.log(`Setting up energy auto-generation interval with rate: ${autoGeneration}/sec`);
     
     const interval = setInterval(() => {
-      if (!gameProgress) return;
-      
       // Get current values from gameProgress to stay in sync
       const currentAmount = gameProgress.resources.energy?.amount || 0;
       const currentCapacity = gameProgress.resources.energy?.capacity || 100;
-      const autoGen = gameProgress.resources.energy?.autoGeneration || 0;
-      
-      // Only proceed if we have auto generation
-      if (autoGen <= 0) return;
       
       // Calculate new energy value respecting capacity
-      const newValue = Math.min(currentAmount + autoGen, currentCapacity);
+      const newValue = Math.min(currentAmount + autoGeneration, currentCapacity);
       
-      // Use updateResource to handle state update and trigger save
-      const updatedProgress = updateResource(
-        gameProgress,
-        'energy',
-        'amount',
-        newValue,
-        triggerSave
-      );
-      
-      // Update local state for UI
-      setEnergy(newValue);
+      // Only update if there's actually a change
+      if (newValue > currentAmount) {
+        console.log(`Auto-generating energy: ${currentAmount} -> ${newValue}`);
+        
+        // Use updateResource to handle state update and trigger save
+        updateResource(
+          gameProgress,
+          'energy',
+          'amount',
+          newValue,
+          triggerSave
+        );
+        
+        // Update local state for UI
+        setEnergy(newValue);
+      }
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [autoGeneration, energyCapacity, gameProgress, triggerSave]);
+  }, [autoGeneration, gameProgress, triggerSave, setEnergy]);
   
   // Save last online timestamp when unloading the page
-  // In a real implementation, this would be saved to persistent storage
   useEffect(() => {
     // Update last online time when the component unmounts
     return () => {
-      // This would normally save to localStorage, IndexedDB, or backend
-      console.log("Saving last online timestamp:", Date.now())
+      // No need for custom handling here anymore, since we use updatePageTimestamp
+      console.log("Component unmounting, page timestamp already tracked");
     }
   }, [])
   
@@ -237,16 +262,6 @@ export default function ReactorPage() {
     }
   };
   
-  // Handle closing the offline progress notification
-  const handleCloseOfflineProgress = () => {
-    setShowOfflineProgress(false)
-    // In a real implementation, we would add the offline gain to the current energy
-    setEnergy(current => {
-      const newValue = current + offlineGain
-      return newValue > energyCapacity ? energyCapacity : newValue
-    })
-  }
-  
   return (
     <AuthCheck>
       <ErrorBoundary>
@@ -277,6 +292,7 @@ CREATE TABLE IF NOT EXISTS "public"."game_progress" (
   "resources" jsonb NOT NULL DEFAULT '{}'::jsonb,
   "upgrades" jsonb NOT NULL DEFAULT '{}'::jsonb,
   "unlocked_logs" jsonb NOT NULL DEFAULT '[]'::jsonb,
+  "page_timestamps" jsonb NOT NULL DEFAULT '{}'::jsonb,
   "created_at" timestamp with time zone NOT NULL DEFAULT now(),
   "updated_at" timestamp with time zone NOT NULL DEFAULT now(),
   PRIMARY KEY ("id"),
@@ -406,16 +422,11 @@ CREATE TRIGGER update_game_progress_updated_at
             </div>
 
             {/* Offline progress notification */}
-            {showOfflineProgress && autoGeneration > 0 && (
+            {offlineGains && offlineGains.gains.energy > 0 && (
               <OfflineProgress
-                minutesPassed={30} // Demo value (30 minutes)
-                gains={{
-                  energy: offlineGain,
-                  insight: 0,
-                  crew: 0,
-                  scrap: 0
-                }}
-                onClose={handleCloseOfflineProgress}
+                minutesPassed={offlineGains.minutesPassed}
+                gains={offlineGains.gains}
+                onClose={() => dismissOfflineGains()}
               />
             )}
             

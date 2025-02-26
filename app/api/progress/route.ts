@@ -6,6 +6,7 @@ import { auth } from '@clerk/nextjs/server';
 function calculateOfflineProgress(
   lastOnline: string,
   resources: any,
+  page_timestamps: Record<string, string> = {},
   maxOfflineMinutes = 1440 // Cap at 24 hours
 ) {
   const now = new Date();
@@ -22,40 +23,68 @@ function calculateOfflineProgress(
   // Calculate gained resources
   const updatedResources = { ...resources };
   
-  // Energy calculation (if auto-generation exists)
+  // Energy calculation using reactor timestamp if available
   if (resources.energy && resources.energy.autoGeneration > 0) {
-    const offlineGain = resources.energy.autoGeneration * minutesPassed * 60; // Per minute
-    updatedResources.energy.amount = Math.min(
-      resources.energy.amount + offlineGain,
-      resources.energy.capacity
-    );
+    const reactorTimestamp = page_timestamps.reactor || lastOnline;
+    const reactorDate = new Date(reactorTimestamp);
+    let energyMinutesPassed = Math.floor((now.getTime() - reactorDate.getTime()) / 60000);
+    energyMinutesPassed = Math.min(energyMinutesPassed, maxOfflineMinutes);
+    
+    if (energyMinutesPassed > 0) {
+      const offlineGain = resources.energy.autoGeneration * energyMinutesPassed * 60; // Per minute
+      updatedResources.energy.amount = Math.min(
+        resources.energy.amount + offlineGain,
+        resources.energy.capacity
+      );
+    }
   }
   
-  // Insight calculation
+  // Insight calculation using processor timestamp if available
   if (resources.insight && resources.insight.autoGeneration > 0) {
-    const offlineGain = resources.insight.autoGeneration * minutesPassed * 60 * 0.2; // Per minute (0.2 per second)
-    updatedResources.insight.amount = Math.min(
-      resources.insight.amount + offlineGain,
-      resources.insight.capacity
-    );
+    const processorTimestamp = page_timestamps.processor || lastOnline;
+    const processorDate = new Date(processorTimestamp);
+    let insightMinutesPassed = Math.floor((now.getTime() - processorDate.getTime()) / 60000);
+    insightMinutesPassed = Math.min(insightMinutesPassed, maxOfflineMinutes);
+    
+    if (insightMinutesPassed > 0) {
+      const offlineGain = resources.insight.autoGeneration * insightMinutesPassed * 60 * 0.2; // Per minute (0.2 per second)
+      updatedResources.insight.amount = Math.min(
+        resources.insight.amount + offlineGain,
+        resources.insight.capacity
+      );
+    }
   }
   
-  // Crew calculation
+  // Crew calculation using crew-quarters timestamp if available
   if (resources.crew && resources.crew.workerCrews > 0) {
-    const offlineGain = resources.crew.workerCrews * minutesPassed * 60 * 0.1; // Per minute (0.1 per second)
-    updatedResources.crew.amount = Math.min(
-      resources.crew.amount + offlineGain,
-      resources.crew.capacity
-    );
+    const crewTimestamp = page_timestamps["crew-quarters"] || lastOnline;
+    const crewDate = new Date(crewTimestamp);
+    let crewMinutesPassed = Math.floor((now.getTime() - crewDate.getTime()) / 60000);
+    crewMinutesPassed = Math.min(crewMinutesPassed, maxOfflineMinutes);
+    
+    if (crewMinutesPassed > 0) {
+      const offlineGain = resources.crew.workerCrews * crewMinutesPassed * 60 * 0.1; // Per minute (0.1 per second)
+      updatedResources.crew.amount = Math.min(
+        resources.crew.amount + offlineGain,
+        resources.crew.capacity
+      );
+    }
   }
   
-  // Scrap calculation
+  // Scrap calculation using manufacturing timestamp if available
   if (resources.scrap && resources.scrap.manufacturingBays > 0) {
-    const offlineGain = resources.scrap.manufacturingBays * minutesPassed * 60 * 0.5; // Per minute (0.5 per second)
-    updatedResources.scrap.amount = Math.min(
-      resources.scrap.amount + offlineGain,
-      resources.scrap.capacity
-    );
+    const manufacturingTimestamp = page_timestamps.manufacturing || lastOnline;
+    const manufacturingDate = new Date(manufacturingTimestamp);
+    let scrapMinutesPassed = Math.floor((now.getTime() - manufacturingDate.getTime()) / 60000);
+    scrapMinutesPassed = Math.min(scrapMinutesPassed, maxOfflineMinutes);
+    
+    if (scrapMinutesPassed > 0) {
+      const offlineGain = resources.scrap.manufacturingBays * scrapMinutesPassed * 60 * 0.5; // Per minute (0.5 per second)
+      updatedResources.scrap.amount = Math.min(
+        resources.scrap.amount + offlineGain,
+        resources.scrap.capacity
+      );
+    }
   }
   
   return {
@@ -107,18 +136,20 @@ export async function GET() {
       );
     }
     
-    // Calculate offline progress
+    // Calculate offline progress using page timestamps
     const { updatedResources, minutesPassed, gains } = calculateOfflineProgress(
       data.last_online,
-      data.resources
+      data.resources,
+      data.page_timestamps || {}
     );
     
-    // Update the resources and last_online timestamp
+    // Update the resources and last_online timestamp but keep page_timestamps unchanged
     const { error: updateError } = await supabase
       .from('game_progress')
       .update({
         resources: updatedResources,
         last_online: new Date().toISOString()
+        // Don't update page_timestamps here
       })
       .eq('user_id', userId);
       
@@ -132,7 +163,8 @@ export async function GET() {
     return NextResponse.json({
       offlineTime: minutesPassed,
       gains,
-      updatedResources
+      updatedResources,
+      page_timestamps: data.page_timestamps || {}
     });
   } catch (error) {
     console.error('Error calculating offline progress:', error);
@@ -185,7 +217,8 @@ export async function POST(request: Request) {
           resources: data.resources,
           upgrades: data.upgrades || {},
           unlocked_logs: data.unlockedLogs || [],
-          last_online: new Date().toISOString()
+          last_online: new Date().toISOString(),
+          page_timestamps: data.page_timestamps || {}
         })
         .eq('user_id', userId);
         
@@ -200,7 +233,8 @@ export async function POST(request: Request) {
           resources: data.resources,
           upgrades: data.upgrades || {},
           unlocked_logs: data.unlockedLogs || [],
-          last_online: new Date().toISOString()
+          last_online: new Date().toISOString(),
+          page_timestamps: data.page_timestamps || {}
         });
         
       error = insertError;
