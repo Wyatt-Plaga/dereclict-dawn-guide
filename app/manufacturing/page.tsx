@@ -5,6 +5,8 @@ import { NavBar } from "@/components/ui/navbar"
 import { Package, Cog, Warehouse, Factory } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
+import { useSupabase } from "@/utils/supabase/context"
+import { updateResource } from "@/utils/game-helpers"
 
 export default function ManufacturingPage() {
   const [scrap, setScrap] = useState(0)
@@ -12,45 +14,148 @@ export default function ManufacturingPage() {
   const [manufacturingBays, setManufacturingBays] = useState(0)
   const { shouldFlicker } = useSystemStatus()
   
+  // Supabase integration
+  const { gameProgress, triggerSave } = useSupabase()
+  
+  // Synchronize local state with gameProgress from context
+  useEffect(() => {
+    if (gameProgress?.resources?.scrap) {
+      console.log("Initializing manufacturing state from gameProgress:", gameProgress.resources.scrap);
+      setScrap(gameProgress.resources.scrap.amount || 0);
+      setCargoCapacity(gameProgress.resources.scrap.capacity || 100);
+      setManufacturingBays(gameProgress.resources.scrap.manufacturingBays || 0);
+    }
+  }, [gameProgress]);
+  
   // Auto-generate scrap based on manufacturingBays rate (per second)
   useEffect(() => {
-    if (manufacturingBays <= 0) return
+    if (manufacturingBays <= 0 || !gameProgress) return
     
     const interval = setInterval(() => {
-      setScrap(current => {
-        const newValue = current + manufacturingBays * 0.5
-        return newValue > cargoCapacity ? cargoCapacity : newValue
-      })
+      // Get current values from gameProgress to stay in sync
+      const currentAmount = gameProgress.resources.scrap?.amount || 0;
+      const currentCapacity = gameProgress.resources.scrap?.capacity || 100;
+      const currentBays = gameProgress.resources.scrap?.manufacturingBays || 0;
+      
+      // Only proceed if we have manufacturing bays
+      if (currentBays <= 0) return;
+      
+      // Calculate new scrap value respecting capacity
+      const newValue = Math.min(currentAmount + currentBays * 0.5, currentCapacity);
+      
+      // Use updateResource to handle state update and trigger save
+      updateResource(
+        gameProgress,
+        'scrap',
+        'amount',
+        newValue,
+        triggerSave
+      );
+      
+      // Update local state for UI
+      setScrap(newValue);
     }, 1000)
     
     return () => clearInterval(interval)
-  }, [manufacturingBays, cargoCapacity])
+  }, [manufacturingBays, cargoCapacity, gameProgress, triggerSave])
   
   // Collect scrap on manual click
   const collectScrap = () => {
-    setScrap(current => {
-      const newValue = current + 1
-      return newValue > cargoCapacity ? cargoCapacity : newValue
-    })
+    if (!gameProgress) return;
+    
+    // Get current values from gameProgress
+    const currentAmount = gameProgress.resources.scrap?.amount || 0;
+    const currentCapacity = gameProgress.resources.scrap?.capacity || 100;
+    
+    // Calculate new scrap value with +1 increment, respecting capacity
+    const newValue = Math.min(currentAmount + 1, currentCapacity);
+    
+    console.log(`Collecting scrap: ${currentAmount} -> ${newValue}`);
+    
+    // Update and save automatically using helper function
+    updateResource(
+      gameProgress,
+      'scrap',
+      'amount',
+      newValue,
+      triggerSave
+    );
+    
+    // Update local state for UI
+    setScrap(newValue);
   }
   
   // Upgrade cargo capacity
   const upgradeCargoHold = () => {
-    const upgradeCost = Math.floor(cargoCapacity * 0.5)
+    if (!gameProgress) return;
     
-    if (scrap >= upgradeCost) {
-      setScrap(current => current - upgradeCost)
-      setCargoCapacity(current => current * 1.5)
+    const currentAmount = gameProgress.resources.scrap?.amount || 0;
+    const currentCapacity = gameProgress.resources.scrap?.capacity || 100;
+    const upgradeCost = Math.floor(currentCapacity * 0.5);
+    
+    if (currentAmount >= upgradeCost) {
+      // Calculate new values
+      const newAmount = currentAmount - upgradeCost;
+      const newCapacity = currentCapacity * 1.5;
+      
+      // Update scrap amount first
+      const updatedProgress1 = updateResource(
+        gameProgress,
+        'scrap',
+        'amount',
+        newAmount,
+        () => {} // Don't trigger save yet to batch updates
+      );
+      
+      // Then update capacity and trigger save
+      updateResource(
+        updatedProgress1,
+        'scrap',
+        'capacity',
+        newCapacity,
+        triggerSave
+      );
+      
+      // Update local state for UI
+      setScrap(newAmount);
+      setCargoCapacity(newCapacity);
     }
   }
   
   // Upgrade manufacturing bay
   const upgradeManufacturingBay = () => {
-    const upgradeCost = (manufacturingBays + 1) * 25
+    if (!gameProgress) return;
     
-    if (scrap >= upgradeCost) {
-      setScrap(current => current - upgradeCost)
-      setManufacturingBays(current => current + 1)
+    const currentAmount = gameProgress.resources.scrap?.amount || 0;
+    const currentBays = gameProgress.resources.scrap?.manufacturingBays || 0;
+    const upgradeCost = (currentBays + 1) * 25;
+    
+    if (currentAmount >= upgradeCost) {
+      // Calculate new values
+      const newAmount = currentAmount - upgradeCost;
+      const newBays = currentBays + 1;
+      
+      // Update scrap amount first
+      const updatedProgress1 = updateResource(
+        gameProgress,
+        'scrap',
+        'amount',
+        newAmount,
+        () => {} // Don't trigger save yet to batch updates
+      );
+      
+      // Then update manufacturing bays and trigger save
+      updateResource(
+        updatedProgress1,
+        'scrap',
+        'manufacturingBays',
+        newBays,
+        triggerSave
+      );
+      
+      // Update local state for UI
+      setScrap(newAmount);
+      setManufacturingBays(newBays);
     }
   }
   

@@ -6,6 +6,8 @@ import { CpuIcon, Brain, ArrowUpCircle, CircuitBoard } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useSearchParams } from "next/navigation"
+import { useSupabase } from "@/utils/supabase/context"
+import { updateResource } from "@/utils/game-helpers"
 
 export default function ProcessorPage() {
   const [insight, setInsight] = useState(0)
@@ -13,45 +15,148 @@ export default function ProcessorPage() {
   const [processingThreads, setProcessingThreads] = useState(0)
   const { shouldFlicker } = useSystemStatus()
   
+  // Supabase integration
+  const { gameProgress, triggerSave } = useSupabase()
+  
+  // Synchronize local state with gameProgress from context
+  useEffect(() => {
+    if (gameProgress?.resources?.insight) {
+      console.log("Initializing processor state from gameProgress:", gameProgress.resources.insight);
+      setInsight(gameProgress.resources.insight.amount || 0);
+      setMainframeCapacity(gameProgress.resources.insight.capacity || 50);
+      setProcessingThreads(gameProgress.resources.insight.autoGeneration || 0);
+    }
+  }, [gameProgress]);
+  
   // Auto-generate insight based on processingThreads rate (per second)
   useEffect(() => {
-    if (processingThreads <= 0) return
+    if (processingThreads <= 0 || !gameProgress) return
     
     const interval = setInterval(() => {
-      setInsight(current => {
-        const newValue = current + processingThreads * 0.2
-        return newValue > mainframeCapacity ? mainframeCapacity : newValue
-      })
+      // Get current values from gameProgress to stay in sync
+      const currentAmount = gameProgress.resources.insight?.amount || 0;
+      const currentCapacity = gameProgress.resources.insight?.capacity || 50;
+      const threads = gameProgress.resources.insight?.autoGeneration || 0;
+      
+      // Only proceed if we have processing threads
+      if (threads <= 0) return;
+      
+      // Calculate new insight value respecting capacity
+      const newValue = Math.min(currentAmount + threads * 0.2, currentCapacity);
+      
+      // Use updateResource to handle state update and trigger save
+      updateResource(
+        gameProgress,
+        'insight',
+        'amount',
+        newValue,
+        triggerSave
+      );
+      
+      // Update local state for UI
+      setInsight(newValue);
     }, 1000)
     
     return () => clearInterval(interval)
-  }, [processingThreads, mainframeCapacity])
+  }, [processingThreads, mainframeCapacity, gameProgress, triggerSave])
   
   // Generate insight on manual click
   const generateInsight = () => {
-    setInsight(current => {
-      const newValue = current + 0.5
-      return newValue > mainframeCapacity ? mainframeCapacity : newValue
-    })
+    if (!gameProgress) return;
+    
+    // Get current values from gameProgress
+    const currentAmount = gameProgress.resources.insight?.amount || 0;
+    const currentCapacity = gameProgress.resources.insight?.capacity || 50;
+    
+    // Calculate new insight value with +0.5 increment, respecting capacity
+    const newValue = Math.min(currentAmount + 0.5, currentCapacity);
+    
+    console.log(`Generating insight: ${currentAmount} -> ${newValue}`);
+    
+    // Update and save automatically using helper function
+    updateResource(
+      gameProgress,
+      'insight',
+      'amount',
+      newValue,
+      triggerSave
+    );
+    
+    // Update local state for UI
+    setInsight(newValue);
   }
   
   // Upgrade mainframe capacity
   const upgradeMainframeCapacity = () => {
-    const upgradeCost = mainframeCapacity * 0.7
+    if (!gameProgress) return;
     
-    if (insight >= upgradeCost) {
-      setInsight(current => current - upgradeCost)
-      setMainframeCapacity(current => current * 1.5)
+    const currentAmount = gameProgress.resources.insight?.amount || 0;
+    const currentCapacity = gameProgress.resources.insight?.capacity || 50;
+    const upgradeCost = currentCapacity * 0.7;
+    
+    if (currentAmount >= upgradeCost) {
+      // Calculate new values
+      const newAmount = currentAmount - upgradeCost;
+      const newCapacity = currentCapacity * 1.5;
+      
+      // Update insight amount first
+      const updatedProgress1 = updateResource(
+        gameProgress,
+        'insight',
+        'amount',
+        newAmount,
+        () => {} // Don't trigger save yet to batch updates
+      );
+      
+      // Then update capacity and trigger save
+      updateResource(
+        updatedProgress1,
+        'insight',
+        'capacity',
+        newCapacity,
+        triggerSave
+      );
+      
+      // Update local state for UI
+      setInsight(newAmount);
+      setMainframeCapacity(newCapacity);
     }
   }
   
   // Upgrade processing threads
   const upgradeProcessingThreads = () => {
-    const threadCost = (processingThreads + 1) * 15
+    if (!gameProgress) return;
     
-    if (insight >= threadCost) {
-      setInsight(current => current - threadCost)
-      setProcessingThreads(current => current + 1)
+    const currentAmount = gameProgress.resources.insight?.amount || 0;
+    const currentThreads = gameProgress.resources.insight?.autoGeneration || 0;
+    const threadCost = (currentThreads + 1) * 15;
+    
+    if (currentAmount >= threadCost) {
+      // Calculate new values
+      const newAmount = currentAmount - threadCost;
+      const newThreads = currentThreads + 1;
+      
+      // Update insight amount first
+      const updatedProgress1 = updateResource(
+        gameProgress,
+        'insight',
+        'amount',
+        newAmount,
+        () => {} // Don't trigger save yet to batch updates
+      );
+      
+      // Then update processing threads and trigger save
+      updateResource(
+        updatedProgress1,
+        'insight',
+        'autoGeneration',
+        newThreads,
+        triggerSave
+      );
+      
+      // Update local state for UI
+      setInsight(newAmount);
+      setProcessingThreads(newThreads);
     }
   }
   

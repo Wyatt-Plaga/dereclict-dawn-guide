@@ -5,6 +5,8 @@ import { NavBar } from "@/components/ui/navbar"
 import { Users, User, Home, Wrench, Plus } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
+import { useSupabase } from "@/utils/supabase/context"
+import { updateResource } from "@/utils/game-helpers"
 
 export default function CrewQuartersPage() {
   const [crew, setCrew] = useState(0)
@@ -13,52 +15,154 @@ export default function CrewQuartersPage() {
   const [workerCrews, setWorkerCrews] = useState(0)
   const { shouldFlicker } = useSystemStatus()
   
+  // Supabase integration
+  const { gameProgress, triggerSave } = useSupabase()
+  
+  // Synchronize local state with gameProgress from context
+  useEffect(() => {
+    if (gameProgress?.resources?.crew) {
+      console.log("Initializing crew quarters state from gameProgress:", gameProgress.resources.crew);
+      setCrew(gameProgress.resources.crew.amount || 0);
+      setCrewCapacity(gameProgress.resources.crew.capacity || 5);
+      setWorkerCrews(gameProgress.resources.crew.workerCrews || 0);
+    }
+  }, [gameProgress]);
+  
   // Auto-generate crew based on workerCrews rate (per 10 seconds)
   useEffect(() => {
-    if (workerCrews <= 0) return
+    if (workerCrews <= 0 || !gameProgress) return
     
     const interval = setInterval(() => {
-      setCrew(current => {
-        if (current >= crewCapacity) return current
-        const newValue = current + workerCrews * 0.1 // 1 crew per 10 seconds per worker crew
-        return newValue > crewCapacity ? crewCapacity : newValue
-      })
+      // Get current values from gameProgress to stay in sync
+      const currentAmount = gameProgress.resources.crew?.amount || 0;
+      const currentCapacity = gameProgress.resources.crew?.capacity || 5;
+      const currentWorkerCrews = gameProgress.resources.crew?.workerCrews || 0;
+      
+      // Only proceed if we have worker crews and haven't reached capacity
+      if (currentWorkerCrews <= 0 || currentAmount >= currentCapacity) return;
+      
+      // Calculate new crew value respecting capacity
+      const newValue = Math.min(currentAmount + currentWorkerCrews * 0.1, currentCapacity);
+      
+      // Use updateResource to handle state update and trigger save
+      updateResource(
+        gameProgress,
+        'crew',
+        'amount',
+        newValue,
+        triggerSave
+      );
+      
+      // Update local state for UI
+      setCrew(newValue);
     }, 1000)
     
     return () => clearInterval(interval)
-  }, [workerCrews, crewCapacity])
+  }, [workerCrews, crewCapacity, gameProgress, triggerSave])
   
   // Generate crew on manual click (awakening)
   const awakenCrew = () => {
-    if (crew >= crewCapacity) return
+    if (!gameProgress) return;
+    
+    // Get current values from gameProgress
+    const currentAmount = gameProgress.resources.crew?.amount || 0;
+    const currentCapacity = gameProgress.resources.crew?.capacity || 5;
+    
+    // Only proceed if we haven't reached capacity
+    if (currentAmount >= currentCapacity) return;
     
     // Add 0.1 to crew for each click (it takes 10 clicks to awaken 1 crew member)
-    setCrew(current => {
-      const newValue = current + 0.1
-      return newValue > crewCapacity ? crewCapacity : newValue
-    })
+    const newValue = Math.min(currentAmount + 0.1, currentCapacity);
+    
+    console.log(`Awakening crew: ${currentAmount} -> ${newValue}`);
+    
+    // Update and save automatically using helper function
+    updateResource(
+      gameProgress,
+      'crew',
+      'amount',
+      newValue,
+      triggerSave
+    );
+    
+    // Update local state for UI
+    setCrew(newValue);
     
     // Increment awakening counter
-    setAwakening(current => current + 1)
+    setAwakening(current => current + 1);
   }
   
   // Upgrade crew capacity
   const upgradeQuarters = () => {
-    const upgradeCost = Math.floor(crewCapacity * 0.6)
+    if (!gameProgress) return;
     
-    if (crew >= upgradeCost) {
-      setCrew(current => current - upgradeCost)
-      setCrewCapacity(current => current + 3)
+    const currentAmount = gameProgress.resources.crew?.amount || 0;
+    const currentCapacity = gameProgress.resources.crew?.capacity || 5;
+    const upgradeCost = Math.floor(currentCapacity * 0.6);
+    
+    if (currentAmount >= upgradeCost) {
+      // Calculate new values
+      const newAmount = currentAmount - upgradeCost;
+      const newCapacity = currentCapacity + 3;
+      
+      // Update crew amount first
+      const updatedProgress1 = updateResource(
+        gameProgress,
+        'crew',
+        'amount',
+        newAmount,
+        () => {} // Don't trigger save yet to batch updates
+      );
+      
+      // Then update capacity and trigger save
+      updateResource(
+        updatedProgress1,
+        'crew',
+        'capacity',
+        newCapacity,
+        triggerSave
+      );
+      
+      // Update local state for UI
+      setCrew(newAmount);
+      setCrewCapacity(newCapacity);
     }
   }
   
   // Upgrade auto awakening
   const upgradeWorkerCrews = () => {
-    const upgradeCost = Math.floor((workerCrews + 1) * 2.5)
+    if (!gameProgress) return;
     
-    if (crew >= upgradeCost && workerCrews < 5) { // max 5 worker crews
-      setCrew(current => current - upgradeCost)
-      setWorkerCrews(current => current + 1)
+    const currentAmount = gameProgress.resources.crew?.amount || 0;
+    const currentWorkerCrews = gameProgress.resources.crew?.workerCrews || 0;
+    const upgradeCost = Math.floor((currentWorkerCrews + 1) * 2.5);
+    
+    if (currentAmount >= upgradeCost && currentWorkerCrews < 5) { // max 5 worker crews
+      // Calculate new values
+      const newAmount = currentAmount - upgradeCost;
+      const newWorkerCrews = currentWorkerCrews + 1;
+      
+      // Update crew amount first
+      const updatedProgress1 = updateResource(
+        gameProgress,
+        'crew',
+        'amount',
+        newAmount,
+        () => {} // Don't trigger save yet to batch updates
+      );
+      
+      // Then update worker crews and trigger save
+      updateResource(
+        updatedProgress1,
+        'crew',
+        'workerCrews',
+        newWorkerCrews,
+        triggerSave
+      );
+      
+      // Update local state for UI
+      setCrew(newAmount);
+      setWorkerCrews(newWorkerCrews);
     }
   }
   
