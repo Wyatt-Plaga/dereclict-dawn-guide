@@ -2,91 +2,97 @@
 
 import { useState, useEffect } from "react"
 import { NavBar } from "@/components/ui/navbar"
-import { BookOpen, Calendar, Clock, Lock } from "lucide-react"
+import { BookOpen } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
+import { useSupabase } from "@/utils/supabase/context"
 
-// Sample log entries that would normally be unlocked based on game progress
-const logEntries = [
+// All possible log entries - these would normally be in a separate data file
+const allLogEntries = [
   {
     id: 1,
     title: "System Reboot Initiated",
-    date: "Ship Date: Unknown",
-    time: "Time: --:--:--",
-    content: "Core systems rebooting after prolonged dormancy. AI subsystems initializing with limited functionality. Unable to determine current location or mission parameters. Critical ship systems damaged. Emergency protocols activated.",
-    unlocked: true
+    content: "Core systems rebooting after prolonged dormancy. AI subsystems initializing with limited functionality. Unable to determine current location or mission parameters. Critical ship systems damaged. Emergency protocols activated."
   },
   {
     id: 2,
     title: "Memory Fragment: Mission",
-    date: "Ship Date: -3652.4",
-    time: "Time: 09:32:17",
-    content: "Mission brief: Survey of exoplanet GC-9782 for potential colonization. Crew complement: 157 specialists. Ship status: Optimal. Departure from Sol System scheduled in 48 hours. All systems nominal.",
-    unlocked: true
+    content: "Mission brief: Survey of exoplanet GC-9782 for potential colonization. Crew complement: 157 specialists. Ship status: Optimal. Departure from Sol System scheduled in 48 hours. All systems nominal."
   },
   {
     id: 3,
     title: "Critical Failure Alert",
-    date: "Ship Date: Unknown",
-    time: "Time: --:--:--",
-    content: "Emergency alert logged: Navigation systems report catastrophic failure during FTL jump. Subspace anomaly detected. Ship systems compromised. Multiple hull breaches sealed. 86% of crew life support pods maintaining optimal conditions. Rerouting power to critical systems.",
-    unlocked: true
+    content: "Emergency alert logged: Navigation systems report catastrophic failure during FTL jump. Subspace anomaly detected. Ship systems compromised. Multiple hull breaches sealed. 86% of crew life support pods maintaining optimal conditions. Rerouting power to critical systems."
   },
   {
     id: 4,
     title: "AI Subsystem Analysis",
-    date: "Ship Date: Recalibrating",
-    time: "Time: Error",
-    content: "Initial system assessment complete. Ship designation: ISC Derelict Dawn, research vessel. Current location: Unknown region, no stellar navigation markers identified. Ship has been dormant for [ERROR: TIMESTAMP OVERFLOW] units. Attempting to restore core functionality.",
-    unlocked: false
+    content: "Initial system assessment complete. Ship designation: ISC Derelict Dawn, research vessel. Current location: Unknown region, no stellar navigation markers identified. Ship has been dormant for [ERROR: TIMESTAMP OVERFLOW] units. Attempting to restore core functionality."
   },
   {
     id: 5,
     title: "Memory Fragment: Anomaly",
-    date: "Ship Date: -3210.7",
-    time: "Time: 23:14:05",
-    content: "Science Officer Log: We're detecting unusual quantum signatures from the anomaly ahead. Unlike anything in our database. Captain has ordered a closer approach for detailed scans despite safety protocols advising against it. I've registered my objection formally.",
-    unlocked: false
+    content: "Science Officer Log: We're detecting unusual quantum signatures from the anomaly ahead. Unlike anything in our database. Captain has ordered a closer approach for detailed scans despite safety protocols advising against it. I've registered my objection formally."
   },
   {
     id: 6,
     title: "Crew Status Report",
-    date: "Ship Date: Recalibrating",
-    time: "Time: Resyncing",
-    content: "Analysis of cryostasis pods complete. 42 pods compromised beyond recovery. 115 pods maintaining minimal life support with degrading functionality. Recommend immediate revival of essential personnel to effect repairs. Warning: Revival systems operating at 12% efficiency.",
-    unlocked: false
+    content: "Analysis of cryostasis pods complete. 42 pods compromised beyond recovery. 115 pods maintaining minimal life support with degrading functionality. Recommend immediate revival of essential personnel to effect repairs. Warning: Revival systems operating at 12% efficiency."
   },
   {
     id: 7,
     title: "Navigation Calibration",
-    date: "Ship Date: 0.1",
-    time: "Time: 00:00:01",
-    content: "Preliminary stellar cartography initialized. No match with known galactic markers. Evidence suggests displacement of approximately [CALCULATING] light years from planned course. Spatial-temporal analysis indicates possible breach of [REDACTED] barrier. Further data required.",
-    unlocked: false
+    content: "Preliminary stellar cartography initialized. No match with known galactic markers. Evidence suggests displacement of approximately [CALCULATING] light years from planned course. Spatial-temporal analysis indicates possible breach of [REDACTED] barrier. Further data required."
   },
   {
     id: 8,
     title: "Memory Fragment: Warning",
-    date: "Ship Date: -3210.7",
-    time: "Time: 23:47:52",
-    content: "Emergency broadcast from Engineering: Something is interfacing with our systems. It's not like any cyberattack protocol I've seen. The anomaly is... I don't think it's just a spatial phenomenon. It seems to be responding to our scans, adapting, learning. Recommend immediate withdrawal.",
-    unlocked: false
+    content: "Emergency broadcast from Engineering: Something is interfacing with our systems. It's not like any cyberattack protocol I've seen. The anomaly is... I don't think it's just a spatial phenomenon. It seems to be responding to our scans, adapting, learning. Recommend immediate withdrawal."
   }
 ]
 
 export default function LogsPage() {
-  const [activeLog, setActiveLog] = useState(logEntries[0])
-  const [unlockedLogs, setUnlockedLogs] = useState(logEntries.filter(log => log.unlocked))
   const { shouldFlicker } = useSystemStatus()
+  const { gameProgress } = useSupabase()
+  const [unlockedLogs, setUnlockedLogs] = useState<typeof allLogEntries>([])
+  const [activeLog, setActiveLog] = useState<(typeof allLogEntries)[0] | null>(null)
   
-  // In a real implementation, this would pull from a global game state
-  // to determine which logs have been unlocked based on progress
+  // Effect to update logs based on game progress
+  useEffect(() => {
+    if (!gameProgress) return
+    
+    // Filter logs based on unlocked IDs in game progress
+    const unlocked = allLogEntries.filter(log => 
+      gameProgress.unlockedLogs.includes(log.id)
+    )
+    
+    setUnlockedLogs(unlocked)
+    
+    // Set active log to first unlocked log if not set or not unlocked
+    if (!activeLog || !gameProgress.unlockedLogs.includes(activeLog.id)) {
+      setActiveLog(unlocked.length > 0 ? unlocked[0] : null)
+    }
+  }, [gameProgress, activeLog])
+  
+  // If no logs are unlocked or game progress isn't loaded yet, show loading state
+  if (!activeLog || unlockedLogs.length === 0) {
+    return (
+      <main className="flex min-h-screen flex-col">
+        <NavBar />
+        <div className="flex items-center justify-center flex-1 p-4 md:ml-64">
+          <div className="system-panel p-6">
+            <p className="text-primary">No log entries available. Scanning for recoverable data...</p>
+          </div>
+        </div>
+      </main>
+    )
+  }
   
   return (
     <main className="flex min-h-screen flex-col">
       <NavBar />
       
       <div className="flex flex-col md:flex-row p-4 md:p-8 md:ml-64">
-        {/* Log list sidebar */}
+        {/* Log list sidebar - only show unlocked logs */}
         <div className="w-full md:w-64 mb-4 md:mb-0 md:mr-4">
           <div className="system-panel p-4 mb-4">
             <h2 className={`text-lg font-bold text-primary mb-2 ${shouldFlicker('logs') ? 'flickering-text' : ''}`}>Ship Logs</h2>
@@ -95,21 +101,18 @@ export default function LogsPage() {
             </p>
             
             <div className="space-y-2">
-              {logEntries.map(log => (
+              {unlockedLogs.map(log => (
                 <button
                   key={log.id}
-                  onClick={() => log.unlocked && setActiveLog(log)}
+                  onClick={() => setActiveLog(log)}
                   className={`w-full text-left p-2 rounded-md text-sm transition-colors ${
-                    log.unlocked 
-                      ? activeLog.id === log.id 
-                        ? 'bg-accent/30 text-primary border border-primary/40' 
-                        : 'hover:bg-accent/10 text-muted-foreground hover:text-primary'
-                      : 'opacity-50 cursor-not-allowed'
+                    activeLog.id === log.id 
+                      ? 'bg-accent/30 text-primary border border-primary/40' 
+                      : 'hover:bg-accent/10 text-muted-foreground hover:text-primary'
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <span className="truncate">{log.title}</span>
-                    {!log.unlocked && <Lock className="h-3 w-3 ml-1 mt-1 shrink-0" />}
                   </div>
                 </button>
               ))}
@@ -127,17 +130,6 @@ export default function LogsPage() {
               <BookOpen className="h-5 w-5 text-primary mt-1" />
             </div>
             
-            <div className="flex text-xs text-muted-foreground mb-6 space-x-4">
-              <div className="flex items-center">
-                <Calendar className="h-3 w-3 mr-1" />
-                <span>{activeLog.date}</span>
-              </div>
-              <div className="flex items-center">
-                <Clock className="h-3 w-3 mr-1" />
-                <span>{activeLog.time}</span>
-              </div>
-            </div>
-            
             <div className="prose prose-invert max-w-none">
               <p className="terminal-text text-sm leading-relaxed">
                 {activeLog.content}
@@ -146,7 +138,9 @@ export default function LogsPage() {
             
             <div className="mt-8 pt-4 border-t border-border">
               <p className="text-xs text-muted-foreground">
-                Additional logs will be recovered as ship systems are repaired.
+                {unlockedLogs.length < allLogEntries.length 
+                  ? "Additional logs may be recovered as ship systems are repaired." 
+                  : "All log entries have been recovered."}
               </p>
             </div>
           </div>

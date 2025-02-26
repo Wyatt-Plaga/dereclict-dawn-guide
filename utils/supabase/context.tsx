@@ -48,6 +48,7 @@ interface SupabaseContextType {
     loadGameProgress: () => Promise<GameProgress | null>;
     saveGameProgress: (progress: GameProgress) => Promise<void>;
     triggerSave: (progress: GameProgress) => void;
+    unlockLog: (logId: number) => void;
     loading: boolean;
     error: string | null;
     offlineGains: {
@@ -81,6 +82,7 @@ const SupabaseContext = createContext<SupabaseContextType>({
     loadGameProgress: async () => null,
     saveGameProgress: async () => {},
     triggerSave: () => {},
+    unlockLog: () => {},
     loading: false,
     error: null,
     offlineGains: null,
@@ -496,6 +498,34 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         }
     }, [gameProgress, isLoaded, session]);
 
+    // Add this where appropriate in the SupabaseProvider component
+    const unlockLog = useCallback((logId: number) => {
+        if (!gameProgress) return;
+
+        // Check if the log is already unlocked
+        if (gameProgress.unlockedLogs.includes(logId)) return;
+
+        // Create a new array with the unlocked log
+        const updatedUnlockedLogs = [...gameProgress.unlockedLogs, logId];
+
+        // Update the game progress
+        const updatedProgress = {
+            ...gameProgress,
+            unlockedLogs: updatedUnlockedLogs
+        };
+
+        // Save the updated progress
+        triggerSave(updatedProgress);
+
+        // Show a mysterious notification that a new log was discovered
+        if (typeof window !== "undefined" && window.notifications) {
+            window.notifications.newLogUnlocked();
+        } else {
+            // Fallback if notification system not available
+            console.log(`New log unlocked: ${logId}`);
+        }
+    }, [gameProgress, triggerSave]);
+
     return (
         <SupabaseContext.Provider value={{ 
             supabase, 
@@ -503,6 +533,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
             loadGameProgress, 
             saveGameProgress,
             triggerSave,
+            unlockLog,
             loading,
             error,
             offlineGains,
@@ -514,7 +545,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 }
 
 // Hook to use the Supabase client and game state
-export const useSupabase = () => {
+export function useSupabase() {
     const context = useContext(SupabaseContext);
     if (context === undefined) {
         throw new Error('useSupabase must be used within a SupabaseProvider');

@@ -11,6 +11,7 @@ import { SaveStatusProvider } from '@/components/providers/save-status-provider'
 import { SaveStatusWrapper } from '@/components/ui/save-status-wrapper'
 import { OfflineProgressWrapper } from '@/components/ui/offline-progress-wrapper'
 import TanstackClientProvider from '@/components/providers/tanstack-client-provider'
+import { NotificationsProvider } from '@/components/ui/notifications'
 
 export function ClientLayout({ children }: { children: ReactNode }) {
   return (
@@ -26,9 +27,11 @@ export function ClientLayout({ children }: { children: ReactNode }) {
             <SystemStatusProvider>
               <SupabaseProvider>
                 <TanstackClientProvider>
-                  {children}
-                  <SaveStatusWrapper />
-                  <OfflineProgressWrapper />
+                  <NotificationsProvider>
+                    {children}
+                    <SaveStatusWrapper />
+                    <OfflineProgressWrapper />
+                  </NotificationsProvider>
                 </TanstackClientProvider>
               </SupabaseProvider>
             </SystemStatusProvider>
