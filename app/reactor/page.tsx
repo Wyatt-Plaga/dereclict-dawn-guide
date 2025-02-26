@@ -443,7 +443,7 @@ CREATE TRIGGER update_game_progress_updated_at
                     <Battery className="h-5 w-5 text-chart-1 mr-2" />
                     <span className="terminal-text">Energy</span>
                   </div>
-                  <span className="font-mono">{Math.floor(energy)} / {energyCapacity}</span>
+                  <span className="font-mono">{Math.floor(energy)} / {Math.floor(energyCapacity)}</span>
                 </div>
                 <Progress value={(energy / energyCapacity) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-1" />
                 <div className="text-xs text-muted-foreground mt-1">

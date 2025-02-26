@@ -189,7 +189,7 @@ export default function CrewQuartersPage() {
                 <Users className="h-5 w-5 text-chart-3 mr-2" />
                 <span className="terminal-text">Crew Members</span>
               </div>
-              <span className="font-mono">{formatCrewCount(crew)} / {crewCapacity}</span>
+              <span className="font-mono">{formatCrewCount(crew)} / {Math.floor(crewCapacity)}</span>
             </div>
             <Progress value={(crew / crewCapacity) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-3" />
             <div className="text-xs text-muted-foreground mt-1">
@@ -234,7 +234,7 @@ export default function CrewQuartersPage() {
                 <span className="font-mono text-xs">{Math.floor(crewCapacity * 0.6)} Crew</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Prepare {3} more crew quarters, increasing capacity to {crewCapacity + 3}
+                Prepare {3} more crew quarters, increasing capacity to {Math.floor(crewCapacity + 3)}
               </p>
             </div>
             

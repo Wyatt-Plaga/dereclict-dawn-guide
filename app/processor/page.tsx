@@ -188,7 +188,7 @@ export default function ProcessorPage() {
                 <Brain className="h-5 w-5 text-chart-2 mr-2" />
                 <span className="terminal-text">Insight</span>
               </div>
-              <span className="font-mono">{insight.toFixed(1)} / {mainframeCapacity}</span>
+              <span className="font-mono">{insight.toFixed(1)} / {Math.floor(mainframeCapacity)}</span>
             </div>
             <Progress value={(insight / mainframeCapacity) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-2" />
             <div className="text-xs text-muted-foreground mt-1">
@@ -223,7 +223,7 @@ export default function ProcessorPage() {
                 <span className="font-mono text-xs">{(mainframeCapacity * 0.7).toFixed(1)} Insight</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Expand insight storage capacity to {(mainframeCapacity * 1.5).toFixed(1)}
+                Expand insight storage capacity to {Math.floor(mainframeCapacity * 1.5)}
               </p>
             </div>
             
