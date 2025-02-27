@@ -1,18 +1,26 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
 
 /**
+ * A debounced function with a cancel method
+ */
+export interface DebouncedFunction<T extends (...args: any[]) => any> {
+  (...args: Parameters<T>): void;
+  cancel: () => void;
+}
+
+/**
  * A custom hook that creates a debounced version of a function.
  * 
  * @param callback The function to debounce
  * @param delay The delay in milliseconds
  * @param dependencies Array of dependencies that should trigger recreation of the debounced function
- * @returns A debounced version of the callback
+ * @returns A debounced version of the callback with a cancel method
  */
 export function useDebounce<T extends (...args: any[]) => any>(
   callback: T,
   delay: number,
   dependencies: any[] = []
-): (...args: Parameters<T>) => void {
+): DebouncedFunction<T> {
   // Use refs to store the callback and timer between renders
   const callbackRef = useRef(callback);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -31,8 +39,16 @@ export function useDebounce<T extends (...args: any[]) => any>(
     };
   }, []);
 
+  // Create the cancel function
+  const cancel = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
   // Create a memoized debounced function
-  return useCallback(
+  const debouncedFn = useCallback(
     (...args: Parameters<T>) => {
       // Clear any existing timer
       if (timerRef.current) {
@@ -47,6 +63,11 @@ export function useDebounce<T extends (...args: any[]) => any>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [...dependencies, delay]
   );
+
+  // Attach the cancel method to the debounced function
+  (debouncedFn as DebouncedFunction<T>).cancel = cancel;
+
+  return debouncedFn as DebouncedFunction<T>;
 }
 
 /**

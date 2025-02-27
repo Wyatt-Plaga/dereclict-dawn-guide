@@ -9,8 +9,8 @@ This document outlines anti-patterns, non-DRY code, and potential improvements i
 The error handling is spread across different files with redundancy in the `error-handling.ts` and within components.
 
 **Recommendations:**
-- [ ] Create a central error handling service that all components and utilities can use
-- [ ] Standardize error types and responses across the application
+- [x] Create a central error handling service that all components and utilities can use
+- [x] Standardize error types and responses across the application
 - [ ] Implement error boundaries at strategic points in the React component tree
 
 ### 2. Resource Management Duplication
@@ -18,9 +18,9 @@ The error handling is spread across different files with redundancy in the `erro
 There are multiple areas where resource manipulation logic is duplicated.
 
 **Recommendations:**
-- [ ] Consolidate the resource update functions in `utils/game-helpers.ts`
+- [x] Consolidate the resource update functions in `utils/game-helpers.ts`
 - [x] Refactor the repetitive code in `utils/offline-progress.ts` for calculating different resource types
-- [ ] Implement a single resource manipulation function with type parameters
+- [x] Implement a single resource manipulation function with type parameters
 
 ### 3. Hardcoded Resource Constants
 
@@ -77,8 +77,8 @@ The Supabase context is extremely large and handles multiple concerns.
 The debounce logic could be improved for better performance.
 
 **Recommendations:**
-- [ ] Use useCallback to memoize the debounced function properly
-- [ ] Extract debounce logic to a custom hook for reusability
+- [x] Use useCallback to memoize the debounced function properly
+- [x] Extract debounce logic to a custom hook for reusability
 
 ### 10. Authentication Flow
 
@@ -93,7 +93,7 @@ The middleware authentication relies on cookies without clear error handling.
 There are numerous console.log statements throughout the code.
 
 **Recommendations:**
-- [ ] Implement a proper logging system with environment-based controls
+- [x] Implement a proper logging system with environment-based controls
 - [ ] Use a logging library that can be toggled based on environment
 
 ### 12. State Management Strategy
@@ -111,12 +111,12 @@ The state management is split between React Context and local state without a cl
    - [x] Define types and relationships in one place
 
 2. **Implement a Resource Manager Class/Module**:
-   - [ ] Create a unified API for resource manipulation
-   - [ ] Encapsulate logic for updating, validating, and calculating resources
+   - [x] Create a unified API for resource manipulation
+   - [x] Encapsulate logic for updating, validating, and calculating resources
 
 3. **Refactor Error Handling**:
-   - [ ] Create a centralized error service
-   - [ ] Implement consistent error reporting and handling
+   - [x] Create a centralized error service
+   - [x] Implement consistent error reporting and handling
 
 4. **Improve Type Safety**:
    - [x] Remove `any` types where possible
@@ -131,9 +131,38 @@ The state management is split between React Context and local state without a cl
    - [ ] Implement proper error recovery for save operations
 
 7. **Clean Up Console Logs**:
-   - [ ] Replace with a proper logging system
+   - [x] Replace with a proper logging system
    - [ ] Use environment variables to control log verbosity
 
 8. **Extract Game Logic**:
-   - [ ] Move game-specific calculations to a dedicated game engine module
+   - [x] Move game-specific calculations to a dedicated game engine module
    - [ ] Separate UI concerns from game mechanics 
+
+## Recently Completed Improvements
+
+1. **Resource Management**:
+   - Created a `ResourceManager` class that centralizes all resource operations
+   - Added helper methods like `hasEnoughResource` and `getResourceProperty`
+   - Implemented proper deep copying with lodash's `cloneDeep`
+
+2. **Error Handling**:
+   - Implemented a comprehensive error service with proper typing
+   - Added centralized error reporting and management
+   - Created standardized error display mechanisms
+
+3. **Reusable Hooks**:
+   - Created custom debounce hooks for better performance
+   - Implemented type-safe useDebounce, useDebouncedValue, and useDebounceIndicator hooks
+
+4. **UI Improvements**:
+   - Fixed icon centering in the resource generation buttons
+   - Improved component structure with proper memoization
+
+## Next Steps
+
+Priority items to tackle next:
+
+1. Split the SupabaseContext into smaller, focused contexts
+2. Create a dedicated timestamp service
+3. Implement proper error boundaries in React components
+4. Consider adopting a state management library for growing complexity 
