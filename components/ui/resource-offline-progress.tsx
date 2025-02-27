@@ -60,6 +60,16 @@ export function ResourceOfflineProgress({
     }
   };
   
+  // Format resource gain amount to show decimals when needed
+  const formatResourceAmount = (amount: number) => {
+    // For small values, show with 1 decimal place
+    if (amount > 0 && amount < 1) {
+      return amount.toFixed(1);
+    }
+    // For zero or larger values, round to nearest whole number
+    return Math.round(amount).toString();
+  };
+  
   const timeAway = formatTimeAway(minutesPassed);
   
   if (!visible || gain <= 0 || minutesPassed <= 0) return null;
@@ -85,7 +95,7 @@ export function ResourceOfflineProgress({
               {ResourceIcons[resourceType]}
               <span>{ResourceNames[resourceType]}</span>
             </div>
-            <span className="font-mono">+{Math.floor(gain)}</span>
+            <span className="font-mono">+{formatResourceAmount(gain)}</span>
           </div>
         </div>
         

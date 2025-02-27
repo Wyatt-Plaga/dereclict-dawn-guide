@@ -51,6 +51,16 @@ export function OfflineProgress({
   
   const timeAway = formatTimeAway(minutesPassed);
   
+  // Format resource amounts to show decimals when needed
+  const formatResourceAmount = (amount: number) => {
+    // For small values, show with 1 decimal place
+    if (amount > 0 && amount < 1) {
+      return amount.toFixed(1);
+    }
+    // For zero or larger values, round to nearest whole number
+    return Math.round(amount).toString();
+  };
+  
   if (!visible) return null;
   
   return (
@@ -75,7 +85,7 @@ export function OfflineProgress({
                 <Zap className="h-5 w-5 text-chart-1 mr-2" />
                 <span>Energy</span>
               </div>
-              <span className="font-mono">+{Math.floor(gains.energy)}</span>
+              <span className="font-mono">+{formatResourceAmount(gains.energy)}</span>
             </div>
           )}
           
@@ -85,7 +95,7 @@ export function OfflineProgress({
                 <Brain className="h-5 w-5 text-chart-2 mr-2" />
                 <span>Insight</span>
               </div>
-              <span className="font-mono">+{Math.floor(gains.insight)}</span>
+              <span className="font-mono">+{formatResourceAmount(gains.insight)}</span>
             </div>
           )}
           
@@ -95,7 +105,7 @@ export function OfflineProgress({
                 <Users className="h-5 w-5 text-chart-3 mr-2" />
                 <span>Crew</span>
               </div>
-              <span className="font-mono">+{Math.floor(gains.crew)}</span>
+              <span className="font-mono">+{formatResourceAmount(gains.crew)}</span>
             </div>
           )}
           
@@ -105,7 +115,7 @@ export function OfflineProgress({
                 <Wrench className="h-5 w-5 text-chart-4 mr-2" />
                 <span>Scrap</span>
               </div>
-              <span className="font-mono">+{Math.floor(gains.scrap)}</span>
+              <span className="font-mono">+{formatResourceAmount(gains.scrap)}</span>
             </div>
           )}
         </div>

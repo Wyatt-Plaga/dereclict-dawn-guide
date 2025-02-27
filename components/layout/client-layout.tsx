@@ -8,7 +8,6 @@ import { SupabaseProvider } from '@/utils/supabase/context'
 import { ClerkLoaded, ClerkLoading } from '@clerk/nextjs'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { SaveStatusProvider } from '@/components/providers/save-status-provider'
-import { SaveStatusWrapper } from '@/components/ui/save-status-wrapper'
 import { OfflineProgressWrapper } from '@/components/ui/offline-progress-wrapper'
 import { ResourceOfflineProgressWrapper } from '@/components/ui/resource-offline-progress-wrapper'
 import TanstackClientProvider from '@/components/providers/tanstack-client-provider'
@@ -30,7 +29,6 @@ export function ClientLayout({ children }: { children: ReactNode }) {
                 <TanstackClientProvider>
                   <NotificationsProvider>
                     {children}
-                    <SaveStatusWrapper />
                     <OfflineProgressWrapper />
                     <ResourceOfflineProgressWrapper />
                   </NotificationsProvider>
