@@ -215,6 +215,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
           
       if (checkError) {
+        console.error('Error checking for existing record:', checkError);
         reportError(checkError);
         return;
       }
@@ -252,11 +253,13 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
       }
 
       if (error) {
+        console.error('Error saving game progress:', error);
         reportError(error);
       } else {
         setGameProgress(progress);
       }
     } catch (e: any) {
+      console.error('Exception saving game progress:', e);
       reportError(e);
     } finally {
       setLoading(false);

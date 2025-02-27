@@ -49,6 +49,42 @@ export type Database = {
                 }
                 Relationships: []
             }
+            game_progress: {
+                Row: {
+                    id: string;
+                    user_id: string;
+                    resources: Json;
+                    upgrades: Json;
+                    unlocked_logs: Json;
+                    last_online: string;
+                    page_timestamps: Json | null;
+                    created_at: string;
+                    updated_at: string;
+                }
+                Insert: {
+                    id?: string;
+                    user_id: string;
+                    resources: Json;
+                    upgrades: Json;
+                    unlocked_logs: Json;
+                    last_online: string;
+                    page_timestamps?: Json | null;
+                    created_at?: string;
+                    updated_at?: string;
+                }
+                Update: {
+                    id?: string;
+                    user_id?: string;
+                    resources?: Json;
+                    upgrades?: Json;
+                    unlocked_logs?: Json;
+                    last_online?: string;
+                    page_timestamps?: Json | null;
+                    created_at?: string;
+                    updated_at?: string;
+                }
+                Relationships: []
+            }
             prices: {
                 Row: {
                     active: boolean | null

@@ -4,10 +4,11 @@ import { useSession } from "@clerk/nextjs";
 import { SupabaseClient, createClient } from "@supabase/supabase-js";
 import { createContext, useContext, useMemo, ReactNode, useState, useEffect } from "react";
 import { reportError } from "@/utils/error/error-service";
+import type { Database } from "@/types/database.types";
 
 // Interface for the database context
 interface DatabaseContextType {
-  supabase: SupabaseClient | null;
+  supabase: SupabaseClient<Database> | null;
   isInitialized: boolean;
   loading: boolean;
   error: string | null;
@@ -42,8 +43,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     
     try {
       // Create a basic client
-      const client = createClient(supabaseUrl, supabaseKey);
+      const client = createClient<Database>(supabaseUrl, supabaseKey, {
+        auth: {
+          persistSession: false // Don't persist the Supabase session since we're using Clerk
+        }
+      });
+      
       setIsInitialized(true);
+      console.log('Supabase client initialized successfully');
       return client;
     } catch (err) {
       console.error('Error creating Supabase client:', err);
@@ -53,34 +60,19 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     }
   }, []);  // Only recreate the client when necessary
 
-  // Auth token management
+  // Update loading state when session information is loaded
   useEffect(() => {
-    // When session changes, update the supabase auth
-    if (supabase && session) {
-      const updateSupabaseAuth = async () => {
-        try {
-          console.log('User authenticated with Clerk, session ID:', session.id);
-          
-          // Since we're not using JWT tokens, we'll rely on the service role in API routes
-          // and the user ID for identification without Row Level Security
-          
-          // Clear any previous errors so the UI shows we're connected
-          setError(null);
-        } catch (err) {
-          console.error('Error in auth handling:', err);
-          reportError(err);
-          setError(`Authentication error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        } finally {
-          setLoading(false);
-        }
-      };
+    if (isLoaded) {
+      if (session) {
+        console.log('User authenticated with Clerk, session ID:', session.id);
+      } else {
+        console.log('No active session - user is anonymous');
+      }
       
-      updateSupabaseAuth();
-    } else if (isLoaded) {
-      // If session loaded but no session exists
+      // Clear loading state once we have session info
       setLoading(false);
     }
-  }, [session, supabase, isLoaded]);
+  }, [session, isLoaded]);
 
   return (
     <DatabaseContext.Provider value={{ 
