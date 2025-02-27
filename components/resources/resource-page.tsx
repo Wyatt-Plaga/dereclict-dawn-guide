@@ -264,7 +264,7 @@ export function ResourcePage({
             className="system-panel w-full py-8 flex items-center justify-center mb-8 hover:bg-accent/10 transition-colors"
           >
             <div className="flex flex-col items-center">
-              <div className={`h-12 w-12 ${iconClassName} mb-2 ${shouldFlicker(pageName) ? 'flickering-text' : ''}`}>
+              <div className={`h-12 w-12 ${iconClassName} mb-2 ${shouldFlicker(pageName) ? 'flickering-text' : ''} flex items-center justify-center`}>
                 {resourceIcon}
               </div>
               <span className="terminal-text">{generateButtonLabel}</span>
