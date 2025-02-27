@@ -1,17 +1,11 @@
-import { GameProgress, ResourceState } from '@/utils/supabase/context';
-
-// Map resource types to their corresponding pages
-const resourcePageMap: Record<string, string> = {
-  'energy': 'reactor',
-  'insight': 'processor',
-  'crew': 'crew-quarters',
-  'scrap': 'manufacturing'
-};
+import { GameProgress } from '@/types/game.types';
+import { ResourceType } from '@/types/game.types';
+import { RESOURCE_PAGE_MAP } from './constants/game-constants';
 
 // Update a single resource and trigger save
 export function updateResource(
   gameProgress: GameProgress,
-  resourceType: keyof ResourceState,
+  resourceType: ResourceType,
   property: string,
   value: number,
   triggerSave: (progress: GameProgress) => void
@@ -43,7 +37,7 @@ export function updateResource(
 export function batchUpdateResources(
   gameProgress: GameProgress,
   updates: Array<{
-    resourceType: keyof ResourceState,
+    resourceType: ResourceType,
     property: string,
     value: number
   }>,
@@ -75,4 +69,9 @@ export function batchUpdateResources(
   triggerSave(updatedProgress);
   
   return updatedProgress;
+}
+
+// Get the page name from a resource type
+export function getPageFromResourceType(resourceType: ResourceType): string {
+  return RESOURCE_PAGE_MAP[resourceType] || '';
 } 
