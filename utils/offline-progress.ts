@@ -52,26 +52,22 @@ export function calculateResourceOfflineProgress(
     console.log(`[OFFLINE] Using global lastOnline timestamp for ${resourceType}`);
   }
   
-  // Calculate minutes passed
-  let minutesPassed = Math.floor((now.getTime() - referenceTimestamp.getTime()) / 60000);
+  // Calculate seconds passed
+  let secondsPassed = Math.floor((now.getTime() - referenceTimestamp.getTime()) / 1000);
+  
+  // Convert maxOfflineMinutes to seconds for comparison
+  const maxOfflineSeconds = maxOfflineMinutes * 60;
   
   // Cap the offline progress if needed
-  if (minutesPassed > maxOfflineMinutes) {
-    minutesPassed = maxOfflineMinutes;
-    console.log(`[OFFLINE] Capping ${resourceType} offline progress to ${maxOfflineMinutes} minutes`);
+  if (secondsPassed > maxOfflineSeconds) {
+    secondsPassed = maxOfflineSeconds;
+    console.log(`[OFFLINE] Capping ${resourceType} offline progress to ${maxOfflineMinutes} minutes (${maxOfflineSeconds} seconds)`);
   }
   
-  // If less than 1 minute passed, don't calculate any offline progress
-  if (minutesPassed < 1) {
-    console.log(`[OFFLINE] Less than 1 minute passed for ${resourceType}, skipping calculation`);
-    return {
-      updatedResource: resourceData,
-      minutesPassed: 0,
-      gain: 0
-    };
-  }
+  // Convert to minutes for display purposes only
+  const minutesPassed = secondsPassed / 60;
   
-  console.log(`[OFFLINE] ${minutesPassed} minutes passed since last ${resourceType} update`);
+  console.log(`[OFFLINE] ${secondsPassed} seconds passed since last ${resourceType} update`);
   
   // Calculate resource gain based on type
   let gain = 0;
@@ -80,26 +76,26 @@ export function calculateResourceOfflineProgress(
   switch (resourceType) {
     case 'energy':
       if (typedResource.autoGeneration > 0) {
-        gain = typedResource.autoGeneration * minutesPassed * 60; // Per minute
-        console.log(`[OFFLINE] Energy gain calculation: ${typedResource.autoGeneration} * ${minutesPassed} minutes * 60 = ${gain}`);
+        gain = typedResource.autoGeneration * secondsPassed; // Per second
+        console.log(`[OFFLINE] Energy gain calculation: ${typedResource.autoGeneration} * ${secondsPassed} seconds = ${gain}`);
       }
       break;
     case 'insight':
       if (typedResource.autoGeneration > 0) {
-        gain = typedResource.autoGeneration * minutesPassed * 60 * 0.2; // Per minute (0.2 per second)
-        console.log(`[OFFLINE] Insight gain calculation: ${typedResource.autoGeneration} * ${minutesPassed} minutes * 60 * 0.2 = ${gain}`);
+        gain = typedResource.autoGeneration * secondsPassed * 0.2; // 0.2 per second
+        console.log(`[OFFLINE] Insight gain calculation: ${typedResource.autoGeneration} * ${secondsPassed} seconds * 0.2 = ${gain}`);
       }
       break;
     case 'crew':
       if (typedResource.workerCrews > 0) {
-        gain = typedResource.workerCrews * minutesPassed * 60 * 0.1; // Per minute (0.1 per second)
-        console.log(`[OFFLINE] Crew gain calculation: ${typedResource.workerCrews} * ${minutesPassed} minutes * 60 * 0.1 = ${gain}`);
+        gain = typedResource.workerCrews * secondsPassed * 0.1; // 0.1 per second
+        console.log(`[OFFLINE] Crew gain calculation: ${typedResource.workerCrews} * ${secondsPassed} seconds * 0.1 = ${gain}`);
       }
       break;
     case 'scrap':
       if (typedResource.manufacturingBays > 0) {
-        gain = typedResource.manufacturingBays * minutesPassed * 60 * 0.5; // Per minute (0.5 per second)
-        console.log(`[OFFLINE] Scrap gain calculation: ${typedResource.manufacturingBays} * ${minutesPassed} minutes * 60 * 0.5 = ${gain}`);
+        gain = typedResource.manufacturingBays * secondsPassed * 0.5; // 0.5 per second
+        console.log(`[OFFLINE] Scrap gain calculation: ${typedResource.manufacturingBays} * ${secondsPassed} seconds * 0.5 = ${gain}`);
       }
       break;
   }
@@ -162,124 +158,136 @@ export function calculateOfflineProgress(
   const pageTimestamps = gameProgress.page_timestamps || {};
   const lastOnlineDate = new Date(gameProgress.lastOnline);
   
-  // Calculate minutes passed since last global online
-  let totalMinutesPassed = Math.floor((now.getTime() - lastOnlineDate.getTime()) / 60000);
+  // Calculate seconds passed since last global online
+  let totalSecondsPassed = Math.floor((now.getTime() - lastOnlineDate.getTime()) / 1000);
+  
+  // Convert maximum offline minutes to seconds
+  const maxOfflineSeconds = maxOfflineMinutes * 60;
   
   // Cap the total offline progress if needed
-  if (totalMinutesPassed > maxOfflineMinutes) {
-    totalMinutesPassed = maxOfflineMinutes;
-    console.log(`Capping total offline progress to ${maxOfflineMinutes} minutes`);
+  if (totalSecondsPassed > maxOfflineSeconds) {
+    totalSecondsPassed = maxOfflineSeconds;
+    console.log(`Capping total offline progress to ${maxOfflineMinutes} minutes (${maxOfflineSeconds} seconds)`);
   }
   
-  // If less than 1 minute passed globally, don't calculate any offline progress
-  if (totalMinutesPassed < 1) {
-    return {
-      updatedResources: gameProgress.resources,
-      minutesPassed: 0,
-      gains: {
-        energy: 0,
-        insight: 0,
-        crew: 0,
-        scrap: 0
-      }
-    };
-  }
+  // Calculate minutes passed for display purposes
+  const totalMinutesPassed = totalSecondsPassed / 60;
   
-  console.log(`Calculating offline progress for a total of ${totalMinutesPassed} minutes`);
+  console.log(`Calculating offline progress for a total of ${totalSecondsPassed} seconds (${totalMinutesPassed.toFixed(2)} minutes)`);
   
-  // Calculate energy gains based on latestSave timestamp or reactor page timestamp
+  // Process each resource type
+  // Energy calculation
   if (updatedResources.energy && updatedResources.energy.autoGeneration > 0) {
-    // Use latestSave if available, otherwise fall back to page timestamp or lastOnline
-    const latestSaveTimestamp = (updatedResources.energy as any).latestSave;
-    const reactorTimestamp = latestSaveTimestamp || pageTimestamps.reactor || gameProgress.lastOnline;
-    const reactorDate = new Date(reactorTimestamp);
-    let energyMinutesPassed = Math.floor((now.getTime() - reactorDate.getTime()) / 60000);
+    // Check for resource-specific timestamp first
+    let energyTimestamp = (updatedResources.energy as any).latestSave 
+      ? new Date((updatedResources.energy as any).latestSave)
+      : pageTimestamps['reactor'] 
+        ? new Date(pageTimestamps['reactor']) 
+        : lastOnlineDate;
     
-    // Cap to max minutes if needed
-    energyMinutesPassed = Math.min(energyMinutesPassed, maxOfflineMinutes);
+    let energySecondsPassed = Math.min(
+      Math.floor((now.getTime() - energyTimestamp.getTime()) / 1000),
+      maxOfflineSeconds
+    );
     
-    if (energyMinutesPassed > 0) {
-      console.log(`Energy offline progress: ${energyMinutesPassed} minutes (from ${reactorTimestamp})`);
-      const offlineGain = updatedResources.energy.autoGeneration * energyMinutesPassed * 60; // Per minute
-      const newAmount = Math.min(
-        updatedResources.energy.amount + offlineGain,
-        updatedResources.energy.capacity
-      );
-      gains.energy = newAmount - updatedResources.energy.amount;
-      updatedResources.energy.amount = newAmount;
-    }
+    const energyGain = updatedResources.energy.autoGeneration * energySecondsPassed;
+    console.log(`Energy gain: ${updatedResources.energy.autoGeneration} * ${energySecondsPassed} seconds = ${energyGain}`);
+    
+    // Cap gain to available capacity
+    const newEnergyAmount = Math.min(
+      updatedResources.energy.amount + energyGain,
+      updatedResources.energy.capacity
+    );
+    
+    gains.energy = newEnergyAmount - updatedResources.energy.amount;
+    updatedResources.energy.amount = newEnergyAmount;
+    (updatedResources.energy as any).latestSave = now.toISOString();
   }
   
-  // Calculate insight gains based on latestSave timestamp or processor page timestamp
+  // Insight calculation
   if (updatedResources.insight && updatedResources.insight.autoGeneration > 0) {
-    // Use latestSave if available, otherwise fall back to page timestamp or lastOnline
-    const latestSaveTimestamp = (updatedResources.insight as any).latestSave;
-    const processorTimestamp = latestSaveTimestamp || pageTimestamps.processor || gameProgress.lastOnline;
-    const processorDate = new Date(processorTimestamp);
-    let insightMinutesPassed = Math.floor((now.getTime() - processorDate.getTime()) / 60000);
+    // Check for resource-specific timestamp first
+    let insightTimestamp = (updatedResources.insight as any).latestSave 
+      ? new Date((updatedResources.insight as any).latestSave)
+      : pageTimestamps['processor'] 
+        ? new Date(pageTimestamps['processor']) 
+        : lastOnlineDate;
     
-    // Cap to max minutes if needed
-    insightMinutesPassed = Math.min(insightMinutesPassed, maxOfflineMinutes);
+    let insightSecondsPassed = Math.min(
+      Math.floor((now.getTime() - insightTimestamp.getTime()) / 1000),
+      maxOfflineSeconds
+    );
     
-    if (insightMinutesPassed > 0) {
-      console.log(`Insight offline progress: ${insightMinutesPassed} minutes (from ${processorTimestamp})`);
-      const offlineGain = updatedResources.insight.autoGeneration * insightMinutesPassed * 60 * 0.2; // Per minute (0.2 per second)
-      const newAmount = Math.min(
-        updatedResources.insight.amount + offlineGain,
-        updatedResources.insight.capacity
-      );
-      gains.insight = newAmount - updatedResources.insight.amount;
-      updatedResources.insight.amount = newAmount;
-    }
+    const insightGain = updatedResources.insight.autoGeneration * insightSecondsPassed * 0.2;
+    console.log(`Insight gain: ${updatedResources.insight.autoGeneration} * ${insightSecondsPassed} seconds * 0.2 = ${insightGain}`);
+    
+    // Cap gain to available capacity
+    const newInsightAmount = Math.min(
+      updatedResources.insight.amount + insightGain,
+      updatedResources.insight.capacity
+    );
+    
+    gains.insight = newInsightAmount - updatedResources.insight.amount;
+    updatedResources.insight.amount = newInsightAmount;
+    (updatedResources.insight as any).latestSave = now.toISOString();
   }
   
-  // Calculate crew gains based on latestSave timestamp or crew-quarters page timestamp
+  // Crew calculation
   if (updatedResources.crew && updatedResources.crew.workerCrews > 0) {
-    // Use latestSave if available, otherwise fall back to page timestamp or lastOnline
-    const latestSaveTimestamp = (updatedResources.crew as any).latestSave;
-    const crewTimestamp = latestSaveTimestamp || pageTimestamps["crew-quarters"] || gameProgress.lastOnline;
-    const crewDate = new Date(crewTimestamp);
-    let crewMinutesPassed = Math.floor((now.getTime() - crewDate.getTime()) / 60000);
+    // Check for resource-specific timestamp first
+    let crewTimestamp = (updatedResources.crew as any).latestSave 
+      ? new Date((updatedResources.crew as any).latestSave)
+      : pageTimestamps['crew-quarters'] 
+        ? new Date(pageTimestamps['crew-quarters']) 
+        : lastOnlineDate;
     
-    // Cap to max minutes if needed
-    crewMinutesPassed = Math.min(crewMinutesPassed, maxOfflineMinutes);
+    let crewSecondsPassed = Math.min(
+      Math.floor((now.getTime() - crewTimestamp.getTime()) / 1000),
+      maxOfflineSeconds
+    );
     
-    if (crewMinutesPassed > 0) {
-      console.log(`Crew offline progress: ${crewMinutesPassed} minutes (from ${crewTimestamp})`);
-      const offlineGain = updatedResources.crew.workerCrews * crewMinutesPassed * 60 * 0.1; // Per minute (0.1 per second)
-      const newAmount = Math.min(
-        updatedResources.crew.amount + offlineGain,
-        updatedResources.crew.capacity
-      );
-      gains.crew = newAmount - updatedResources.crew.amount;
-      updatedResources.crew.amount = newAmount;
-    }
+    const crewGain = updatedResources.crew.workerCrews * crewSecondsPassed * 0.1;
+    console.log(`Crew gain: ${updatedResources.crew.workerCrews} * ${crewSecondsPassed} seconds * 0.1 = ${crewGain}`);
+    
+    // Cap gain to available capacity
+    const newCrewAmount = Math.min(
+      updatedResources.crew.amount + crewGain,
+      updatedResources.crew.capacity
+    );
+    
+    gains.crew = newCrewAmount - updatedResources.crew.amount;
+    updatedResources.crew.amount = newCrewAmount;
+    (updatedResources.crew as any).latestSave = now.toISOString();
   }
   
-  // Calculate scrap gains based on latestSave timestamp or manufacturing page timestamp
+  // Scrap calculation
   if (updatedResources.scrap && updatedResources.scrap.manufacturingBays > 0) {
-    // Use latestSave if available, otherwise fall back to page timestamp or lastOnline
-    const latestSaveTimestamp = (updatedResources.scrap as any).latestSave;
-    const manufacturingTimestamp = latestSaveTimestamp || pageTimestamps.manufacturing || gameProgress.lastOnline;
-    const manufacturingDate = new Date(manufacturingTimestamp);
-    let scrapMinutesPassed = Math.floor((now.getTime() - manufacturingDate.getTime()) / 60000);
+    // Check for resource-specific timestamp first
+    let scrapTimestamp = (updatedResources.scrap as any).latestSave 
+      ? new Date((updatedResources.scrap as any).latestSave)
+      : pageTimestamps['manufacturing'] 
+        ? new Date(pageTimestamps['manufacturing']) 
+        : lastOnlineDate;
     
-    // Cap to max minutes if needed
-    scrapMinutesPassed = Math.min(scrapMinutesPassed, maxOfflineMinutes);
+    let scrapSecondsPassed = Math.min(
+      Math.floor((now.getTime() - scrapTimestamp.getTime()) / 1000),
+      maxOfflineSeconds
+    );
     
-    if (scrapMinutesPassed > 0) {
-      console.log(`Scrap offline progress: ${scrapMinutesPassed} minutes (from ${manufacturingTimestamp})`);
-      const offlineGain = updatedResources.scrap.manufacturingBays * scrapMinutesPassed * 60 * 0.5; // Per minute (0.5 per second)
-      const newAmount = Math.min(
-        updatedResources.scrap.amount + offlineGain,
-        updatedResources.scrap.capacity
-      );
-      gains.scrap = newAmount - updatedResources.scrap.amount;
-      updatedResources.scrap.amount = newAmount;
-    }
+    const scrapGain = updatedResources.scrap.manufacturingBays * scrapSecondsPassed * 0.5;
+    console.log(`Scrap gain: ${updatedResources.scrap.manufacturingBays} * ${scrapSecondsPassed} seconds * 0.5 = ${scrapGain}`);
+    
+    // Cap gain to available capacity
+    const newScrapAmount = Math.min(
+      updatedResources.scrap.amount + scrapGain,
+      updatedResources.scrap.capacity
+    );
+    
+    gains.scrap = newScrapAmount - updatedResources.scrap.amount;
+    updatedResources.scrap.amount = newScrapAmount;
+    (updatedResources.scrap as any).latestSave = now.toISOString();
   }
   
-  // Use total minutes passed for displaying time away
   return {
     updatedResources,
     minutesPassed: totalMinutesPassed,

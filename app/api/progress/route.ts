@@ -12,13 +12,19 @@ function calculateOfflineProgress(
   const now = new Date();
   const lastOnlineDate = new Date(lastOnline);
   
-  // Calculate minutes passed since last online
-  let minutesPassed = Math.floor((now.getTime() - lastOnlineDate.getTime()) / 60000);
+  // Calculate seconds passed since last online
+  let secondsPassed = Math.floor((now.getTime() - lastOnlineDate.getTime()) / 1000);
+  
+  // Convert maxOfflineMinutes to seconds
+  const maxOfflineSeconds = maxOfflineMinutes * 60;
   
   // Cap the offline progress if needed
-  if (minutesPassed > maxOfflineMinutes) {
-    minutesPassed = maxOfflineMinutes;
+  if (secondsPassed > maxOfflineSeconds) {
+    secondsPassed = maxOfflineSeconds;
   }
+  
+  // Calculate minutes for display purposes
+  const minutesPassed = secondsPassed / 60;
   
   // Calculate gained resources
   const updatedResources = { ...resources };
@@ -29,16 +35,15 @@ function calculateOfflineProgress(
     const latestSaveTimestamp = resources.energy.latestSave;
     const reactorTimestamp = latestSaveTimestamp || page_timestamps.reactor || lastOnline;
     const reactorDate = new Date(reactorTimestamp);
-    let energyMinutesPassed = Math.floor((now.getTime() - reactorDate.getTime()) / 60000);
-    energyMinutesPassed = Math.min(energyMinutesPassed, maxOfflineMinutes);
+    let energySecondsPassed = Math.floor((now.getTime() - reactorDate.getTime()) / 1000);
+    energySecondsPassed = Math.min(energySecondsPassed, maxOfflineSeconds);
     
-    if (energyMinutesPassed > 0) {
-      const offlineGain = resources.energy.autoGeneration * energyMinutesPassed * 60; // Per minute
-      updatedResources.energy.amount = Math.min(
-        resources.energy.amount + offlineGain,
-        resources.energy.capacity
-      );
-    }
+    // Calculate energy gain based on seconds passed
+    const offlineGain = resources.energy.autoGeneration * energySecondsPassed; // Per second
+    updatedResources.energy.amount = Math.min(
+      resources.energy.amount + offlineGain,
+      resources.energy.capacity
+    );
   }
   
   // Insight calculation using latestSave timestamp or processor timestamp if available
@@ -47,16 +52,15 @@ function calculateOfflineProgress(
     const latestSaveTimestamp = resources.insight.latestSave;
     const processorTimestamp = latestSaveTimestamp || page_timestamps.processor || lastOnline;
     const processorDate = new Date(processorTimestamp);
-    let insightMinutesPassed = Math.floor((now.getTime() - processorDate.getTime()) / 60000);
-    insightMinutesPassed = Math.min(insightMinutesPassed, maxOfflineMinutes);
+    let insightSecondsPassed = Math.floor((now.getTime() - processorDate.getTime()) / 1000);
+    insightSecondsPassed = Math.min(insightSecondsPassed, maxOfflineSeconds);
     
-    if (insightMinutesPassed > 0) {
-      const offlineGain = resources.insight.autoGeneration * insightMinutesPassed * 60 * 0.2; // Per minute (0.2 per second)
-      updatedResources.insight.amount = Math.min(
-        resources.insight.amount + offlineGain,
-        resources.insight.capacity
-      );
-    }
+    // Calculate insight gain based on seconds passed
+    const offlineGain = resources.insight.autoGeneration * insightSecondsPassed * 0.2; // 0.2 per second
+    updatedResources.insight.amount = Math.min(
+      resources.insight.amount + offlineGain,
+      resources.insight.capacity
+    );
   }
   
   // Crew calculation using latestSave timestamp or crew-quarters timestamp if available
@@ -65,16 +69,15 @@ function calculateOfflineProgress(
     const latestSaveTimestamp = resources.crew.latestSave;
     const crewTimestamp = latestSaveTimestamp || page_timestamps["crew-quarters"] || lastOnline;
     const crewDate = new Date(crewTimestamp);
-    let crewMinutesPassed = Math.floor((now.getTime() - crewDate.getTime()) / 60000);
-    crewMinutesPassed = Math.min(crewMinutesPassed, maxOfflineMinutes);
+    let crewSecondsPassed = Math.floor((now.getTime() - crewDate.getTime()) / 1000);
+    crewSecondsPassed = Math.min(crewSecondsPassed, maxOfflineSeconds);
     
-    if (crewMinutesPassed > 0) {
-      const offlineGain = resources.crew.workerCrews * crewMinutesPassed * 60 * 0.1; // Per minute (0.1 per second)
-      updatedResources.crew.amount = Math.min(
-        resources.crew.amount + offlineGain,
-        resources.crew.capacity
-      );
-    }
+    // Calculate crew gain based on seconds passed
+    const offlineGain = resources.crew.workerCrews * crewSecondsPassed * 0.1; // 0.1 per second
+    updatedResources.crew.amount = Math.min(
+      resources.crew.amount + offlineGain,
+      resources.crew.capacity
+    );
   }
   
   // Scrap calculation using latestSave timestamp or manufacturing timestamp if available
@@ -83,26 +86,35 @@ function calculateOfflineProgress(
     const latestSaveTimestamp = resources.scrap.latestSave;
     const manufacturingTimestamp = latestSaveTimestamp || page_timestamps.manufacturing || lastOnline;
     const manufacturingDate = new Date(manufacturingTimestamp);
-    let scrapMinutesPassed = Math.floor((now.getTime() - manufacturingDate.getTime()) / 60000);
-    scrapMinutesPassed = Math.min(scrapMinutesPassed, maxOfflineMinutes);
+    let scrapSecondsPassed = Math.floor((now.getTime() - manufacturingDate.getTime()) / 1000);
+    scrapSecondsPassed = Math.min(scrapSecondsPassed, maxOfflineSeconds);
     
-    if (scrapMinutesPassed > 0) {
-      const offlineGain = resources.scrap.manufacturingBays * scrapMinutesPassed * 60 * 0.5; // Per minute (0.5 per second)
-      updatedResources.scrap.amount = Math.min(
-        resources.scrap.amount + offlineGain,
-        resources.scrap.capacity
-      );
-    }
+    // Calculate scrap gain based on seconds passed
+    const offlineGain = resources.scrap.manufacturingBays * scrapSecondsPassed * 0.5; // 0.5 per second
+    updatedResources.scrap.amount = Math.min(
+      resources.scrap.amount + offlineGain,
+      resources.scrap.capacity
+    );
   }
+  
+  // Update the latestSave timestamps for all resources
+  if (updatedResources.energy) updatedResources.energy.latestSave = now.toISOString();
+  if (updatedResources.insight) updatedResources.insight.latestSave = now.toISOString();
+  if (updatedResources.crew) updatedResources.crew.latestSave = now.toISOString();
+  if (updatedResources.scrap) updatedResources.scrap.latestSave = now.toISOString();
   
   return {
     updatedResources,
     minutesPassed,
     gains: {
-      energy: resources.energy?.autoGeneration ? Math.min(resources.energy.autoGeneration * minutesPassed * 60, resources.energy.capacity - resources.energy.amount) : 0,
-      insight: resources.insight?.autoGeneration ? Math.min(resources.insight.autoGeneration * minutesPassed * 60 * 0.2, resources.insight.capacity - resources.insight.amount) : 0,
-      crew: resources.crew?.workerCrews ? Math.min(resources.crew.workerCrews * minutesPassed * 60 * 0.1, resources.crew.capacity - resources.crew.amount) : 0,
-      scrap: resources.scrap?.manufacturingBays ? Math.min(resources.scrap.manufacturingBays * minutesPassed * 60 * 0.5, resources.scrap.capacity - resources.scrap.amount) : 0,
+      energy: resources.energy?.autoGeneration ? 
+        Math.min(resources.energy.autoGeneration * secondsPassed, resources.energy.capacity - resources.energy.amount) : 0,
+      insight: resources.insight?.autoGeneration ? 
+        Math.min(resources.insight.autoGeneration * secondsPassed * 0.2, resources.insight.capacity - resources.insight.amount) : 0,
+      crew: resources.crew?.workerCrews ? 
+        Math.min(resources.crew.workerCrews * secondsPassed * 0.1, resources.crew.capacity - resources.crew.amount) : 0,
+      scrap: resources.scrap?.manufacturingBays ? 
+        Math.min(resources.scrap.manufacturingBays * secondsPassed * 0.5, resources.scrap.capacity - resources.scrap.amount) : 0,
     }
   };
 }

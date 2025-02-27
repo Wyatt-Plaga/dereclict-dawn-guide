@@ -36,7 +36,7 @@ export function handleResourcePageLoad(
   // Log page load
   console.log(`[PAGE LOAD] ${pageName} page loaded`);
   
-  // Update the page timestamp
+  // Update the page timestamp - always update the timestamp regardless of how recently it was updated
   updatePageTimestamp(pageName);
   
   // Calculate resource-specific offline progress if this is a resource page

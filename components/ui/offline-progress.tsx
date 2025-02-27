@@ -36,10 +36,20 @@ export function OfflineProgress({
     return () => clearTimeout(timer);
   }, []);
   
-  // Format time in hours and minutes
-  const timeAway = minutesPassed >= 60 
-    ? `${Math.floor(minutesPassed / 60)}h ${minutesPassed % 60}m`
-    : `${minutesPassed}m`;
+  // Format time in hours, minutes, and seconds
+  const formatTimeAway = (minutes: number) => {
+    if (minutes < 0.17) { // Less than 10 seconds
+      return 'Just now';
+    } else if (minutes < 1) {
+      return `${Math.round(minutes * 60)}s`;
+    } else if (minutes >= 60) {
+      return `${Math.floor(minutes / 60)}h ${Math.floor(minutes % 60)}m`;
+    } else {
+      return `${Math.floor(minutes)}m`;
+    }
+  };
+  
+  const timeAway = formatTimeAway(minutesPassed);
   
   if (!visible) return null;
   

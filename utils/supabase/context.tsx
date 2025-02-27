@@ -620,17 +620,6 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         
         const currentTime = new Date().toISOString();
         
-        // Check if the timestamp actually needs to be updated
-        // Only update if it doesn't exist or if it's been at least 1 minute since last update
-        const existingTimestamp = gameProgress.page_timestamps?.[pageName];
-        const shouldUpdate = !existingTimestamp || 
-            (new Date(currentTime).getTime() - new Date(existingTimestamp).getTime() > 60000);
-            
-        if (!shouldUpdate) {
-            console.log(`Skipping timestamp update for ${pageName} - updated recently`);
-            return;
-        }
-        
         // Create updated page timestamps
         const updatedTimestamps = {
             ...(gameProgress.page_timestamps || {}),
@@ -646,11 +635,10 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         // Save the updated progress
         setGameProgress(updatedProgress);
         
-        // Only trigger save if we're modifying an existing timestamp
-        // to avoid unnecessary saves when first loading a page
-        if (gameProgress.page_timestamps && gameProgress.page_timestamps[pageName]) {
-            triggerSave(updatedProgress);
-        }
+        // Always trigger save to ensure timestamps are consistently tracked
+        triggerSave(updatedProgress);
+        
+        console.log(`Page timestamp updated for ${pageName}: ${currentTime}`);
     }, [gameProgress, triggerSave]);
 
     return (
