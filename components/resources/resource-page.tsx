@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect, ReactNode } from "react"
+import { useState, useEffect, ReactNode, useCallback } from "react"
 import { NavBar } from "@/components/ui/navbar"
 import { Progress } from "@/components/ui/progress"
 import { useSupabase } from "@/utils/supabase/context"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { resourceToPageMap, pageToResourceMap } from "@/utils/page-helpers"
-import { updateResource } from "@/utils/game-helpers"
+import { ResourceManager } from "@/utils/game-helpers"
 import { handleResourcePageLoad } from "@/utils/page-helpers"
 import { LucideIcon } from "lucide-react"
 
@@ -66,21 +66,6 @@ export function ResourcePage({
   const [capacity, setCapacity] = useState(0)
   const [autoGeneration, setAutoGeneration] = useState(0)
   
-  // Function to get the correct auto-generation property name
-  const getAutoGenProperty = () => {
-    switch (resourceType) {
-      case 'energy':
-      case 'insight':
-        return 'autoGeneration'
-      case 'crew':
-        return 'workerCrews'
-      case 'scrap':
-        return 'manufacturingBays'
-      default:
-        return 'autoGeneration'
-    }
-  }
-  
   // Access Supabase context for game state
   const { 
     gameProgress, 
@@ -94,6 +79,11 @@ export function ResourcePage({
   // Track if we've already updated the page timestamp
   const [timestampUpdated, setTimestampUpdated] = useState(false);
   
+  // Get the auto-generation property name for this resource type
+  const autoGenProperty = useCallback(() => {
+    return ResourceManager.getAutoGenProperty(resourceType);
+  }, [resourceType]);
+  
   // Update the page timestamp and calculate offline progress on component mount
   useEffect(() => {
     if (gameProgress && !timestampUpdated) {
@@ -105,28 +95,28 @@ export function ResourcePage({
   // Synchronize local state with gameProgress from context
   useEffect(() => {
     if (gameProgress?.resources && gameProgress.resources[resourceType]) {
-      console.log(`Initializing ${resourceType} component state from gameProgress:`, gameProgress.resources[resourceType]);
       setAmount(gameProgress.resources[resourceType]?.amount || 0);
       setCapacity(gameProgress.resources[resourceType]?.capacity || 0);
       
-      // Handle different auto generation property names
-      const autoGenProperty = getAutoGenProperty();
-      const autoGenValue = (gameProgress.resources[resourceType] as any)?.[autoGenProperty] || 0;
+      // Get auto generation value using the ResourceManager
+      const autoGenValue = ResourceManager.getResourceProperty(
+        gameProgress, 
+        resourceType, 
+        autoGenProperty()
+      );
       setAutoGeneration(autoGenValue);
     }
-  }, [gameProgress, resourceType]);
+  }, [gameProgress, resourceType, autoGenProperty]);
   
   // Auto-generate resource based on autoGeneration rate
   useEffect(() => {
     // Don't set up interval if no auto generation or no game progress
     if (autoGeneration <= 0 || !gameProgress) return;
     
-    console.log(`Setting up ${resourceType} auto-generation interval with rate: ${autoGeneration * autoGenerationMultiplier}/sec`);
-    
     const interval = setInterval(() => {
-      // Get current values from gameProgress to stay in sync
-      const currentAmount = gameProgress.resources[resourceType]?.amount || 0;
-      const currentCapacity = gameProgress.resources[resourceType]?.capacity || 0;
+      // Get current values using ResourceManager
+      const currentAmount = ResourceManager.getResourceProperty(gameProgress, resourceType, 'amount');
+      const currentCapacity = ResourceManager.getResourceProperty(gameProgress, resourceType, 'capacity');
       
       // Calculate new value respecting capacity
       const newValue = Math.min(
@@ -136,10 +126,8 @@ export function ResourcePage({
       
       // Only update if there's actually a change
       if (newValue > currentAmount) {
-        console.log(`Auto-generating ${resourceType}: ${currentAmount} -> ${newValue}`);
-        
-        // Use updateResource to handle state update and trigger save
-        updateResource(
+        // Use ResourceManager to handle state update and trigger save
+        ResourceManager.updateResource(
           gameProgress,
           resourceType,
           'amount',
@@ -156,20 +144,18 @@ export function ResourcePage({
   }, [autoGeneration, gameProgress, resourceType, autoGenerationMultiplier, triggerSave]);
   
   // Generate resource on manual click
-  const generateResource = () => {
+  const generateResource = useCallback(() => {
     if (!gameProgress) return;
     
-    // Get current values from gameProgress
-    const currentAmount = gameProgress.resources[resourceType]?.amount || 0;
-    const currentCapacity = gameProgress.resources[resourceType]?.capacity || 0;
+    // Get current values using ResourceManager
+    const currentAmount = ResourceManager.getResourceProperty(gameProgress, resourceType, 'amount');
+    const currentCapacity = ResourceManager.getResourceProperty(gameProgress, resourceType, 'capacity');
     
     // Calculate new value, respecting capacity
     const newValue = Math.min(currentAmount + manualGenerationAmount, currentCapacity);
     
-    console.log(`Generating ${resourceType}: ${currentAmount} -> ${newValue}`);
-    
-    // Update and save automatically using helper function
-    updateResource(
+    // Update and save automatically using ResourceManager
+    ResourceManager.updateResource(
       gameProgress,
       resourceType,
       'amount',
@@ -179,36 +165,28 @@ export function ResourcePage({
     
     // Update local state for UI
     setAmount(newValue);
-  }
+  }, [gameProgress, resourceType, manualGenerationAmount, triggerSave]);
   
   // Handle upgrade
-  const handleUpgrade = (upgrade: ResourceUpgrade) => {
+  const handleUpgrade = useCallback((upgrade: ResourceUpgrade) => {
     if (!gameProgress) return;
     
-    const currentAmount = gameProgress.resources[resourceType]?.amount || 0;
-    const currentValue = (gameProgress.resources[resourceType] as any)?.[upgrade.propertyToUpgrade] || 0;
+    const currentAmount = ResourceManager.getResourceProperty(gameProgress, resourceType, 'amount');
+    const currentValue = ResourceManager.getResourceProperty(gameProgress, resourceType, upgrade.propertyToUpgrade);
     const upgradeCost = upgrade.getCost(currentValue);
     
-    if (currentAmount >= upgradeCost) {
+    if (ResourceManager.hasEnoughResource(gameProgress, resourceType, upgradeCost)) {
       // Calculate new values
       const newAmount = currentAmount - upgradeCost;
       const newValue = upgrade.getNextValue(currentValue);
       
-      // Update resource amount first (cost deduction)
-      const updatedProgress1 = updateResource(
+      // Batch update both resource amount and the upgraded property
+      ResourceManager.batchUpdateResources(
         gameProgress,
-        resourceType,
-        'amount',
-        newAmount,
-        () => {} // Don't trigger save yet to batch updates
-      );
-      
-      // Then update the property being upgraded and trigger save
-      const updatedProgress2 = updateResource(
-        updatedProgress1,
-        resourceType,
-        upgrade.propertyToUpgrade,
-        newValue,
+        [
+          { resourceType, property: 'amount', value: newAmount },
+          { resourceType, property: upgrade.propertyToUpgrade, value: newValue }
+        ],
         triggerSave
       );
       
@@ -218,11 +196,11 @@ export function ResourcePage({
       // Update the correct property in local state
       if (upgrade.propertyToUpgrade === 'capacity') {
         setCapacity(newValue);
-      } else if (upgrade.propertyToUpgrade === getAutoGenProperty()) {
+      } else if (upgrade.propertyToUpgrade === autoGenProperty()) {
         setAutoGeneration(newValue);
       }
     }
-  };
+  }, [gameProgress, resourceType, triggerSave, autoGenProperty]);
   
   return (
     <main className="flex min-h-screen flex-col">
@@ -281,7 +259,7 @@ export function ResourcePage({
             {upgrades.map((upgrade) => {
               const currentValue = upgrade.propertyToUpgrade === 'capacity' 
                 ? capacity 
-                : (upgrade.propertyToUpgrade === getAutoGenProperty() ? autoGeneration : 0);
+                : (upgrade.propertyToUpgrade === autoGenProperty() ? autoGeneration : 0);
               
               const upgradeCost = upgrade.getCost(currentValue);
               const canAfford = amount >= upgradeCost;
