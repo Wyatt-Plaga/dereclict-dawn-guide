@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import { DatabaseProvider } from "@/contexts/database/DatabaseContext";
+import { AuthProvider } from "@/contexts/auth/AuthContext";
 import { GameStateProvider } from "@/contexts/game/GameStateContext";
 import { OfflineProgressProvider } from "@/contexts/game/OfflineProgressContext";
 
@@ -12,11 +13,13 @@ import { OfflineProgressProvider } from "@/contexts/game/OfflineProgressContext"
 export function RootProvider({ children }: { children: ReactNode }) {
   return (
     <DatabaseProvider>
-      <GameStateProvider>
-        <OfflineProgressProvider>
-          {children}
-        </OfflineProgressProvider>
-      </GameStateProvider>
+      <AuthProvider>
+        <GameStateProvider>
+          <OfflineProgressProvider>
+            {children}
+          </OfflineProgressProvider>
+        </GameStateProvider>
+      </AuthProvider>
     </DatabaseProvider>
   );
 } 

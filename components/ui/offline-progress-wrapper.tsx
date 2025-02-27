@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect } from "react";
-import { useSupabase } from "@/utils/supabase/context";
+import { useOfflineProgress } from "@/contexts/game/OfflineProgressContext";
 import { MultiResourceNotification } from "@/components/ui/resource-notification";
 
 export function OfflineProgressWrapper() {
-  const { offlineGains, dismissOfflineGains } = useSupabase();
+  const { offlineGains, dismissOfflineGains } = useOfflineProgress();
   
   useEffect(() => {
     if (!offlineGains || typeof window === 'undefined' || !window.notifications) return;

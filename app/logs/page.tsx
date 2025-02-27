@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { NavBar } from "@/components/ui/navbar"
 import { BookOpen } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
-import { useSupabase } from "@/utils/supabase/context"
+import { useGameState } from "@/contexts/game/GameStateContext"
 
 // All possible log entries - these would normally be in a separate data file
 const allLogEntries = [
@@ -52,7 +52,7 @@ const allLogEntries = [
 
 export default function LogsPage() {
   const { shouldFlicker } = useSystemStatus()
-  const { gameProgress } = useSupabase()
+  const { gameProgress } = useGameState()
   const [unlockedLogs, setUnlockedLogs] = useState<typeof allLogEntries>([])
   const [activeLog, setActiveLog] = useState<(typeof allLogEntries)[0] | null>(null)
   

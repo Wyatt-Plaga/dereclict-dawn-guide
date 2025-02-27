@@ -45,6 +45,14 @@ interface ResourcePageProps {
   upgrades: ResourceUpgrade[]
 }
 
+/**
+ * Migrated ResourcePage Component
+ * 
+ * This version uses the new split contexts instead of the monolithic useSupabase hook.
+ * Note the changes:
+ * 1. Import useGameState and useOfflineProgress instead of useSupabase
+ * 2. Destructure only what we need from each context
+ */
 export function ResourcePage({
   resourceType,
   pageName,
@@ -67,17 +75,15 @@ export function ResourcePage({
   const [capacity, setCapacity] = useState(0)
   const [autoGeneration, setAutoGeneration] = useState(0)
   
-  // Access game state context for game progress
+  // Access game state context instead of Supabase context
   const { 
     gameProgress, 
     triggerSave, 
-    updatePageTimestamp
+    updatePageTimestamp 
   } = useGameState()
   
-  // Access offline progress functionality
-  const {
-    calculateResourceOfflineProgress
-  } = useOfflineProgress()
+  // Access offline progress context
+  const { calculateResourceOfflineProgress } = useOfflineProgress()
   
   const { shouldFlicker } = useSystemStatus()
   

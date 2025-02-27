@@ -4,7 +4,7 @@ import { ReactNode } from 'react'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { SystemStatusProvider } from '@/components/providers/system-status-provider'
 import ClerkClientProvider from '@/components/providers/clerk-client-provider'
-import { SupabaseProvider } from '@/utils/supabase/context'
+import { RootProvider } from '@/contexts/RootProvider'
 import { ClerkLoaded, ClerkLoading } from '@clerk/nextjs'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { SaveStatusProvider } from '@/components/providers/save-status-provider'
@@ -25,7 +25,7 @@ export function ClientLayout({ children }: { children: ReactNode }) {
           </ClerkLoading>
           <ClerkLoaded>
             <SystemStatusProvider>
-              <SupabaseProvider>
+              <RootProvider>
                 <TanstackClientProvider>
                   <NotificationsProvider>
                     {children}
@@ -33,7 +33,7 @@ export function ClientLayout({ children }: { children: ReactNode }) {
                     <ResourceOfflineProgressWrapper />
                   </NotificationsProvider>
                 </TanstackClientProvider>
-              </SupabaseProvider>
+              </RootProvider>
             </SystemStatusProvider>
           </ClerkLoaded>
         </ClerkClientProvider>
