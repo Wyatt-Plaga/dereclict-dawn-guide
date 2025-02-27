@@ -13,6 +13,7 @@ import { useUser } from "@clerk/nextjs"
 import { ErrorBanner } from "@/components/ui/error-banner"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { updateResource } from "@/utils/game-helpers"
+import { handleResourcePageLoad } from "@/utils/page-helpers"
 
 export default function ReactorPage() {
   const [energy, setEnergy] = useState(0)
@@ -31,7 +32,8 @@ export default function ReactorPage() {
     error, 
     updatePageTimestamp, 
     offlineGains,
-    dismissOfflineGains 
+    dismissOfflineGains,
+    calculateResourceOfflineProgress
   } = useSupabase()
   const { user, isSignedIn } = useUser()
   const [testError, setTestError] = useState<string | null>(null)
@@ -41,14 +43,13 @@ export default function ReactorPage() {
   // Track if we've already updated the page timestamp
   const [timestampUpdated, setTimestampUpdated] = useState(false);
   
-  // Update the page timestamp only once when the component mounts and gameProgress is available
+  // Update the page timestamp and calculate offline progress only once when the component mounts
   useEffect(() => {
     if (gameProgress && !timestampUpdated) {
-      // Record that the player visited the reactor page
-      updatePageTimestamp('reactor');
+      handleResourcePageLoad('reactor', updatePageTimestamp, calculateResourceOfflineProgress);
       setTimestampUpdated(true);
     }
-  }, [gameProgress, timestampUpdated, updatePageTimestamp]);
+  }, [gameProgress, timestampUpdated, updatePageTimestamp, calculateResourceOfflineProgress]);
   
   // Synchronize local state with gameProgress from context
   useEffect(() => {

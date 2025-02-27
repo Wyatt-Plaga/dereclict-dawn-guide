@@ -67,6 +67,14 @@ interface SupabaseContextType {
         };
     } | null;
     dismissOfflineGains: () => void;
+    // Add resource-specific offline progress functionality
+    calculateResourceOfflineProgress: (resourceType: 'energy' | 'insight' | 'crew' | 'scrap') => void;
+    resourceOfflineGains: {
+        resourceType: 'energy' | 'insight' | 'crew' | 'scrap';
+        minutesPassed: number;
+        gain: number;
+    } | null;
+    dismissResourceOfflineGains: () => void;
 }
 
 // Default game state
@@ -99,7 +107,11 @@ const SupabaseContext = createContext<SupabaseContextType>({
     loading: false,
     error: null,
     offlineGains: null,
-    dismissOfflineGains: () => {}
+    dismissOfflineGains: () => {},
+    // Add resource-specific offline progress functionality
+    calculateResourceOfflineProgress: () => {},
+    resourceOfflineGains: null,
+    dismissResourceOfflineGains: () => {}
 });
 
 export function SupabaseProvider({ children }: { children: ReactNode }) {
@@ -118,6 +130,13 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
             crew: number;
             scrap: number;
         };
+    } | null>(null);
+    
+    // Add state for resource-specific offline progress
+    const [resourceOfflineGains, setResourceOfflineGains] = useState<{
+        resourceType: 'energy' | 'insight' | 'crew' | 'scrap';
+        minutesPassed: number;
+        gain: number;
     } | null>(null);
 
     // Create the Supabase client
@@ -490,6 +509,56 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         setOfflineGains(null);
     }, []);
 
+    // Function to dismiss resource offline gains notification
+    const dismissResourceOfflineGains = useCallback(() => {
+        setResourceOfflineGains(null);
+    }, []);
+
+    // Function to calculate resource-specific offline progress
+    const calculateResourceOfflineProgress = useCallback((resourceType: 'energy' | 'insight' | 'crew' | 'scrap') => {
+        if (!gameProgress) return;
+        
+        console.log(`[OFFLINE] Calculating offline progress for ${resourceType}`);
+        
+        // Import function dynamically to avoid circular dependencies
+        import('@/utils/offline-progress').then(({ calculateResourceOfflineProgress }) => {
+            const { updatedResource, minutesPassed, gain } = calculateResourceOfflineProgress(
+                resourceType,
+                gameProgress,
+                1440 // 24 hours max
+            );
+            
+            // If there are gains, show the popup and update the resource
+            if (gain > 0 && minutesPassed > 0 && updatedResource) {
+                console.log(`[OFFLINE] ${resourceType} gained ${gain} over ${minutesPassed} minutes`);
+                
+                // Update the resource state
+                const updatedResources = {
+                    ...gameProgress.resources,
+                    [resourceType]: updatedResource
+                };
+                
+                // Update the game progress
+                const updatedProgress = {
+                    ...gameProgress,
+                    resources: updatedResources
+                };
+                
+                // Set the state for the popup
+                setResourceOfflineGains({
+                    resourceType,
+                    minutesPassed,
+                    gain
+                });
+                
+                // Save the updated progress
+                triggerSave(updatedProgress);
+            } else {
+                console.log(`[OFFLINE] No ${resourceType} gains to apply`);
+            }
+        });
+    }, [gameProgress, triggerSave]);
+
     // Load game progress on session change
     useEffect(() => {
         if (isLoaded && session && supabase) {
@@ -596,7 +665,10 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
             loading,
             error,
             offlineGains,
-            dismissOfflineGains
+            dismissOfflineGains,
+            calculateResourceOfflineProgress,
+            resourceOfflineGains,
+            dismissResourceOfflineGains
         }}>
             {children}
         </SupabaseContext.Provider>

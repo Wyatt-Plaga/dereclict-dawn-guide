@@ -10,6 +10,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { SaveStatusProvider } from '@/components/providers/save-status-provider'
 import { SaveStatusWrapper } from '@/components/ui/save-status-wrapper'
 import { OfflineProgressWrapper } from '@/components/ui/offline-progress-wrapper'
+import { ResourceOfflineProgressWrapper } from '@/components/ui/resource-offline-progress-wrapper'
 import TanstackClientProvider from '@/components/providers/tanstack-client-provider'
 import { NotificationsProvider } from '@/components/ui/notifications'
 
@@ -31,6 +32,7 @@ export function ClientLayout({ children }: { children: ReactNode }) {
                     {children}
                     <SaveStatusWrapper />
                     <OfflineProgressWrapper />
+                    <ResourceOfflineProgressWrapper />
                   </NotificationsProvider>
                 </TanstackClientProvider>
               </SupabaseProvider>
