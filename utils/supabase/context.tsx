@@ -44,6 +44,7 @@ export interface GameProgress {
     unlockedLogs: number[];
     lastOnline: string; // ISO timestamp
     page_timestamps?: Record<string, string>; // Timestamps for when each page was last visited
+    availablePages: string[]; // Pages that are available to access
 }
 
 // Context interface including game state functionality
@@ -54,6 +55,7 @@ interface SupabaseContextType {
     saveGameProgress: (progress: GameProgress) => Promise<void>;
     triggerSave: (progress: GameProgress) => void;
     unlockLog: (logId: number) => void;
+    unlockUpgrade: (upgradeId: string) => void; // Add function to unlock upgrades
     updatePageTimestamp: (pageName: string) => void; // Add function to update page timestamps
     loading: boolean;
     error: string | null;
@@ -77,23 +79,21 @@ interface SupabaseContextType {
     dismissResourceOfflineGains: () => void;
 }
 
-// Default game state
+// Default game state - modified for progression system
 const defaultGameProgress: GameProgress = {
     resources: {
-        energy: { amount: 0, capacity: 100, autoGeneration: 0 },
-        insight: { amount: 0, capacity: 50, autoGeneration: 0 },
-        crew: { amount: 0, capacity: 5, workerCrews: 0 },
-        scrap: { amount: 0, capacity: 100, manufacturingBays: 0 }
+        energy: { amount: 0, capacity: 10, autoGeneration: 0 }, // Initial energy capacity is 10
+        insight: { amount: 0, capacity: 5, autoGeneration: 0 }, // Will be unlocked later
+        crew: { amount: 0, capacity: 3, workerCrews: 0 }, // Will be unlocked later
+        scrap: { amount: 0, capacity: 20, manufacturingBays: 0 } // Will be unlocked later
     },
     upgrades: {},
-    unlockedLogs: [1, 2, 3], // Initial unlocked logs
+    unlockedLogs: [], // Start with no logs unlocked
     lastOnline: new Date().toISOString(),
     page_timestamps: {
-        reactor: new Date().toISOString(),
-        processor: new Date().toISOString(),
-        "crew-quarters": new Date().toISOString(),
-        manufacturing: new Date().toISOString()
-    }
+        reactor: new Date().toISOString() // Only reactor is initially accessible
+    },
+    availablePages: ['reactor'] // Only reactor page is initially available
 };
 
 const SupabaseContext = createContext<SupabaseContextType>({
@@ -103,6 +103,7 @@ const SupabaseContext = createContext<SupabaseContextType>({
     saveGameProgress: async () => {},
     triggerSave: () => {},
     unlockLog: () => {},
+    unlockUpgrade: () => {}, // Add to default context
     updatePageTimestamp: () => {}, // Add to default context
     loading: false,
     error: null,
@@ -641,6 +642,64 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         console.log(`Page timestamp updated for ${pageName}: ${currentTime}`);
     }, [gameProgress, triggerSave]);
 
+    // Add the unlockUpgrade function in the SupabaseProvider component
+    const unlockUpgrade = useCallback((upgradeId: string) => {
+        if (!gameProgress) return;
+
+        // Check if the upgrade is already unlocked
+        if (gameProgress.upgrades && gameProgress.upgrades[upgradeId]) return;
+
+        // Create updated upgrades object
+        const updatedUpgrades = {
+            ...(gameProgress.upgrades || {}),
+            [upgradeId]: true
+        };
+
+        // Special handling for wing unlock upgrades
+        let updatedAvailablePages = [...(gameProgress.availablePages || ['reactor'])];
+
+        // Unlock corresponding page based on upgrade ID
+        if (upgradeId === 'unlock-wing') {
+            // This will be handled by a special UI component
+            console.log('Wing selection upgrade unlocked');
+        } else if (upgradeId === 'unlock-next-wing') {
+            // Add crew quarters if not already available
+            if (!updatedAvailablePages.includes('crew-quarters')) {
+                updatedAvailablePages.push('crew-quarters');
+                console.log('Crew quarters unlocked');
+            }
+        } else if (upgradeId === 'unlock-final-wing') {
+            // Add manufacturing if not already available
+            if (!updatedAvailablePages.includes('manufacturing')) {
+                updatedAvailablePages.push('manufacturing');
+                console.log('Manufacturing bay unlocked');
+            }
+        }
+
+        // Update the game progress
+        const updatedProgress = {
+            ...gameProgress,
+            upgrades: updatedUpgrades,
+            availablePages: updatedAvailablePages
+        };
+
+        // Save the updated progress
+        triggerSave(updatedProgress);
+
+        // Show notification for upgrade unlock
+        if (typeof window !== "undefined" && window.notifications) {
+            window.notifications.addToast({
+                message: `Upgrade unlocked: ${upgradeId}`,
+                type: "success",
+                duration: 5000,
+                category: "upgrade-unlock"
+            });
+        } else {
+            // Fallback
+            console.log(`Upgrade unlocked: ${upgradeId}`);
+        }
+    }, [gameProgress, triggerSave]);
+
     return (
         <SupabaseContext.Provider value={{ 
             supabase, 
@@ -649,6 +708,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
             saveGameProgress,
             triggerSave,
             unlockLog,
+            unlockUpgrade,
             updatePageTimestamp,
             loading,
             error,

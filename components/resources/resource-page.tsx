@@ -9,6 +9,7 @@ import { resourceToPageMap, pageToResourceMap } from "@/utils/page-helpers"
 import { ResourceManager } from "@/utils/game-helpers"
 import { handleResourcePageLoad } from "@/utils/page-helpers"
 import { LucideIcon } from "lucide-react"
+import { checkResourceMilestones } from "@/utils/milestone-system"
 
 // Define resource type
 export type ResourceType = 'energy' | 'insight' | 'crew' | 'scrap'
@@ -42,6 +43,8 @@ interface ResourcePageProps {
   generateResourceLabel: string
   secondaryContent?: ReactNode
   upgrades: ResourceUpgrade[]
+  unlockLog: (logId: number) => void
+  unlockUpgrade: (upgradeId: string) => void
 }
 
 export function ResourcePage({
@@ -59,7 +62,9 @@ export function ResourcePage({
   formatValue = (value: number) => value.toFixed(1),
   generateResourceLabel,
   secondaryContent,
-  upgrades
+  upgrades,
+  unlockLog,
+  unlockUpgrade
 }: ResourcePageProps) {
   // State for resource values
   const [amount, setAmount] = useState(0)
@@ -137,11 +142,16 @@ export function ResourcePage({
         
         // Update local state for UI
         setAmount(newValue);
+        
+        // Check if any milestones have been reached
+        if (typeof unlockLog === 'function' && typeof unlockUpgrade === 'function') {
+          checkResourceMilestones(gameProgress, resourceType, unlockLog, unlockUpgrade);
+        }
       }
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [autoGeneration, gameProgress, resourceType, autoGenerationMultiplier, triggerSave]);
+  }, [autoGeneration, gameProgress, resourceType, autoGenerationMultiplier, triggerSave, unlockLog, unlockUpgrade]);
   
   // Generate resource on manual click
   const generateResource = useCallback(() => {
@@ -165,7 +175,12 @@ export function ResourcePage({
     
     // Update local state for UI
     setAmount(newValue);
-  }, [gameProgress, resourceType, manualGenerationAmount, triggerSave]);
+    
+    // Check if any milestones have been reached
+    if (typeof unlockLog === 'function' && typeof unlockUpgrade === 'function') {
+      checkResourceMilestones(gameProgress, resourceType, unlockLog, unlockUpgrade);
+    }
+  }, [gameProgress, resourceType, manualGenerationAmount, triggerSave, unlockLog, unlockUpgrade]);
   
   // Handle upgrade
   const handleUpgrade = useCallback((upgrade: ResourceUpgrade) => {

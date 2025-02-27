@@ -4,18 +4,33 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Zap, CpuIcon, Users, Package, BookOpen, Settings } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
+import { useSupabase } from "@/utils/supabase/context"
 
-const navigation = [
-  { name: "Reactor", href: "/reactor", icon: Zap },
-  { name: "Processor", href: "/processor", icon: CpuIcon },
-  { name: "Crew Quarters", href: "/crew-quarters", icon: Users },
-  { name: "Manufacturing", href: "/manufacturing", icon: Package },
-  { name: "Logs", href: "/logs", icon: BookOpen },
+const allNavigation = [
+  { name: "Reactor", href: "/reactor", icon: Zap, page: "reactor" },
+  { name: "Processor", href: "/processor", icon: CpuIcon, page: "processor" },
+  { name: "Crew Quarters", href: "/crew-quarters", icon: Users, page: "crew-quarters" },
+  { name: "Manufacturing", href: "/manufacturing", icon: Package, page: "manufacturing" },
+  { name: "Logs", href: "/logs", icon: BookOpen, page: "logs" },
 ]
 
 export function NavBar() {
   const pathname = usePathname()
   const { status, statusText, shouldFlicker } = useSystemStatus()
+  const { gameProgress } = useSupabase()
+  
+  // Filter navigation items based on available pages
+  const availablePages = gameProgress?.availablePages || ['reactor']
+  
+  // Always add logs page
+  if (!availablePages.includes('logs')) {
+    availablePages.push('logs')
+  }
+  
+  // Filter navigation to only show available pages
+  const navigation = allNavigation.filter(item => 
+    availablePages.includes(item.page)
+  )
 
   return (
     <nav className="system-panel p-2 md:p-4 fixed bottom-0 left-0 right-0 md:left-4 md:top-4 md:bottom-4 md:w-64 flex md:flex-col gap-1 z-10">

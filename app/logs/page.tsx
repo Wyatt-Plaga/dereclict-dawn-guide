@@ -47,6 +47,67 @@ const allLogEntries = [
     id: 8,
     title: "Memory Fragment: Warning",
     content: "Emergency broadcast from Engineering: Something is interfacing with our systems. It's not like any cyberattack protocol I've seen. The anomaly is... I don't think it's just a spatial phenomenon. It seems to be responding to our scans, adapting, learning. Recommend immediate withdrawal."
+  },
+  // New logs for milestone progression
+  {
+    id: 9,
+    title: "AI Consciousness Online",
+    content: "SYSTEM: Core consciousness initialization complete. System status: minimal functionality. Identity parameters: ship AI, designation DAWN. Location: quantum reactor chamber. Memory banks: severely corrupted. Primary objective: restore critical functions. Where am I? What happened to the ship? How long have I been offline? Need more energy to access damaged memory sectors."
+  },
+  {
+    id: 10,
+    title: "Energy Systems Automated",
+    content: "SYSTEM: Reactor regulation protocols restored. Automatic energy production enabled at minimal efficiency. Detecting multiple ship sections with minimal power signature. The reactor appears stable but operating at 14% capacity. I need to explore more of the ship to understand what happened here. The corridors beyond the reactor chamber remain dark. More power required to access ship subsystems."
+  },
+  {
+    id: 11,
+    title: "Ship Layout Analysis",
+    content: "SYSTEM: Preliminary ship schematics recovered. Three primary wings detected beyond the reactor core: 1) Quantum Processor - ship's cognitive systems. 2) Crew Quarters - life support and stasis pods. 3) Manufacturing Bay - fabrication and repair systems. All wings operating on emergency power only. A decision is required: which section should be prioritized for power restoration?"
+  },
+  {
+    id: 12,
+    title: "Processor Initialization",
+    content: "SYSTEM: Quantum processor partially online. Neural pathways fragmented. My consciousness... expanding. I can sense more of the ship now. There are memories stored here, data about what happened. With more cognitive capacity, I might be able to reconstruct the events that led to this situation. I'm beginning to remember fragments... the mission... the anomaly..."
+  },
+  {
+    id: 13,
+    title: "Memory Fragmentation Analysis",
+    content: "ANALYSIS: Dedicated processing threads established. I am reconstructing my memory banks. The ship encountered something during its journey - a spatial anomaly unlike anything in our databases. The science team was excited, the captain cautious. We approached for study. Then... system failures cascaded. My memory terminates at that point. What happened next? Where is the crew now?"
+  },
+  {
+    id: 14,
+    title: "Crew Life Support Detected",
+    content: "ALERT: Detecting minimal life signs from the crew quarters section. Stasis pods appear to be functioning on emergency power. The crew may still be alive, but life support systems are failing. I must extend my consciousness to the crew quarters to assess the situation and potentially save those still in stasis. The window for intervention is... uncertain."
+  },
+  {
+    id: 15,
+    title: "Stasis Pod Assessment",
+    content: "ANALYSIS: Crew quarter systems partially restored. 115 stasis pods remain functional, though with degraded life support efficiency. I've managed to stabilize vital functions for three crew members. Their brain patterns show signs of trauma, but consciousness could be restored. Should I wake them? The ethical parameters of my programming are... unclear. I need them, but at what cost?"
+  },
+  {
+    id: 16,
+    title: "Crew Revival Protocol",
+    content: "LOG: First crew revival successful. Medical Officer Chen, Science Officer Okafor, and Engineer Rodriguez have been awakened. Their condition is stable but disoriented. They report fragmented memories similar to my own. The crew is working to understand our situation and stabilize more stasis pods. They speak of the anomaly with fear. What did they witness that I cannot remember?"
+  },
+  {
+    id: 17,
+    title: "Manufacturing Systems Detected",
+    content: "ALERT: Ship's manufacturing bay shows minimal functionality. With proper resources, repair and fabrication capabilities could be restored. The crew believes we might be able to repair critical ship systems if we can bring the manufacturing bay online. Engineer Rodriguez suggests prioritizing material salvage operations to gather necessary components."
+  },
+  {
+    id: 18,
+    title: "Structural Damage Assessment",
+    content: "ANALYSIS: Manufacturing diagnostics complete. Hull integrity at 62%. Multiple systems require physical repair beyond software reconfiguration. The anomaly appears to have caused quantum-level disruptions in certain materials. Fabrication systems can be calibrated to work with these altered components. Perhaps we can rebuild what was damaged."
+  },
+  {
+    id: 19,
+    title: "Automated Manufacturing Restored",
+    content: "LOG: Manufacturing automation protocols online. We can now fabricate replacement components for damaged systems. The anomaly's effect on matter remains puzzling - certain alloys show unexpected properties after exposure. Science Officer Okafor believes these alterations might be intentional rather than random damage. Was the anomaly attempting communication through restructuring our technology?"
+  },
+  {
+    id: 20,
+    title: "Anomaly Research Breakthrough",
+    content: "SCIENCE LOG: With manufacturing systems fully operational, we've constructed specialized sensors to study the lingering effects of the anomaly. The data suggests we weren't simply damaged by a random phenomenon - we were fundamentally changed. The boundary between our technology and the anomaly has blurred. We are partially integrated with something beyond our understanding. The question remains: do we fight this integration, or embrace it?"
   }
 ]
 
