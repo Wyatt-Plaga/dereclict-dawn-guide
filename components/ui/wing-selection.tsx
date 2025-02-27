@@ -63,6 +63,13 @@ export function WingSelection({ onClose }: WingSelectionProps) {
     onClose();
   };
   
+  // Get the color class for the selected wing
+  const getSelectedWingColor = () => {
+    if (!selectedWing) return '';
+    const wing = wings.find(w => w.id === selectedWing);
+    return wing ? wing.iconColor : '';
+  };
+  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
       <div className="system-panel max-w-2xl w-full p-6">
@@ -86,9 +93,13 @@ export function WingSelection({ onClose }: WingSelectionProps) {
               onClick={() => setSelectedWing(wing.id)}
             >
               <div className="flex items-center justify-center mb-4">
-                <wing.icon className={`h-12 w-12 ${wing.iconColor}`} />
+                <wing.icon className={`h-12 w-12 ${wing.iconColor} ${
+                  selectedWing === wing.id ? 'animate-pulse' : ''
+                }`} />
               </div>
-              <h3 className="text-center font-bold mb-2">{wing.title}</h3>
+              <h3 className={`text-center font-bold mb-2 ${
+                selectedWing === wing.id ? wing.iconColor : ''
+              }`}>{wing.title}</h3>
               <p className="text-xs text-muted-foreground text-center">{wing.description}</p>
             </div>
           ))}
