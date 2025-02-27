@@ -23,9 +23,11 @@ function calculateOfflineProgress(
   // Calculate gained resources
   const updatedResources = { ...resources };
   
-  // Energy calculation using reactor timestamp if available
+  // Energy calculation using latestSave timestamp or reactor timestamp if available
   if (resources.energy && resources.energy.autoGeneration > 0) {
-    const reactorTimestamp = page_timestamps.reactor || lastOnline;
+    // Use latestSave if available, otherwise fall back to page timestamp or lastOnline
+    const latestSaveTimestamp = resources.energy.latestSave;
+    const reactorTimestamp = latestSaveTimestamp || page_timestamps.reactor || lastOnline;
     const reactorDate = new Date(reactorTimestamp);
     let energyMinutesPassed = Math.floor((now.getTime() - reactorDate.getTime()) / 60000);
     energyMinutesPassed = Math.min(energyMinutesPassed, maxOfflineMinutes);
@@ -39,9 +41,11 @@ function calculateOfflineProgress(
     }
   }
   
-  // Insight calculation using processor timestamp if available
+  // Insight calculation using latestSave timestamp or processor timestamp if available
   if (resources.insight && resources.insight.autoGeneration > 0) {
-    const processorTimestamp = page_timestamps.processor || lastOnline;
+    // Use latestSave if available, otherwise fall back to page timestamp or lastOnline
+    const latestSaveTimestamp = resources.insight.latestSave;
+    const processorTimestamp = latestSaveTimestamp || page_timestamps.processor || lastOnline;
     const processorDate = new Date(processorTimestamp);
     let insightMinutesPassed = Math.floor((now.getTime() - processorDate.getTime()) / 60000);
     insightMinutesPassed = Math.min(insightMinutesPassed, maxOfflineMinutes);
@@ -55,9 +59,11 @@ function calculateOfflineProgress(
     }
   }
   
-  // Crew calculation using crew-quarters timestamp if available
+  // Crew calculation using latestSave timestamp or crew-quarters timestamp if available
   if (resources.crew && resources.crew.workerCrews > 0) {
-    const crewTimestamp = page_timestamps["crew-quarters"] || lastOnline;
+    // Use latestSave if available, otherwise fall back to page timestamp or lastOnline
+    const latestSaveTimestamp = resources.crew.latestSave;
+    const crewTimestamp = latestSaveTimestamp || page_timestamps["crew-quarters"] || lastOnline;
     const crewDate = new Date(crewTimestamp);
     let crewMinutesPassed = Math.floor((now.getTime() - crewDate.getTime()) / 60000);
     crewMinutesPassed = Math.min(crewMinutesPassed, maxOfflineMinutes);
@@ -71,9 +77,11 @@ function calculateOfflineProgress(
     }
   }
   
-  // Scrap calculation using manufacturing timestamp if available
+  // Scrap calculation using latestSave timestamp or manufacturing timestamp if available
   if (resources.scrap && resources.scrap.manufacturingBays > 0) {
-    const manufacturingTimestamp = page_timestamps.manufacturing || lastOnline;
+    // Use latestSave if available, otherwise fall back to page timestamp or lastOnline
+    const latestSaveTimestamp = resources.scrap.latestSave;
+    const manufacturingTimestamp = latestSaveTimestamp || page_timestamps.manufacturing || lastOnline;
     const manufacturingDate = new Date(manufacturingTimestamp);
     let scrapMinutesPassed = Math.floor((now.getTime() - manufacturingDate.getTime()) / 60000);
     scrapMinutesPassed = Math.min(scrapMinutesPassed, maxOfflineMinutes);

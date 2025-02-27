@@ -16,21 +16,25 @@ export interface ResourceState {
         amount: number;
         capacity: number;
         autoGeneration: number;
+        latestSave?: string; // ISO timestamp when this resource was last updated
     };
     insight?: {
         amount: number;
         capacity: number;
         autoGeneration: number;
+        latestSave?: string; // ISO timestamp when this resource was last updated
     };
     crew?: {
         amount: number;
         capacity: number;
         workerCrews: number;
+        latestSave?: string; // ISO timestamp when this resource was last updated
     };
     scrap?: {
         amount: number;
         capacity: number;
         manufacturingBays: number;
+        latestSave?: string; // ISO timestamp when this resource was last updated
     };
 }
 

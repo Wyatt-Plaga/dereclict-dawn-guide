@@ -52,9 +52,11 @@ export function calculateOfflineProgress(
   
   console.log(`Calculating offline progress for a total of ${totalMinutesPassed} minutes`);
   
-  // Calculate energy gains based on reactor page timestamp
+  // Calculate energy gains based on latestSave timestamp or reactor page timestamp
   if (updatedResources.energy && updatedResources.energy.autoGeneration > 0) {
-    const reactorTimestamp = pageTimestamps.reactor || gameProgress.lastOnline;
+    // Use latestSave if available, otherwise fall back to page timestamp or lastOnline
+    const latestSaveTimestamp = (updatedResources.energy as any).latestSave;
+    const reactorTimestamp = latestSaveTimestamp || pageTimestamps.reactor || gameProgress.lastOnline;
     const reactorDate = new Date(reactorTimestamp);
     let energyMinutesPassed = Math.floor((now.getTime() - reactorDate.getTime()) / 60000);
     
@@ -62,7 +64,7 @@ export function calculateOfflineProgress(
     energyMinutesPassed = Math.min(energyMinutesPassed, maxOfflineMinutes);
     
     if (energyMinutesPassed > 0) {
-      console.log(`Energy offline progress: ${energyMinutesPassed} minutes`);
+      console.log(`Energy offline progress: ${energyMinutesPassed} minutes (from ${reactorTimestamp})`);
       const offlineGain = updatedResources.energy.autoGeneration * energyMinutesPassed * 60; // Per minute
       const newAmount = Math.min(
         updatedResources.energy.amount + offlineGain,
@@ -73,9 +75,11 @@ export function calculateOfflineProgress(
     }
   }
   
-  // Calculate insight gains based on processor page timestamp
+  // Calculate insight gains based on latestSave timestamp or processor page timestamp
   if (updatedResources.insight && updatedResources.insight.autoGeneration > 0) {
-    const processorTimestamp = pageTimestamps.processor || gameProgress.lastOnline;
+    // Use latestSave if available, otherwise fall back to page timestamp or lastOnline
+    const latestSaveTimestamp = (updatedResources.insight as any).latestSave;
+    const processorTimestamp = latestSaveTimestamp || pageTimestamps.processor || gameProgress.lastOnline;
     const processorDate = new Date(processorTimestamp);
     let insightMinutesPassed = Math.floor((now.getTime() - processorDate.getTime()) / 60000);
     
@@ -83,7 +87,7 @@ export function calculateOfflineProgress(
     insightMinutesPassed = Math.min(insightMinutesPassed, maxOfflineMinutes);
     
     if (insightMinutesPassed > 0) {
-      console.log(`Insight offline progress: ${insightMinutesPassed} minutes`);
+      console.log(`Insight offline progress: ${insightMinutesPassed} minutes (from ${processorTimestamp})`);
       const offlineGain = updatedResources.insight.autoGeneration * insightMinutesPassed * 60 * 0.2; // Per minute (0.2 per second)
       const newAmount = Math.min(
         updatedResources.insight.amount + offlineGain,
@@ -94,9 +98,11 @@ export function calculateOfflineProgress(
     }
   }
   
-  // Calculate crew gains based on crew-quarters page timestamp
+  // Calculate crew gains based on latestSave timestamp or crew-quarters page timestamp
   if (updatedResources.crew && updatedResources.crew.workerCrews > 0) {
-    const crewTimestamp = pageTimestamps["crew-quarters"] || gameProgress.lastOnline;
+    // Use latestSave if available, otherwise fall back to page timestamp or lastOnline
+    const latestSaveTimestamp = (updatedResources.crew as any).latestSave;
+    const crewTimestamp = latestSaveTimestamp || pageTimestamps["crew-quarters"] || gameProgress.lastOnline;
     const crewDate = new Date(crewTimestamp);
     let crewMinutesPassed = Math.floor((now.getTime() - crewDate.getTime()) / 60000);
     
@@ -104,7 +110,7 @@ export function calculateOfflineProgress(
     crewMinutesPassed = Math.min(crewMinutesPassed, maxOfflineMinutes);
     
     if (crewMinutesPassed > 0) {
-      console.log(`Crew offline progress: ${crewMinutesPassed} minutes`);
+      console.log(`Crew offline progress: ${crewMinutesPassed} minutes (from ${crewTimestamp})`);
       const offlineGain = updatedResources.crew.workerCrews * crewMinutesPassed * 60 * 0.1; // Per minute (0.1 per second)
       const newAmount = Math.min(
         updatedResources.crew.amount + offlineGain,
@@ -115,9 +121,11 @@ export function calculateOfflineProgress(
     }
   }
   
-  // Calculate scrap gains based on manufacturing page timestamp
+  // Calculate scrap gains based on latestSave timestamp or manufacturing page timestamp
   if (updatedResources.scrap && updatedResources.scrap.manufacturingBays > 0) {
-    const manufacturingTimestamp = pageTimestamps.manufacturing || gameProgress.lastOnline;
+    // Use latestSave if available, otherwise fall back to page timestamp or lastOnline
+    const latestSaveTimestamp = (updatedResources.scrap as any).latestSave;
+    const manufacturingTimestamp = latestSaveTimestamp || pageTimestamps.manufacturing || gameProgress.lastOnline;
     const manufacturingDate = new Date(manufacturingTimestamp);
     let scrapMinutesPassed = Math.floor((now.getTime() - manufacturingDate.getTime()) / 60000);
     
@@ -125,7 +133,7 @@ export function calculateOfflineProgress(
     scrapMinutesPassed = Math.min(scrapMinutesPassed, maxOfflineMinutes);
     
     if (scrapMinutesPassed > 0) {
-      console.log(`Scrap offline progress: ${scrapMinutesPassed} minutes`);
+      console.log(`Scrap offline progress: ${scrapMinutesPassed} minutes (from ${manufacturingTimestamp})`);
       const offlineGain = updatedResources.scrap.manufacturingBays * scrapMinutesPassed * 60 * 0.5; // Per minute (0.5 per second)
       const newAmount = Math.min(
         updatedResources.scrap.amount + offlineGain,

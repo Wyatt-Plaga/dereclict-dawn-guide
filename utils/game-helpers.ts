@@ -1,5 +1,13 @@
 import { GameProgress, ResourceState } from '@/utils/supabase/context';
 
+// Map resource types to their corresponding pages
+const resourcePageMap: Record<string, string> = {
+  'energy': 'reactor',
+  'insight': 'processor',
+  'crew': 'crew-quarters',
+  'scrap': 'manufacturing'
+};
+
 // Update a single resource and trigger save
 export function updateResource(
   gameProgress: GameProgress,
@@ -10,13 +18,17 @@ export function updateResource(
 ): GameProgress {
   if (!gameProgress.resources[resourceType]) return gameProgress;
   
+  // Current timestamp for the save
+  const currentTime = new Date().toISOString();
+  
   const updatedProgress = {
     ...gameProgress,
     resources: {
       ...gameProgress.resources,
       [resourceType]: {
         ...gameProgress.resources[resourceType],
-        [property]: value
+        [property]: value,
+        latestSave: currentTime // Add timestamp for when this resource was last updated
       }
     }
   };
@@ -39,6 +51,9 @@ export function batchUpdateResources(
 ): GameProgress {
   let updatedProgress = { ...gameProgress };
   
+  // Current timestamp for the save
+  const currentTime = new Date().toISOString();
+  
   // Apply all updates to the copy
   updates.forEach(update => {
     if (!updatedProgress.resources[update.resourceType]) return;
@@ -49,7 +64,8 @@ export function batchUpdateResources(
         ...updatedProgress.resources,
         [update.resourceType]: {
           ...updatedProgress.resources[update.resourceType],
-          [update.property]: update.value
+          [update.property]: update.value,
+          latestSave: currentTime // Add timestamp for when this resource was last updated
         }
       }
     };
