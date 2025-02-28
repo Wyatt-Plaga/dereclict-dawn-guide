@@ -40,8 +40,14 @@
   - [x] Migrate resource page component (resource-page-with-store.tsx)
   - [x] Migrate offline progress component (resource-offline-progress-wrapper-with-store.tsx)
   - [x] Create hook for accessing resources (useGameResources.ts)
-- [ ] Refactor upgrade-related components
-- [ ] Refactor log-related components
+- [x] Refactor upgrade-related components
+  - [x] Create hook for accessing upgrades (useGameUpgrades.ts)
+  - [x] Implement upgrades panel component (upgrade-panel-with-store.tsx)
+  - [x] Create example upgrade panel page
+- [x] Refactor log-related components
+  - [x] Create hook for accessing logs (useGameLogs.ts)
+  - [x] Implement logs display component (log-display-with-store.tsx)
+  - [x] Create example logs display page
 - [ ] Update main page components
 
 ## Phase 2: Context Splitting & Database Layer
