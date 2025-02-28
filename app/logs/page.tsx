@@ -5,6 +5,8 @@ import { NavBar } from "@/components/ui/navbar"
 import { BookOpen } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useSupabase } from "@/utils/supabase/context"
+import { GameEngineLayout } from "@/src/ui/layouts/GameEngineLayout"
+import { useLogsPageAdapter } from "@/src/ui/adapters/useLogsPageAdapter"
 
 // All possible log entries - these would normally be in a separate data file
 const allLogEntries = [
@@ -111,31 +113,16 @@ const allLogEntries = [
   }
 ]
 
-export default function LogsPage() {
+function LogsPageContent() {
   const { shouldFlicker } = useSystemStatus()
   const { gameProgress } = useSupabase()
-  const [unlockedLogs, setUnlockedLogs] = useState<typeof allLogEntries>([])
-  const [activeLog, setActiveLog] = useState<(typeof allLogEntries)[0] | null>(null)
+  const adapter = useLogsPageAdapter(
+    allLogEntries, 
+    gameProgress?.unlockedLogs || []
+  );
   
-  // Effect to update logs based on game progress
-  useEffect(() => {
-    if (!gameProgress) return
-    
-    // Filter logs based on unlocked IDs in game progress
-    const unlocked = allLogEntries.filter(log => 
-      gameProgress.unlockedLogs.includes(log.id)
-    )
-    
-    setUnlockedLogs(unlocked)
-    
-    // Set active log to first unlocked log if not set or not unlocked
-    if (!activeLog || !gameProgress.unlockedLogs.includes(activeLog.id)) {
-      setActiveLog(unlocked.length > 0 ? unlocked[0] : null)
-    }
-  }, [gameProgress, activeLog])
-  
-  // If no logs are unlocked or game progress isn't loaded yet, show loading state
-  if (!activeLog || unlockedLogs.length === 0) {
+  // If no logs are unlocked or the adapter is still loading, show loading state
+  if (adapter.isLoading || !adapter.activeLog || adapter.unlockedLogs.length === 0) {
     return (
       <main className="flex min-h-screen flex-col">
         <NavBar />
@@ -162,12 +149,12 @@ export default function LogsPage() {
             </p>
             
             <div className="space-y-2">
-              {unlockedLogs.map(log => (
+              {adapter.unlockedLogs.map(log => (
                 <button
                   key={log.id}
-                  onClick={() => setActiveLog(log)}
+                  onClick={() => adapter.setActiveLog(log)}
                   className={`w-full text-left p-2 rounded-md text-sm transition-colors ${
-                    activeLog.id === log.id 
+                    adapter.activeLog?.id === log.id 
                       ? 'bg-accent/30 text-primary border border-primary/40' 
                       : 'hover:bg-accent/10 text-muted-foreground hover:text-primary'
                   }`}
@@ -186,20 +173,20 @@ export default function LogsPage() {
           <div className="system-panel p-6">
             <div className="flex items-start justify-between mb-6">
               <h1 className={`text-2xl font-bold text-primary ${shouldFlicker('logs') ? 'flickering-text' : ''}`}>
-                {activeLog.title}
+                {adapter.activeLog.title}
               </h1>
               <BookOpen className="h-5 w-5 text-primary mt-1" />
             </div>
             
             <div className="prose prose-invert max-w-none">
               <p className="terminal-text text-sm leading-relaxed">
-                {activeLog.content}
+                {adapter.activeLog.content}
               </p>
             </div>
             
             <div className="mt-8 pt-4 border-t border-border">
               <p className="text-xs text-muted-foreground">
-                {unlockedLogs.length < allLogEntries.length 
+                {!adapter.allLogsUnlocked 
                   ? "Additional logs may be recovered as ship systems are repaired." 
                   : "All log entries have been recovered."}
               </p>
@@ -208,5 +195,13 @@ export default function LogsPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+export default function LogsPage() {
+  return (
+    <GameEngineLayout>
+      <LogsPageContent />
+    </GameEngineLayout>
   )
 } 
