@@ -827,7 +827,7 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             // Show notification for god mode toggle
             if (typeof window !== "undefined" && window.notifications) {
                 window.notifications.addToast({
-                    message: `God Mode ${newMode ? 'ENABLED' : 'DISABLED'} (10x resources per click)`,
+                    message: `God Mode ${newMode ? 'ENABLED' : 'DISABLED'} (adds 1000 resources per click)`,
                     type: newMode ? "success" : "info",
                     duration: 3000,
                     category: "dev"

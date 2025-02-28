@@ -162,8 +162,8 @@ export function ResourcePage({
     const currentAmount = ResourceManager.getResourceProperty(gameProgress, resourceType, 'amount');
     const currentCapacity = ResourceManager.getResourceProperty(gameProgress, resourceType, 'capacity');
     
-    // Apply god mode multiplier if enabled (10x resources)
-    const generationAmount = godMode ? manualGenerationAmount * 10 : manualGenerationAmount;
+    // Apply god mode - add 1000 instead of multiplying by 10
+    const generationAmount = godMode ? 1000 : manualGenerationAmount;
     
     // Calculate new value, respecting capacity
     const newValue = Math.min(currentAmount + generationAmount, currentCapacity);
@@ -266,7 +266,7 @@ export function ResourcePage({
               </div>
               <span className="terminal-text">{generateButtonLabel}</span>
               <span className="text-xs text-muted-foreground mt-1">
-                {generateResourceLabel} {formatValue(godMode ? manualGenerationAmount * 10 : manualGenerationAmount)} {resourceName} per click
+                {generateResourceLabel} {formatValue(godMode ? 1000 : manualGenerationAmount)} {resourceName} per click
                 {godMode && <span className="ml-1 text-success font-bold"> (GOD MODE)</span>}
               </span>
             </div>
