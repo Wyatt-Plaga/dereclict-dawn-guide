@@ -1,94 +1,100 @@
-# Implementation Checklist: Architectural Improvements
+# Implementation Checklist
 
-## Phase 1: State Management Overhaul (Zustand Implementation)
+## Phase 1: State Management Overhaul with Zustand ✅
 
-### 1. Setup Basic State Management
-- [x] Install Zustand and related packages: `npm install zustand immer zustand-middleware-immer`
-- [x] Create a new directory structure for state management:
-  ```
-  /store
-    /slices
-      resourcesSlice.ts
-      upgradesSlice.ts
-      logsSlice.ts
-      timeSlice.ts
-    rootStore.ts
-    types.ts
-  ```
-- [x] Create basic store types that mirror current game state structure
+- [x] Set up basic state management with Zustand
+  - [x] Define slices for resources, upgrades, logs
+  - [x] Implement core state management
+  - [x] Update actions for resources, upgrades, logs
+  - [x] Add computed selectors
 
-### 2. Implement Core Store
-- [x] Create the root store with combined slices
-- [x] Implement resource slice with basic CRUD operations
-- [x] Implement upgrades slice with activation/deactivation logic
-- [x] Implement logs slice for managing unlocked logs
-- [x] Add selectors for frequently accessed state
+- [x] Add persistence layer
+  - [x] Set up middleware for local storage
+  - [x] Implement versioning for migrations
+  - [x] Add hydration utilities
 
-### 3. Add Persistence Layer to Store
-- [x] Add persistence middleware to Zustand
-- [x] Implement a versioning mechanism for state structure
-- [x] Create migration functions for any future state structure changes
-- [x] Add validation before persisting state
+- [x] Create a testing framework
+  - [x] Set up devtools integration
+  - [x] Create a debug panel component
 
-### 4. Refactor One Component to Use New Store
-- [x] Choose a simple component (e.g., resource display)
-- [x] Refactor to use the Zustand store instead of context
-- [x] Test thoroughly before continuing
+- [x] Refactor components to use new store
+  - [x] Add selectors to optimize renders
+  - [x] Improve types for better type safety
 
-### 5. Gradually Migrate Components
-- [x] Refactor resource-related components
-  - [x] Migrate resource page component (resource-page-with-store.tsx)
-  - [x] Migrate offline progress component (resource-offline-progress-wrapper-with-store.tsx)
-  - [x] Create hook for accessing resources (useGameResources.ts)
-- [x] Refactor upgrade-related components
-  - [x] Create hook for accessing upgrades (useGameUpgrades.ts)
-  - [x] Implement upgrades panel component (upgrade-panel-with-store.tsx)
-  - [x] Create example upgrade panel page
-- [x] Refactor log-related components
-  - [x] Create hook for accessing logs (useGameLogs.ts)
-  - [x] Implement logs display component (log-display-with-store.tsx)
-  - [x] Create example logs display page
-- [ ] Update main page components
+- [x] Gradually migrate components
+  - [x] Refactor resource-related components
+    - [x] Create hook for accessing resources (useGameResources.ts)
+    - [x] Migrate resource page component (resource-page-with-store.tsx)
+    - [x] Migrate offline progress component (resource-offline-progress-wrapper-with-store.tsx)
+  - [x] Refactor upgrade-related components
+    - [x] Create hook for accessing upgrades (useGameUpgrades.ts)
+    - [x] Implement upgrade panel component (upgrade-panel-with-store.tsx)
+    - [x] Create example upgrade panel page
+  - [x] Refactor log-related components
+    - [x] Create hook for accessing logs (useGameLogs.ts)
+    - [x] Implement logs display component (log-display-with-store.tsx)
+    - [x] Create example logs display page
+  - [x] Update main page components
+    - [x] Create dashboard component with store integration (dashboard-with-store.tsx)
+    - [x] Build example dashboard page with all migrated components
+    - [x] Add offline progress handling to main components
 
-## Phase 2: Context Splitting & Database Layer
+## Phase 2: Context Splitting and Database Layer ✅
 
-### 1. Create Foundational Contexts
-- [ ] Create AuthContext focused only on authentication
-- [ ] Create DatabaseContext for raw database operations
-- [ ] Create GameSyncContext for syncing between local and remote state
+- [x] Create foundational contexts
+  - [x] Auth context for authentication only
+  - [x] Database context for raw database operations
+  - [x] User profile context for profile management
+  - [x] Game progress context for save/load operations
+  - [x] Create combined provider component
 
-### 2. Implement Repository Pattern
-- [ ] Create `repositories` directory structure:
-  ```
-  /repositories
-    BaseRepository.ts
-    GameRepository.ts
-    interfaces.ts
-    mappers.ts
-  ```
-- [ ] Implement BaseRepository with CRUD operations
-- [ ] Create GameRepository with specific game data operations
-- [ ] Implement mapper functions to transform between domain and database models
+- [x] Implement repository pattern
+  - [x] Create base repository interface
+  - [x] Implement Supabase repository
+  - [x] Implement domain-specific repositories
+  - [x] Create RepositoryProvider context
+  - [x] Add repository hooks
 
-### 3. Setup Save Queue System
-- [ ] Create SaveQueue class to manage pending saves
-- [ ] Implement retry logic for failed saves
-- [ ] Add conflict resolution for concurrent saves
-- [ ] Setup periodic background save mechanism
+- [x] Connect store with repositories
+  - [x] Set up sync store for tracking sync state
+  - [x] Implement debounced syncing
+  - [x] Add online/offline handling
 
-### 4. Create IndexedDB Backup System
-- [ ] Setup IndexedDB storage for game state backups
-- [ ] Implement versioned backup storage
-- [ ] Create backup recovery mechanisms
-- [ ] Add backup rotation to limit storage usage
+## Phase 3: Enhanced Logging System
 
-### 5. Replace SupabaseContext Usage
-- [ ] Update main components to use the new contexts
-- [ ] Replace direct Supabase calls with repository methods
-- [ ] Add hooks to sync store with repository
-- [ ] Test online/offline scenarios
+- [ ] Implement structured logging
+  - [ ] Set up log categories and levels
+  - [ ] Add trace IDs for related log events
+  - [ ] Create filtered log views
 
-## Phase 3: Game Engine & Resource System
+- [ ] Create log visualization components
+  - [ ] Build timeline view for logs
+  - [ ] Add detail expansion for log entries
+  - [ ] Implement contextual actions based on log type
+
+- [ ] Add achievements system
+  - [ ] Define achievement triggers based on logs
+  - [ ] Create achievement unlock notifications
+  - [ ] Build achievements dashboard
+
+## Phase 4: Performance Optimizations
+
+- [ ] Audit and optimize component renders
+  - [ ] Add memoization where beneficial
+  - [ ] Implement virtualized lists for large datasets
+  - [ ] Optimize animations and transitions
+
+- [ ] Improve data loading patterns
+  - [ ] Implement pagination for large datasets
+  - [ ] Add skeleton loaders for improved UX
+  - [ ] Optimize API call batching
+
+- [ ] Enhance offline capability
+  - [ ] Improve sync mechanisms
+  - [ ] Add conflict resolution
+  - [ ] Implement background processing for heavy calculations
+
+## Phase 5: Game Engine & Resource System
 
 ### 1. Create Core Game Engine
 - [ ] Create `engine` directory structure:
@@ -131,7 +137,7 @@
 - [ ] Move helper functions into appropriate resource classes
 - [ ] Update UI components to use new resource system
 
-## Phase 4: Upgrade & Progression Systems
+## Phase 6: Upgrade & Progression Systems
 
 ### 1. Create Upgrade System
 - [ ] Define upgrade interfaces and base classes
@@ -158,7 +164,7 @@
 - [ ] Implement upgrade requirements and dependencies
 - [ ] Add upgrade effects system
 
-## Phase 5: Event & Logging Systems
+## Phase 7: Event & Logging Systems
 
 ### 1. Create Event System
 - [ ] Implement EventEmitter class
@@ -178,7 +184,7 @@
 - [ ] Make logs reactive to game events
 - [ ] Implement event-based UI updates
 
-## Phase 6: Offline Progress Overhaul
+## Phase 8: Offline Progress Overhaul
 
 ### 1. Create Time-Related Services
 - [ ] Implement GameTime service
@@ -198,49 +204,8 @@
 - [ ] Create special offline events
 - [ ] Improve offline notification system
 
-## Phase 7: Code Reorganization & Testing
+## Phase 9: Code Reorganization & Testing
 
 ### 1. Restructure Application
 - [ ] Implement domain-driven directory structure:
   ```
-  /src
-    /core
-      /domain
-      /application
-      /infrastructure
-    /features
-      /resources
-      /upgrades
-      /logs
-      /progression
-    /ui
-      /components
-      /hooks
-      /pages
-  ```
-- [ ] Move components to feature-specific directories
-- [ ] Create interface boundaries between layers
-- [ ] Reduce coupling between modules
-
-### 2. Add Testing Infrastructure
-- [ ] Setup Jest/Testing Library configuration
-- [ ] Create test utilities for game state
-- [ ] Implement snapshot testing for state changes
-- [ ] Add unit tests for core game logic
-
-### 3. Finalize Documentation
-- [ ] Create architecture documentation
-- [ ] Document state management patterns
-- [ ] Add comments for complex logic
-- [ ] Create diagrams for system interactions
-
-## Implementation Order & Dependencies
-
-1. **Start with Zustand implementation** (Phase 1) as it provides immediate benefits
-2. **Refactor Repository Pattern** (Phase 2) to separate data concerns
-3. **Build Game Engine** (Phase 3) to centralize game logic
-4. **Enhance Resource System** (Phase 3) for better type safety
-5. **Implement Event System** (Phase 5) as foundation for other systems
-6. **Upgrade Progress Systems** (Phase 4) to leverage events
-7. **Refactor Offline Progress** (Phase 6) using the new architecture
-8. **Reorganize Codebase** (Phase 7) to solidify architecture 
