@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useGameEngine } from '@/src/ui/providers/GameEngineProvider';
 import { useGameResources } from '@/src/ui/hooks/useGameResources';
 import { useGameUpgrades } from '@/src/ui/hooks/useGameUpgrades';
@@ -13,46 +13,70 @@ const GameTest: React.FC = () => {
   const { logs, LogCategory, LogLevel } = useGameLogs();
   
   const [tickCount, setTickCount] = useState(0);
+  const isInitializedRef = useRef(false);
   
   // Initialize the game with some resources and upgrades
   useEffect(() => {
     if (!initialized || !game) return;
     
-    // Create energy resource if it doesn't exist
-    const energy = getResource('energy');
-    if (!energy) {
-      game.getResources().createResource({
-        id: 'energy',
-        name: 'Energy',
-        type: 'energy',
-        amount: 50,
-        capacity: 1000,
-        lastUpdated: new Date().toISOString()
-      });
-    }
-    
-    // Create minerals if they don't exist
-    const minerals = getResource('minerals');
-    if (!minerals) {
-      game.getResources().createResource({
-        id: 'minerals',
-        name: 'Minerals',
-        type: 'material',
-        amount: 25,
-        capacity: 500,
-        lastUpdated: new Date().toISOString()
-      });
+    // Initialize resources with error handling
+    const initializeResources = () => {
+      try {
+        // Create energy resource if it doesn't exist
+        const energy = getResource('energy');
+        if (!energy) {
+          game.getResources().createResource({
+            id: 'energy',
+            name: 'Energy',
+            type: 'energy',
+            amount: 50,
+            capacity: 1000,
+            lastUpdated: new Date().toISOString()
+          });
+        }
+        
+        // Create minerals if they don't exist
+        const minerals = getResource('minerals');
+        if (!minerals) {
+          game.getResources().createResource({
+            id: 'minerals',
+            name: 'Minerals',
+            type: 'material',
+            amount: 25,
+            capacity: 500,
+            lastUpdated: new Date().toISOString()
+          });
+        }
+      } catch (error: any) {
+        console.error('Error initializing resources:', error);
+        // Log to game logs as well
+        game.getLogs().createLog({
+          message: `Resource initialization error: ${error.message}`,
+          level: LogLevel.ERROR,
+          category: LogCategory.SYSTEM
+        });
+      }
+    };
+
+    // Only run initialization once
+    if (!isInitializedRef.current) {
+      initializeResources();
+      isInitializedRef.current = true;
     }
     
     // Set up a game ticker
     const interval = setInterval(() => {
       // Add some energy each tick
-      addResource('energy', 1);
-      setTickCount(prev => prev + 1);
+      try {
+        addResource('energy', 1);
+        setTickCount(prev => prev + 1);
+      } catch (error: any) {
+        console.error('Error in game tick:', error);
+      }
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [initialized, game, getResource, addResource]);
+  }, [initialized, game, getResource, addResource, LogLevel, LogCategory]);
   
   if (loading) {
     return <div className="p-4">Loading game engine...</div>;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useGameEngine } from '../providers/GameEngineProvider';
 import { useGameResources } from './useGameResources';
-import { Upgrade } from '../../domain/upgrades/models/UpgradeInterfaces';
+import { Upgrade } from '../../domain/upgrades/interfaces/UpgradeInterfaces';
 import { PurchaseUpgradeCommand } from '../../domain/commands/models/PurchaseUpgradeCommand';
 import { Command, CommandResult } from '../../core/game/GameInterfaces';
 

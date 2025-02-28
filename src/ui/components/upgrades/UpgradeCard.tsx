@@ -1,7 +1,9 @@
 import React from 'react';
 import { useGameUpgrades } from '../../hooks/useGameUpgrades';
 import { useGameResources } from '../../hooks/useGameResources';
-import { Upgrade } from '../../../domain/upgrades/models/UpgradeInterfaces';
+import { Upgrade } from '../../../domain/upgrades/interfaces/UpgradeInterfaces';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button';
 
 interface UpgradeCardProps {
   upgradeId: string;
