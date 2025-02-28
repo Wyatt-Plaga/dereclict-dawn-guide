@@ -13,6 +13,8 @@ import {
 import { ResourceManager } from './ResourceManager';
 import { DefaultCommandProcessor } from './CommandProcessor';
 import { EventManager } from './events/EventManager';
+import { UpgradeManager } from './upgrades/UpgradeManager';
+import { Upgrade, UpgradeRegistry } from './upgrades/interfaces';
 
 /**
  * Main Game Engine class
@@ -28,6 +30,9 @@ export class Game {
   // Event management system
   private eventEmitter: EventEmitter;
   
+  // Upgrade manager
+  private upgrades: UpgradeRegistry;
+  
   // Timestamp of last update
   private lastUpdate: number;
   
@@ -38,7 +43,7 @@ export class Game {
   private saveInterval: number = 60000; // 1 minute
   
   // Auto-save interval ID
-  private saveIntervalId?: ReturnType<typeof setInterval>;
+  private autoSaveTimer?: NodeJS.Timeout;
 
   /**
    * Initialize the game engine
@@ -54,6 +59,9 @@ export class Game {
     // Initialize event emitter
     this.eventEmitter = new EventManager();
     
+    // Initialize upgrade manager with event emitter
+    this.upgrades = new UpgradeManager(this.eventEmitter);
+    
     // Set last update to now
     this.lastUpdate = Date.now();
     
@@ -63,7 +71,7 @@ export class Game {
     }
     
     // Start auto-save
-    this.startAutoSave();
+    this.setupAutoSave();
   }
   
   /**
@@ -256,12 +264,12 @@ export class Game {
   /**
    * Start auto-saving
    */
-  private startAutoSave(): void {
-    if (this.saveIntervalId) {
-      clearInterval(this.saveIntervalId);
+  private setupAutoSave(): void {
+    if (this.autoSaveTimer) {
+      clearInterval(this.autoSaveTimer);
     }
     
-    this.saveIntervalId = setInterval(() => {
+    this.autoSaveTimer = setInterval(() => {
       // Emit save event
       this.emit({
         id: `save-${Date.now()}`,
@@ -279,7 +287,7 @@ export class Game {
    */
   public setSaveInterval(interval: number): void {
     this.saveInterval = interval;
-    this.startAutoSave();
+    this.setupAutoSave();
   }
   
   /**
@@ -287,8 +295,62 @@ export class Game {
    */
   public cleanup(): void {
     // Stop auto-save
-    if (this.saveIntervalId) {
-      clearInterval(this.saveIntervalId);
+    if (this.autoSaveTimer) {
+      clearInterval(this.autoSaveTimer);
     }
+    
+    // Clean up upgrades
+    this.upgrades.cleanup();
+  }
+  
+  /**
+   * Get the upgrade registry
+   * @returns Upgrade registry
+   */
+  public getUpgradeRegistry(): UpgradeRegistry {
+    return this.upgrades;
+  }
+  
+  /**
+   * Get an upgrade by ID
+   * @param id Upgrade ID
+   * @returns Upgrade or undefined
+   */
+  public getUpgrade(id: string): Upgrade | undefined {
+    return this.upgrades.getUpgrade(id);
+  }
+  
+  /**
+   * Register an upgrade
+   * @param upgrade Upgrade to register
+   */
+  public registerUpgrade(upgrade: Upgrade): void {
+    this.upgrades.registerUpgrade(upgrade);
+    
+    // Emit an event
+    this.eventEmitter.emit({
+      id: `upgrade_registered_${upgrade.properties.id}`,
+      type: 'upgrade:registered',
+      timestamp: Date.now(),
+      payload: {
+        upgradeId: upgrade.properties.id,
+        upgradeType: upgrade.properties.type
+      }
+    });
+  }
+  
+  /**
+   * Update upgrade availability based on the current game state
+   */
+  public updateUpgradeAvailability(): void {
+    this.upgrades.updateUpgradeAvailability();
+  }
+  
+  /**
+   * Apply all upgrade effects
+   * This should be called after loading a saved game or when the game state changes
+   */
+  public applyAllUpgradeEffects(): void {
+    this.upgrades.applyAllUpgradeEffects();
   }
 } 

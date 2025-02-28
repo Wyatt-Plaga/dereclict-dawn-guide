@@ -94,10 +94,10 @@
   - [ ] Add conflict resolution
   - [ ] Implement background processing for heavy calculations
 
-## Phase 5: Game Engine & Resource System
+## Phase 5: Game Engine & Resource System ✅
 
-### 1. Create Core Game Engine
-- [ ] Create `engine` directory structure:
+### 1. Create Core Game Engine ✅
+- [x] Create `engine` directory structure:
   ```
   /engine
     Game.ts
@@ -106,13 +106,13 @@
     events/
     interfaces.ts
   ```
-- [ ] Implement basic Game class to manage state
-- [ ] Create CommandProcessor for action handling
-- [ ] Define core command interfaces
+- [x] Implement basic Game class to manage state
+- [x] Create CommandProcessor for action handling
+- [x] Define core command interfaces
 
-### 2. Implement Resource System
-- [ ] Create base Resource class
-- [ ] Implement specific resource subclasses:
+### 2. Implement Resource System ✅
+- [x] Create base Resource class
+- [x] Implement specific resource subclasses:
   ```typescript
   class Resource<T extends ResourceProperties> {
     /* Common resource functionality */
@@ -122,26 +122,31 @@
     /* Energy-specific functionality */
   }
   ```
-- [ ] Create ResourceRegistry to manage all resources
-- [ ] Implement ResourceFactory for creating resources
+- [x] Create ResourceRegistry to manage all resources
+- [x] Implement ResourceFactory for creating resources
 
-### 3. Add Resource Commands
-- [ ] Create resource-related commands (Add, Consume, etc.)
-- [ ] Implement validation in commands
-- [ ] Add command history tracking
-- [ ] Connect commands to store updates
+### 3. Add Resource Commands ✅
+- [x] Create resource-related commands (Add, Consume, etc.)
+- [x] Implement validation in commands
+- [x] Add command history tracking
+- [x] Connect commands to store updates
 
-### 4. Migrate Resource Calculations
-- [ ] Move resource calculations from components to Game Engine
-- [ ] Refactor ResourceManager class into new architecture
-- [ ] Move helper functions into appropriate resource classes
-- [ ] Update UI components to use new resource system
+### 4. Migrate Resource Calculations ✅
+- [x] Move resource calculations from components to Game Engine
+- [x] Refactor ResourceManager class into new architecture
+- [x] Move helper functions into appropriate resource classes
+- [x] Update UI components to use new resource system
 
-## Phase 6: Upgrade & Progression Systems
+### 5. Notes on State Update Strategy ℹ️
+- For continuous resource updates common in idle games, we've implemented a polling-based approach using intervals instead of event listeners for every resource change
+- Event system is reserved for significant game events rather than routine resource updates
+- This approach improves performance by reducing the overhead of frequent event emissions
 
-### 1. Create Upgrade System
-- [ ] Define upgrade interfaces and base classes
-- [ ] Implement various upgrade types:
+## Phase 6: Upgrade & Progression Systems ✅
+
+### 1. Create Upgrade System ✅
+- [x] Define upgrade interfaces and base classes
+- [x] Implement various upgrade types:
   ```
   /engine/upgrades
     BaseUpgrade.ts
@@ -149,20 +154,20 @@
     UnlockUpgrade.ts
     EffectUpgrade.ts
   ```
-- [ ] Create UpgradeRegistry for managing available upgrades
-- [ ] Implement UpgradeManager for handling activation
+- [x] Create UpgradeRegistry for managing available upgrades
+- [x] Implement UpgradeManager for handling activation
 
-### 2. Refactor Milestone System
-- [ ] Create data-driven milestone definitions
-- [ ] Implement MilestoneRegistry for tracking all milestones
-- [ ] Create compound milestone conditions
-- [ ] Connect milestones to game events
+### 2. Refactor Milestone System ✅
+- [x] Create data-driven milestone definitions
+- [x] Implement MilestoneRegistry for tracking all milestones
+- [x] Create compound milestone conditions
+- [x] Connect milestones to game events
 
-### 3. Connect Upgrades to Game Systems
-- [ ] Link upgrades to resource production/capacity
-- [ ] Connect upgrades to game progression
-- [ ] Implement upgrade requirements and dependencies
-- [ ] Add upgrade effects system
+### 3. Connect Upgrades to Game Systems ✅
+- [x] Link upgrades to resource production/capacity
+- [x] Connect upgrades to game progression
+- [x] Implement upgrade requirements and dependencies
+- [x] Add upgrade effects system
 
 ## Phase 7: Event & Logging Systems
 
