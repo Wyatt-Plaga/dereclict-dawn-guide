@@ -87,5 +87,4 @@ export interface GameProgress {
   unlockedLogs: number[];
   lastOnline: string; // ISO timestamp
   page_timestamps?: Record<string, string>; // Timestamps for when each page was last visited
-  availablePages: string[]; // Pages that are available to access
 } 

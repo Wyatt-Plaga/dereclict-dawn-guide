@@ -22,19 +22,16 @@ export const createUpgradesSlice: StateCreator<
       // Set the upgrade to true (unlocked)
       state.upgrades[upgradeId] = true;
       
-      // If this is a wing unlock, add the page to available pages
+      // Special handling for wing unlock upgrades
       if (upgradeId === 'unlock-wing') {
-        if (!state.availablePages.includes('processor')) {
-          state.availablePages.push('processor');
-        }
+        // Wing selection will be handled by the UI component
+        console.log('Wing selection upgrade unlocked');
       } else if (upgradeId === 'unlock-next-wing') {
-        if (!state.availablePages.includes('crew-quarters')) {
-          state.availablePages.push('crew-quarters');
-        }
+        // Directly set the crew-quarters wing as selected
+        state.upgrades['selected-wing-crew-quarters'] = true;
       } else if (upgradeId === 'unlock-final-wing') {
-        if (!state.availablePages.includes('manufacturing')) {
-          state.availablePages.push('manufacturing');
-        }
+        // Directly set the manufacturing wing as selected
+        state.upgrades['selected-wing-manufacturing'] = true;
       }
     });
   }

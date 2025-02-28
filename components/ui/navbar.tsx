@@ -19,18 +19,21 @@ export function NavBar() {
   const { status, statusText, shouldFlicker } = useSystemStatus()
   const { gameProgress } = useSupabase()
   
-  // Filter navigation items based on available pages
-  const availablePages = gameProgress?.availablePages || ['reactor']
-  
-  // Always add logs page
-  if (!availablePages.includes('logs')) {
-    availablePages.push('logs')
-  }
+  // Determine which pages are available based on upgrades
+  const getIsPageAvailable = (pageName: string) => {
+    // Reactor is always available
+    if (pageName === 'reactor' || pageName === 'logs') return true;
+    
+    // Check if the wing has been selected/unlocked
+    if (gameProgress?.upgrades) {
+      return !!gameProgress.upgrades[`selected-wing-${pageName}`];
+    }
+    
+    return false;
+  };
   
   // Filter navigation to only show available pages
-  const navigation = allNavigation.filter(item => 
-    availablePages.includes(item.page)
-  )
+  const navigation = allNavigation.filter(item => getIsPageAvailable(item.page));
 
   return (
     <nav className="system-panel p-2 md:p-4 fixed bottom-0 left-0 right-0 md:left-4 md:top-4 md:bottom-4 md:w-64 flex md:flex-col gap-1 z-10">

@@ -136,13 +136,11 @@ export function ResourcePageWithStore({
         
         // Check if any milestones have been reached - pass unlockLog and unlockUpgrade directly
         unlockLog && unlockUpgrade && checkResourceMilestones(
-          // Create minimal GameProgress object with just what's needed
           { 
             resources: { [resourceType]: { amount: newValue } },
             upgrades: {},
             unlockedLogs: [],
             lastOnline: new Date().toISOString(),
-            availablePages: [],
             page_timestamps: {}
           }, 
           resourceType, 
@@ -171,13 +169,11 @@ export function ResourcePageWithStore({
     
     // Check if any milestones have been reached - pass unlockLog and unlockUpgrade directly
     unlockLog && unlockUpgrade && checkResourceMilestones(
-      // Create minimal GameProgress object with just what's needed
       { 
         resources: { [resourceType]: { amount: newValue } },
         upgrades: {},
         unlockedLogs: [],
         lastOnline: new Date().toISOString(),
-        availablePages: [],
         page_timestamps: {}
       }, 
       resourceType, 

@@ -144,11 +144,10 @@ export function UpgradePanelExample() {
 function StoreStateDebug() {
   const resources = useGameStore(state => state.resources)
   const upgrades = useGameStore(state => state.upgrades)
-  const availablePages = useGameStore(state => state.availablePages)
   
   return (
     <pre>
-      {JSON.stringify({ resources, upgrades, availablePages }, null, 2)}
+      {JSON.stringify({ resources, upgrades }, null, 2)}
     </pre>
   )
 } 

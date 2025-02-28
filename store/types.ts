@@ -16,7 +16,6 @@ export interface GameState {
   unlockedLogs: number[];
   lastOnline: string; // ISO timestamp
   pageTimestamps: Record<string, string>; // Timestamps for when each page was last visited
-  availablePages: string[]; // Pages that are available to access
   isLoading: boolean;
   error: string | null;
   version?: number; // Optional version field for migrations
@@ -40,7 +39,6 @@ export interface GameActions {
   
   // Page actions
   updatePageTimestamp: (pageName: string) => void;
-  addAvailablePage: (pageName: string) => void;
   
   // General state actions
   setGameState: (gameProgress: GameProgress) => void;

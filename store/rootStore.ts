@@ -34,7 +34,6 @@ export const useGameStore = create(
         isLoading: false,
         error: null,
         pageTimestamps: {},
-        availablePages: ['dashboard'],
         version: 1,
         
         // Include slices
@@ -64,14 +63,7 @@ export const useGameStore = create(
         
         setLoading: (isLoading) => set({ isLoading }),
         setError: (error) => set({ error }),
-        resetError: () => set({ error: null }),
-        addAvailablePage: (pageName) => {
-          // @ts-ignore - We know availablePages exists
-          const { availablePages } = get();
-          if (!availablePages.includes(pageName)) {
-            set({ availablePages: [...availablePages, pageName] });
-          }
-        }
+        resetError: () => set({ error: null })
       };
     },
     {
@@ -84,7 +76,6 @@ export const useGameStore = create(
         unlockedLogs: state.unlockedLogs,
         logs: state.logs,
         lastOnline: state.lastOnline,
-        availablePages: state.availablePages,
         pageTimestamps: state.pageTimestamps
       })
     }
@@ -116,7 +107,6 @@ if (process.env.NODE_ENV === 'development') {
       isLoading: false,
       error: null,
       pageTimestamps: {},
-      availablePages: ['dashboard'],
       version: 1
     });
     console.log('Game state reset to initial values');

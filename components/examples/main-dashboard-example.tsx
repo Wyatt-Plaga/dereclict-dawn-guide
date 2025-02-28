@@ -20,10 +20,13 @@ export function MainDashboardExample() {
     // Set last online time to now
     setGameState({
       resources: {},
-      upgrades: {},
+      upgrades: {
+        "selected-wing-dashboard": true,
+        "selected-wing-logs": true,
+        "selected-wing-upgrades": true
+      },
       unlockedLogs: [1, 2, 3],
       lastOnline: new Date().toISOString(),
-      availablePages: ["dashboard", "logs", "upgrades"],
       page_timestamps: {
         dashboard: new Date().toISOString()
       }

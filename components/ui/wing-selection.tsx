@@ -44,13 +44,16 @@ export function WingSelection({ onClose }: WingSelectionProps) {
     const wing = wings.find(w => w.id === selectedWing);
     if (!wing) return;
     
-    // Add the selected wing to available pages
-    const updatedAvailablePages = [...(gameProgress.availablePages || ['reactor']), selectedWing];
+    // Update the upgrades object with the selected wing flag
+    const updatedUpgrades = {
+      ...(gameProgress.upgrades || {}),
+      [`selected-wing-${selectedWing}`]: true
+    };
     
     // Update game progress
     const updatedProgress = {
       ...gameProgress,
-      availablePages: updatedAvailablePages
+      upgrades: updatedUpgrades
     };
     
     // Save changes

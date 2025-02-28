@@ -62,10 +62,15 @@ export const selectIsLogUnlocked = (state: GameStore, logId: number) =>
   state.unlockedLogs.includes(logId);
 
 // Page selectors
-export const selectAvailablePages = (state: GameStore) => state.availablePages;
-
-export const selectIsPageAvailable = (state: GameStore, pageName: string) => 
-  state.availablePages.includes(pageName);
+export const selectIsPageAvailable = (state: GameStore, pageName: string) => {
+  // Reactor and logs are always available
+  if (pageName === 'reactor' || pageName === 'logs') {
+    return true;
+  }
+  
+  // Check if the wing has been selected/unlocked via the upgrades object
+  return state.upgrades[`selected-wing-${pageName}`] || false;
+};
 
 export const selectPageTimestamp = (state: GameStore, pageName: string) => 
   state.pageTimestamps[pageName] || null;

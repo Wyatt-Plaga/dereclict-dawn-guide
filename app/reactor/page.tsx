@@ -14,9 +14,10 @@ export default function ReactorPage() {
   useEffect(() => {
     if (gameProgress?.upgrades && gameProgress.upgrades['unlock-wing']) {
       // Only show if we haven't unlocked any other wings yet
-      const hasUnlockedWings = ['processor', 'crew-quarters', 'manufacturing'].some(
-        wing => gameProgress.availablePages?.includes(wing)
-      );
+      const hasUnlockedWings = 
+        gameProgress.upgrades['selected-wing-processor'] || 
+        gameProgress.upgrades['selected-wing-crew-quarters'] || 
+        gameProgress.upgrades['selected-wing-manufacturing'];
       
       if (!hasUnlockedWings) {
         setShowWingSelection(true);
