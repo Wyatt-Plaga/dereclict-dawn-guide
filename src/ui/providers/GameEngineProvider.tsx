@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Game } from '../../core/game/Game';
-import { GameEngineState } from '../../core/game/GameInterfaces';
+import { Game } from '../../../engine/Game';
+import { GameEngineState } from '../../../engine/interfaces';
 
 // Define the context type
 interface GameEngineContextType {
