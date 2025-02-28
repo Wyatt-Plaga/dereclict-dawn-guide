@@ -5,6 +5,7 @@ import { ResourcePage } from "@/components/resources/resource-page"
 import { energyConfig } from "@/components/resources/resource-config"
 import { useSupabase } from "@/utils/supabase/context"
 import { WingSelection } from "@/components/ui/wing-selection"
+import { GameEngineLayout } from "@/src/ui/layouts/GameEngineLayout"
 
 export default function ReactorPage() {
   const { gameProgress, unlockLog, unlockUpgrade } = useSupabase();
@@ -25,15 +26,16 @@ export default function ReactorPage() {
   }, [gameProgress]);
   
   return (
-    <>
+    <GameEngineLayout>
+      {/* Use the original ResourcePage component for now */}
       <ResourcePage 
-        {...energyConfig} 
+        {...energyConfig}
         unlockLog={unlockLog}
         unlockUpgrade={unlockUpgrade}
       />
       {showWingSelection && (
         <WingSelection onClose={() => setShowWingSelection(false)} />
       )}
-    </>
+    </GameEngineLayout>
   );
 } 
