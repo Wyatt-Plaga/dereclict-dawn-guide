@@ -202,8 +202,28 @@ export function checkResourceMilestones(
   
   // Check each milestone
   milestones.forEach(milestone => {
+    // First, check if this milestone was already completed by looking for corresponding upgrade flags
+    // For wing unlocks, check the appropriate unlock-wing-X flags
+    let milestoneCompleted = false;
+    
+    // For energy milestones at specific thresholds, check corresponding unlock flags
+    if (resourceType === 'energy' && milestone.threshold === 100 && gameProgress.upgrades['unlock-wing-1']) {
+      milestoneCompleted = true;
+    } else if (resourceType === 'energy' && milestone.threshold === 500 && gameProgress.upgrades['unlock-wing-2']) {
+      milestoneCompleted = true;
+    } else if (resourceType === 'energy' && milestone.threshold === 1000 && gameProgress.upgrades['unlock-wing-3']) {
+      milestoneCompleted = true;
+    } 
+    // Add other milestone checks as needed
+    else if (milestone.completed) {
+      milestoneCompleted = true;
+    }
+    
     // Skip if already marked as completed
-    if (milestone.completed) return;
+    if (milestoneCompleted) {
+      milestone.completed = true;
+      return;
+    }
     
     // Check if we've reached the threshold
     if (amount >= milestone.threshold) {

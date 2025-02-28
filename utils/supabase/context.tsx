@@ -675,44 +675,14 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         // Special handling for wing unlock upgrades
         if (upgradeId === 'unlock-wing-1') {
-            // First wing unlock - Will be handled by a special UI component
+            // First wing unlock - Will be handled by the UI component
             console.log('First wing selection upgrade unlocked at 100 energy');
         } else if (upgradeId === 'unlock-wing-2') {
-            // Second wing unlock
-            console.log('Second wing unlock at 500 energy');
-            
-            // If the player already selected a wing, we can automatically
-            // unlock the next available wing
-            const selectedWingProcessor = gameProgress.upgrades && gameProgress.upgrades['selected-wing-processor'];
-            const selectedWingCrewQuarters = gameProgress.upgrades && gameProgress.upgrades['selected-wing-crew-quarters'];
-            const selectedWingManufacturing = gameProgress.upgrades && gameProgress.upgrades['selected-wing-manufacturing'];
-            
-            if (selectedWingProcessor && !selectedWingCrewQuarters) {
-                // If processor is unlocked, unlock crew quarters
-                updatedUpgrades['selected-wing-crew-quarters'] = true;
-                console.log('Crew quarters automatically unlocked as second wing');
-            } else if (selectedWingCrewQuarters && !selectedWingProcessor) {
-                // If crew quarters is unlocked, unlock processor
-                updatedUpgrades['selected-wing-processor'] = true;
-                console.log('Processor automatically unlocked as second wing');
-            } else if (selectedWingManufacturing) {
-                // If manufacturing is already unlocked, unlock processor as next best option
-                updatedUpgrades['selected-wing-processor'] = true;
-                console.log('Processor automatically unlocked as second wing');
-            } else {
-                // If no wing is selected yet, this will be handled by UI later
-                console.log('No wing selected yet, second wing selection will be shown when needed');
-            }
+            // Second wing unlock - Will be handled by the UI component
+            console.log('Second wing unlock at 500 energy - showing selection modal');
         } else if (upgradeId === 'unlock-wing-3') {
-            // Third wing unlock
-            console.log('Third wing unlock at 1000 energy');
-            
-            // Automatically unlock all wings
-            updatedUpgrades['selected-wing-processor'] = true;
-            updatedUpgrades['selected-wing-crew-quarters'] = true;
-            updatedUpgrades['selected-wing-manufacturing'] = true;
-            
-            console.log('All wings automatically unlocked');
+            // Third wing unlock - Will be handled by the UI component
+            console.log('Third wing unlock at 1000 energy - showing selection modal');
         }
 
         // Update the game progress

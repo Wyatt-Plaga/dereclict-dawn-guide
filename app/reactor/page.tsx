@@ -76,6 +76,28 @@ export default function ReactorPage() {
         <span>God Mode {godMode ? 'ON' : 'OFF'}</span>
       </button>
       
+      {/* Debug Button */}
+      <button 
+        onClick={() => {
+          console.log('======= GAME STATE DEBUG =======');
+          console.log('Wing Unlocks:');
+          console.log('- Wing 1:', gameProgress?.upgrades['unlock-wing-1'] ? 'UNLOCKED' : 'Locked');
+          console.log('- Wing 2:', gameProgress?.upgrades['unlock-wing-2'] ? 'UNLOCKED' : 'Locked');
+          console.log('- Wing 3:', gameProgress?.upgrades['unlock-wing-3'] ? 'UNLOCKED' : 'Locked');
+          console.log('Selected Wings:');
+          console.log('- Processor:', gameProgress?.upgrades['selected-wing-processor'] ? 'SELECTED' : 'Not Selected');
+          console.log('- Crew Quarters:', gameProgress?.upgrades['selected-wing-crew-quarters'] ? 'SELECTED' : 'Not Selected');
+          console.log('- Manufacturing:', gameProgress?.upgrades['selected-wing-manufacturing'] ? 'SELECTED' : 'Not Selected');
+          console.log('Energy Amount:', gameProgress?.resources.energy?.amount);
+          console.log('All Upgrades:', gameProgress?.upgrades);
+          console.log('==============================');
+        }}
+        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center space-x-2 shadow-lg"
+      >
+        <AlertCircle className="h-5 w-5" />
+        <span>Debug State</span>
+      </button>
+      
       {/* Reset Button */}
       <button 
         onClick={handleResetClick}
