@@ -76,7 +76,8 @@ export function ResourcePage({
     gameProgress, 
     triggerSave, 
     updatePageTimestamp, 
-    calculateResourceOfflineProgress 
+    calculateResourceOfflineProgress,
+    godMode
   } = useSupabase()
   
   const { shouldFlicker } = useSystemStatus()
@@ -161,8 +162,11 @@ export function ResourcePage({
     const currentAmount = ResourceManager.getResourceProperty(gameProgress, resourceType, 'amount');
     const currentCapacity = ResourceManager.getResourceProperty(gameProgress, resourceType, 'capacity');
     
+    // Apply god mode multiplier if enabled (10x resources)
+    const generationAmount = godMode ? manualGenerationAmount * 10 : manualGenerationAmount;
+    
     // Calculate new value, respecting capacity
-    const newValue = Math.min(currentAmount + manualGenerationAmount, currentCapacity);
+    const newValue = Math.min(currentAmount + generationAmount, currentCapacity);
     
     // Update and save automatically using ResourceManager
     ResourceManager.updateResource(
@@ -180,7 +184,7 @@ export function ResourcePage({
     if (typeof unlockLog === 'function' && typeof unlockUpgrade === 'function') {
       checkResourceMilestones(gameProgress, resourceType, unlockLog, unlockUpgrade);
     }
-  }, [gameProgress, resourceType, manualGenerationAmount, triggerSave, unlockLog, unlockUpgrade]);
+  }, [gameProgress, resourceType, manualGenerationAmount, triggerSave, unlockLog, unlockUpgrade, godMode]);
   
   // Handle upgrade
   const handleUpgrade = useCallback((upgrade: ResourceUpgrade) => {
@@ -262,7 +266,8 @@ export function ResourcePage({
               </div>
               <span className="terminal-text">{generateButtonLabel}</span>
               <span className="text-xs text-muted-foreground mt-1">
-                {generateResourceLabel} {formatValue(manualGenerationAmount)} {resourceName} per click
+                {generateResourceLabel} {formatValue(godMode ? manualGenerationAmount * 10 : manualGenerationAmount)} {resourceName} per click
+                {godMode && <span className="ml-1 text-success font-bold"> (GOD MODE)</span>}
               </span>
             </div>
           </button>

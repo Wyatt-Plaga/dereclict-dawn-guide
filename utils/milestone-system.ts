@@ -40,16 +40,42 @@ export const energyMilestones: ResourceMilestone[] = [
     }
   },
   
-  // Third milestone - 1000 energy - unlocks the next wing selection and a log
+  // Third milestone - 100 energy - unlocks the first wing selection and a log
   {
     resourceType: 'energy',
-    threshold: 1000,
+    threshold: 100,
     onReached: (gameProgress, unlockLog, unlockUpgrade) => {
       // Unlock the log about the ship wings
       unlockLog(11); // Using new log ID 11
       
-      // Unlock special upgrade for selecting the next wing
-      unlockUpgrade('unlock-wing');
+      // Unlock first wing, setting the wing count to 1
+      unlockUpgrade('unlock-wing-1');
+    }
+  },
+  
+  // Fourth milestone - 500 energy - unlocks the second wing and a log
+  {
+    resourceType: 'energy',
+    threshold: 500,
+    onReached: (gameProgress, unlockLog, unlockUpgrade) => {
+      // Unlock the log about expanding to more wings
+      unlockLog(20); // Using new log ID for second wing unlock
+      
+      // Unlock second wing, setting the wing count to 2
+      unlockUpgrade('unlock-wing-2');
+    }
+  },
+  
+  // Fifth milestone - 1000 energy - unlocks the third wing and a log
+  {
+    resourceType: 'energy',
+    threshold: 1000,
+    onReached: (gameProgress, unlockLog, unlockUpgrade) => {
+      // Unlock the log about accessing the final wing
+      unlockLog(21); // Using new log ID for third wing unlock
+      
+      // Unlock third wing, setting the wing count to 3
+      unlockUpgrade('unlock-wing-3');
     }
   }
 ];
@@ -99,20 +125,20 @@ export const crewMilestones: ResourceMilestone[] = [
     }
   },
   
-  // Second milestone - 10 crew - unlocks automation and a log
+  // Second milestone - 5 crew (reduced from 10) - unlocks automation and a log
   {
     resourceType: 'crew',
-    threshold: 10,
+    threshold: 5,
     onReached: (gameProgress, unlockLog, unlockUpgrade) => {
       unlockLog(16);
       unlockUpgrade('crew-generation');
     }
   },
   
-  // Third milestone - 25 crew - unlocks next wing and a log
+  // Third milestone - 15 crew (reduced from 25) - unlocks next wing and a log
   {
     resourceType: 'crew',
-    threshold: 25,
+    threshold: 15,
     onReached: (gameProgress, unlockLog, unlockUpgrade) => {
       unlockLog(17);
       unlockUpgrade('unlock-final-wing');

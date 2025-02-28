@@ -2,7 +2,10 @@
 
 import { ResourcePage } from "@/components/resources/resource-page"
 import { insightConfig } from "@/components/resources/resource-config"
+import { useSupabase } from "@/utils/supabase/context"
 
 export default function ProcessorPage() {
-  return <ResourcePage {...insightConfig} />
+  const { unlockLog, unlockUpgrade } = useSupabase();
+  
+  return <ResourcePage {...insightConfig} unlockLog={unlockLog} unlockUpgrade={unlockUpgrade} />
 } 

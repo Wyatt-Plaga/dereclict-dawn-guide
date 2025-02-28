@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CpuIcon, Users, Wrench } from 'lucide-react';
 import { useSupabase } from "@/utils/supabase/context";
 
@@ -9,8 +9,11 @@ interface WingSelectionProps {
 export function WingSelection({ onClose }: WingSelectionProps) {
   const [selectedWing, setSelectedWing] = useState<string | null>(null);
   const { gameProgress, triggerSave, unlockLog } = useSupabase();
+  const [availableWings, setAvailableWings] = useState<any[]>([]);
+  const [selectionTitle, setSelectionTitle] = useState('Select Wing to Restore');
   
-  const wings = [
+  // Define all possible wings
+  const allWings = [
     {
       id: 'processor',
       title: 'Quantum Processor',
@@ -37,11 +40,54 @@ export function WingSelection({ onClose }: WingSelectionProps) {
     }
   ];
   
+  // Determine which wings are available for selection based on game progress
+  useEffect(() => {
+    if (!gameProgress?.upgrades) return;
+    
+    // Get the currently unlocked wings
+    const hasSelectedProcessor = gameProgress.upgrades['selected-wing-processor'];
+    const hasSelectedCrewQuarters = gameProgress.upgrades['selected-wing-crew-quarters'];
+    const hasSelectedManufacturing = gameProgress.upgrades['selected-wing-manufacturing'];
+    
+    // Count how many wings are selected
+    const selectedWingCount = [
+      hasSelectedProcessor,
+      hasSelectedCrewQuarters,
+      hasSelectedManufacturing
+    ].filter(Boolean).length;
+    
+    // Count how many wings should be unlocked based on milestones
+    let totalWingsUnlocked = 0;
+    if (gameProgress.upgrades['unlock-wing-1']) totalWingsUnlocked = 1;
+    if (gameProgress.upgrades['unlock-wing-2']) totalWingsUnlocked = 2;
+    if (gameProgress.upgrades['unlock-wing-3']) totalWingsUnlocked = 3;
+    
+    // Filter out wings that are already selected
+    const unselectedWings = allWings.filter(wing => {
+      return !(
+        (wing.id === 'processor' && hasSelectedProcessor) ||
+        (wing.id === 'crew-quarters' && hasSelectedCrewQuarters) ||
+        (wing.id === 'manufacturing' && hasSelectedManufacturing)
+      );
+    });
+    
+    // Update the title based on how many wings are being selected
+    if (selectedWingCount === 0) {
+      setSelectionTitle('Select First Wing to Restore');
+    } else if (selectedWingCount === 1) {
+      setSelectionTitle('Select Second Wing to Restore');
+    } else if (selectedWingCount === 2) {
+      setSelectionTitle('Select Final Wing to Restore');
+    }
+    
+    setAvailableWings(unselectedWings);
+  }, [gameProgress]);
+  
   const confirmSelection = () => {
     if (!selectedWing || !gameProgress) return;
     
     // Get the selected wing data
-    const wing = wings.find(w => w.id === selectedWing);
+    const wing = availableWings.find(w => w.id === selectedWing);
     if (!wing) return;
     
     // Update the upgrades object with the selected wing flag
@@ -69,14 +115,14 @@ export function WingSelection({ onClose }: WingSelectionProps) {
   // Get the color class for the selected wing
   const getSelectedWingColor = () => {
     if (!selectedWing) return '';
-    const wing = wings.find(w => w.id === selectedWing);
+    const wing = availableWings.find(w => w.id === selectedWing);
     return wing ? wing.iconColor : '';
   };
   
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
       <div className="system-panel max-w-2xl w-full p-6">
-        <h2 className="text-2xl font-bold text-primary mb-4">Ship Wing Selection</h2>
+        <h2 className="text-2xl font-bold text-primary mb-4">{selectionTitle}</h2>
         
         <p className="text-muted-foreground mb-6">
           With sufficient energy reserves, you can now restore power to one wing of the ship. 
@@ -85,7 +131,7 @@ export function WingSelection({ onClose }: WingSelectionProps) {
         </p>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {wings.map(wing => (
+          {availableWings.map(wing => (
             <div 
               key={wing.id}
               className={`system-panel p-4 cursor-pointer transition-all ${

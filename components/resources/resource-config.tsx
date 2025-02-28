@@ -97,9 +97,9 @@ export const crewConfig = {
       name: 'Living Quarters',
       description: 'Expand crew quarters to house up to {value} crew members',
       icon: Home,
-      costMultiplier: 1,
-      getCost: (current) => current * 2,
-      getNextValue: (current) => current + 5,
+      costMultiplier: 0.8,
+      getCost: (current) => Math.floor(current * 0.8),
+      getNextValue: (current) => current + 3,
       propertyToUpgrade: 'capacity'
     },
     {
@@ -107,8 +107,8 @@ export const crewConfig = {
       name: 'Worker Crew',
       description: 'Add a new worker crew generating +0.1 crew per second',
       icon: Users,
-      costMultiplier: 10,
-      getCost: (current) => (current + 1) * 10,
+      costMultiplier: 6,
+      getCost: (current) => (current + 1) * 6,
       getNextValue: (current) => current + 1,
       propertyToUpgrade: 'workerCrews'
     }
