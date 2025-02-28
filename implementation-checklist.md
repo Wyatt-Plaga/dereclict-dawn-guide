@@ -3,8 +3,8 @@
 ## Phase 1: State Management Overhaul (Zustand Implementation)
 
 ### 1. Setup Basic State Management
-- [ ] Install Zustand and related packages: `npm install zustand immer zustand-middleware-immer`
-- [ ] Create a new directory structure for state management:
+- [x] Install Zustand and related packages: `npm install zustand immer zustand-middleware-immer`
+- [x] Create a new directory structure for state management:
   ```
   /store
     /slices
@@ -15,28 +15,31 @@
     rootStore.ts
     types.ts
   ```
-- [ ] Create basic store types that mirror current game state structure
+- [x] Create basic store types that mirror current game state structure
 
 ### 2. Implement Core Store
-- [ ] Create the root store with combined slices
-- [ ] Implement resource slice with basic CRUD operations
-- [ ] Implement upgrades slice with activation/deactivation logic
-- [ ] Implement logs slice for managing unlocked logs
-- [ ] Add selectors for frequently accessed state
+- [x] Create the root store with combined slices
+- [x] Implement resource slice with basic CRUD operations
+- [x] Implement upgrades slice with activation/deactivation logic
+- [x] Implement logs slice for managing unlocked logs
+- [x] Add selectors for frequently accessed state
 
 ### 3. Add Persistence Layer to Store
-- [ ] Add persistence middleware to Zustand
-- [ ] Implement a versioning mechanism for state structure
-- [ ] Create migration functions for any future state structure changes
-- [ ] Add validation before persisting state
+- [x] Add persistence middleware to Zustand
+- [x] Implement a versioning mechanism for state structure
+- [x] Create migration functions for any future state structure changes
+- [x] Add validation before persisting state
 
 ### 4. Refactor One Component to Use New Store
-- [ ] Choose a simple component (e.g., resource display)
-- [ ] Refactor to use the Zustand store instead of context
-- [ ] Test thoroughly before continuing
+- [x] Choose a simple component (e.g., resource display)
+- [x] Refactor to use the Zustand store instead of context
+- [x] Test thoroughly before continuing
 
 ### 5. Gradually Migrate Components
-- [ ] Refactor resource-related components
+- [x] Refactor resource-related components
+  - [x] Migrate resource page component (resource-page-with-store.tsx)
+  - [x] Migrate offline progress component (resource-offline-progress-wrapper-with-store.tsx)
+  - [x] Create hook for accessing resources (useGameResources.ts)
 - [ ] Refactor upgrade-related components
 - [ ] Refactor log-related components
 - [ ] Update main page components
