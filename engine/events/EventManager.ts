@@ -12,6 +12,27 @@ export class EventManager implements EventEmitter {
   private onceListeners: WeakMap<EventListener, boolean> = new WeakMap();
   
   /**
+   * Event history for debugging purposes
+   * Stores recent events for inspection
+   */
+  private eventHistory: GameEvent[] = [];
+  
+  /**
+   * Maximum number of events to keep in history
+   */
+  private maxEventHistorySize: number = 100;
+  
+  /**
+   * Create a new event manager
+   * @param options Configuration options
+   */
+  constructor(options?: { maxEventHistorySize?: number }) {
+    if (options?.maxEventHistorySize) {
+      this.maxEventHistorySize = options.maxEventHistorySize;
+    }
+  }
+  
+  /**
    * Subscribe to an event type
    * @param eventType Type of event to listen for
    * @param listener Callback function when event is emitted
@@ -75,6 +96,9 @@ export class EventManager implements EventEmitter {
    * @param event Event object to emit
    */
   public emit(event: GameEvent): void {
+    // Add event to history
+    this.addToHistory(event);
+    
     const eventType = event.type;
     
     // Exit early if no listeners for this event type
@@ -86,13 +110,67 @@ export class EventManager implements EventEmitter {
     const eventListeners = Array.from(this.listeners.get(eventType)!);
     
     // Call each listener
+    const listenersToRemove: EventListener[] = [];
+    
     for (const listener of eventListeners) {
       try {
         listener(event);
+        
+        // If this is a one-time listener, mark it for removal
+        if (this.onceListeners.has(listener)) {
+          listenersToRemove.push(listener);
+        }
       } catch (error) {
         console.error(`Error in event listener for ${eventType}:`, error);
       }
     }
+    
+    // Remove any one-time listeners that were called
+    for (const listener of listenersToRemove) {
+      this.off(eventType, listener);
+    }
+  }
+  
+  /**
+   * Add an event to the history
+   * @param event Event to add
+   */
+  private addToHistory(event: GameEvent): void {
+    this.eventHistory.push(event);
+    
+    // Trim history if it's too large
+    if (this.eventHistory.length > this.maxEventHistorySize) {
+      this.eventHistory = this.eventHistory.slice(-this.maxEventHistorySize);
+    }
+  }
+  
+  /**
+   * Get the event history
+   * @param limit Maximum number of events to return (default: all)
+   * @param eventTypes Optional filter for specific event types
+   * @returns Array of events
+   */
+  public getEventHistory(limit?: number, eventTypes?: string[]): GameEvent[] {
+    let history = this.eventHistory;
+    
+    // Filter by event types if specified
+    if (eventTypes && eventTypes.length > 0) {
+      history = history.filter(event => eventTypes.includes(event.type));
+    }
+    
+    // Apply limit if specified
+    if (limit && limit > 0) {
+      history = history.slice(-limit);
+    }
+    
+    return history;
+  }
+  
+  /**
+   * Clear the event history
+   */
+  public clearEventHistory(): void {
+    this.eventHistory = [];
   }
   
   /**

@@ -139,4 +139,12 @@ export class ResourceManager implements ResourceRegistry {
       return this.createResource(properties);
     }
   }
+  
+  /**
+   * Get the internal map of resources
+   * @returns Map of resource IDs to resources
+   */
+  public getResourceMap(): Map<string, Resource> {
+    return this.resources;
+  }
 } 

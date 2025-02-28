@@ -92,6 +92,9 @@ export interface ResourceRegistry {
   
   // Create or update a resource
   createOrUpdateResource: (properties: ResourceProperties) => Resource;
+  
+  // Get the internal map of resources
+  getResourceMap: () => Map<string, Resource>;
 }
 
 /**
