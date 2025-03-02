@@ -4,6 +4,7 @@ import { GameSystemManager } from '../systems';
 import { GameAction } from '../types/actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { SaveSystem } from './SaveSystem';
+import { getCachedState, cacheState } from './memoryCache';
 
 /**
  * GameEngine: The heart of the game
@@ -44,8 +45,19 @@ export class GameEngine {
     private saveSystem: SaveSystem;
 
     constructor() {
-        // Start with a fresh game state
-        this.state = JSON.parse(JSON.stringify(initialGameState));
+        // Check for cached state from in-app navigation
+        const cachedState = getCachedState();
+        if (cachedState) {
+            Logger.info(
+                LogCategory.ENGINE, 
+                "Using cached state from in-app navigation", 
+                LogContext.STARTUP
+            );
+            this.state = JSON.parse(JSON.stringify(cachedState));
+        } else {
+            // Start with a fresh game state if no cached state
+            this.state = JSON.parse(JSON.stringify(initialGameState));
+        }
         
         // Create our communication system
         this.eventBus = new EventBus();
@@ -83,8 +95,25 @@ export class GameEngine {
 
     /**
      * Initialize game state - load save or start fresh
+     * 
+     * This method will:
+     * 1. First try to use the cached state for immediate display
+     * 2. Then attempt to load from persistent storage
+     * 3. Fall back to initial state if nothing is available
      */
     public async initialize(): Promise<void> {
+        // If we already have a cached state, use it for immediate display
+        const cachedState = getCachedState();
+        if (cachedState) {
+            // We're using the cached state we loaded in the constructor
+            // No need to update this.state again
+            Logger.info(
+                LogCategory.ENGINE, 
+                "Already using cached state, continuing initialization", 
+                LogContext.STARTUP
+            );
+        }
+        
         // Initialize save system
         await this.saveSystem.init();
         
@@ -93,7 +122,18 @@ export class GameEngine {
         
         if (!savedGame) {
             // If no save, start the game fresh
+            Logger.info(
+                LogCategory.ENGINE, 
+                "No saved game found, starting fresh", 
+                LogContext.STARTUP
+            );
             this.start();
+        } else {
+            Logger.info(
+                LogCategory.ENGINE, 
+                "Game initialized with saved state", 
+                LogContext.STARTUP
+            );
         }
     }
 
@@ -189,6 +229,9 @@ export class GameEngine {
         // Only emit state updates if something actually changed
         const currentState = JSON.stringify(this.state);
         if (currentState !== prevState) {
+            // Cache the state whenever it changes
+            cacheState(this.state);
+            
             this.eventBus.emit('stateUpdated', this.state);
         }
     }
@@ -265,6 +308,8 @@ export class GameEngine {
      * @returns Promise<string> - The save ID
      */
     public async saveGame(): Promise<string> {
+        // Cache the state as we save
+        cacheState(this.state);
         return await this.saveSystem.save(this.getState());
     }
     
@@ -281,6 +326,9 @@ export class GameEngine {
         
         // Replace current state with saved state
         this.state = saveData.state;
+        
+        // Cache the newly loaded state
+        cacheState(this.state);
         
         // Notify about state update
         this.eventBus.emit('stateUpdated', this.state);

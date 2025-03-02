@@ -5,6 +5,7 @@ import { GameEngine } from '../core/GameEngine';
 import { GameState } from '../types';
 import { GameAction } from '../types/actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
+import { getCachedState } from '../core/memoryCache';
 
 /**
  * The shape of our Game Context
@@ -13,6 +14,7 @@ interface GameContextType {
   state: GameState;
   dispatch: (action: GameAction) => void;
   engine: GameEngine; // Exposing the engine for advanced use cases
+  isInitializing: boolean; // Indicates if game is still loading
 }
 
 /**
@@ -27,17 +29,24 @@ const GameContext = createContext<GameContextType | null>(null);
  * Wraps the application and provides game state and dispatch function to all children
  */
 export function GameProvider({ children }: { children: ReactNode }) {
+  // Track initialization state
+  const [isInitializing, setIsInitializing] = useState(true);
+  
   // Create a game engine instance that persists across renders
   const [engine] = useState(() => {
     Logger.info(LogCategory.LIFECYCLE, "Creating game engine instance", LogContext.STARTUP);
     return new GameEngine();
   });
   
-  // Track the current game state
+  // Track the current game state - use cached state for initial value if available
   const [state, setState] = useState(() => {
-    // Deep clone the initial state to ensure proper React state management
-    const initialState = JSON.parse(JSON.stringify(engine.getState()));
-    Logger.debug(LogCategory.STATE, "Initializing React state with game state", LogContext.STARTUP);
+    // Use memory cache if available, or get from engine
+    const initialState = getCachedState() || engine.getState();
+    Logger.debug(
+      LogCategory.STATE, 
+      "Initializing React state with game state", 
+      LogContext.STARTUP
+    );
     return initialState;
   });
 
@@ -79,6 +88,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         console.error("Failed to initialize game:", error);
         // Fallback to starting the game if initialization fails
         engineRef.current.start();
+      } finally {
+        // Mark initialization as complete
+        setIsInitializing(false);
       }
     };
     
@@ -122,15 +134,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
     };
   }, []); // Empty dependency array - only run once
 
-  // Create the context value object with stable references
-  const contextValue = useCallback(() => ({
+  // Include isInitializing in the context value
+  const contextValue: GameContextType = {
     state,
     dispatch,
-    engine
-  }), [state, dispatch, engine]);
+    engine,
+    isInitializing
+  };
 
   return (
-    <GameContext.Provider value={contextValue()}>
+    <GameContext.Provider value={contextValue}>
       {children}
     </GameContext.Provider>
   );
@@ -145,6 +158,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
  *   - state: The current game state
  *   - dispatch: Function to dispatch game actions
  *   - engine: Direct access to the game engine (for advanced use cases)
+ *   - isInitializing: Whether the game is still loading
  */
 export function useGame() {
   const context = useContext(GameContext);
