@@ -30,7 +30,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [engine] = useState(() => new GameEngine());
   
   // Track the current game state
-  const [state, setState] = useState(engine.getState());
+  const [state, setState] = useState(() => {
+    // Deep clone the initial state to ensure proper React state management
+    return JSON.parse(JSON.stringify(engine.getState()));
+  });
 
   // Create a stable dispatch function that won't change on re-renders
   const dispatch = useCallback((action: GameAction) => {
@@ -39,23 +42,41 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [engine]);
 
   useEffect(() => {
+    console.log('PROVIDER - Setting up game engine and event listeners');
+    
     // Subscribe to state updates from the game engine
     const unsubscribe = engine.eventBus.on('stateUpdated', (newState: GameState) => {
-      setState(newState);
+      console.log('PROVIDER - Received stateUpdated event');
+      console.log('PROVIDER - New energy value:', newState.categories.reactor.resources.energy);
+      console.log('PROVIDER - Current React state energy:', state.categories.reactor.resources.energy);
+      
+      // IMPORTANT: Create a deep copy of the state to ensure React detects the change
+      // This is crucial for React's state update mechanism to work correctly
+      const stateCopy = JSON.parse(JSON.stringify(newState));
+      
+      console.log('PROVIDER - Updating React state with new game state (deep copied)');
+      setState(stateCopy);
+      
+      // Log if there was a change in energy (for debugging)
+      if (stateCopy.categories.reactor.resources.energy !== state.categories.reactor.resources.energy) {
+        console.log('PROVIDER - Energy changed from', 
+          state.categories.reactor.resources.energy, 
+          'to', stateCopy.categories.reactor.resources.energy);
+      } else {
+        console.log('PROVIDER - Energy value unchanged in the new state');
+      }
     });
 
     // Start the game engine
     engine.start();
 
-    // Initialize the game by dispatching a startup action if needed
-    // dispatch({ type: 'GAME_INIT' });
-
     // Cleanup when unmounted
     return () => {
+      console.log('PROVIDER - Cleaning up game engine and event listeners');
       engine.stop();
       unsubscribe();
     };
-  }, [engine]);
+  }, [engine, state]);
 
   // Create the context value object with stable references
   const contextValue = useCallback(() => ({

@@ -137,10 +137,20 @@ export class GameEngine {
     private processAction(action: GameAction) {
         console.log('Engine processing action:', action.type);
         
+        // Log state before processing
+        const beforeEnergy = this.state.categories.reactor.resources.energy;
+        console.log('ENGINE - State BEFORE action:', action.type, '- Energy:', beforeEnergy);
+        
         // Pass the action to game systems
         this.systems.processAction(this.state, action);
         
+        // Log state after processing
+        const afterEnergy = this.state.categories.reactor.resources.energy;
+        console.log('ENGINE - State AFTER action:', action.type, '- Energy:', afterEnergy, 
+            '(Changed:', afterEnergy !== beforeEnergy, ')');
+        
         // Notify that state has been updated
+        console.log('ENGINE - Emitting stateUpdated event');
         this.eventBus.emit('stateUpdated', this.state);
     }
     
@@ -155,8 +165,10 @@ export class GameEngine {
 
     /**
      * Get the current game state
+     * Returns a deep copy to prevent direct state mutation
      */
     getState(): GameState {
-        return this.state;
+        // Return a deep copy of the state to prevent accidental mutations
+        return JSON.parse(JSON.stringify(this.state));
     }
 } 

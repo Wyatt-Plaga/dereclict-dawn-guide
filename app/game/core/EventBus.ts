@@ -33,11 +33,26 @@ export class EventBus {
      * @param data - Data to send with the event
      */
     emit(event: string, data: any) {
+        console.log(`EVENTBUS - Emitting event: "${event}"`);
+        
         // Get all listeners for this event (or empty array if none)
         const callbacks = this.listeners.get(event) || [];
         
+        if (callbacks.length === 0) {
+            console.warn(`EVENTBUS - No listeners registered for event: "${event}"`);
+        } else {
+            console.log(`EVENTBUS - Found ${callbacks.length} listeners for event: "${event}"`);
+        }
+        
+        // When emitting state updates, clone the data to ensure React detects changes
+        let dataToEmit = data;
+        if (event === 'stateUpdated') {
+            console.log('EVENTBUS - Deep copying state data before emitting');
+            dataToEmit = JSON.parse(JSON.stringify(data));
+        }
+        
         // Call each listener with the event data
-        callbacks.forEach(callback => callback(data));
+        callbacks.forEach(callback => callback(dataToEmit));
     }
 
     /**
@@ -49,6 +64,8 @@ export class EventBus {
      * @returns A function to remove this listener
      */
     on(event: string, callback: EventCallback) {
+        console.log(`EVENTBUS - Registering listener for event: "${event}"`);
+        
         // Initialize listener array if it doesn't exist
         if (!this.listeners.has(event)) {
             this.listeners.set(event, []);
@@ -56,14 +73,20 @@ export class EventBus {
         
         // Add the callback to the listeners
         this.listeners.get(event)?.push(callback);
+        
+        const currentCount = this.listeners.get(event)?.length || 0;
+        console.log(`EVENTBUS - Now have ${currentCount} listeners for event: "${event}"`);
 
         // Return a function to unsubscribe
         return () => {
+            console.log(`EVENTBUS - Removing listener for event: "${event}"`);
             const callbacks = this.listeners.get(event) || [];
             this.listeners.set(
                 event,
                 callbacks.filter(cb => cb !== callback)
             );
+            const newCount = this.listeners.get(event)?.length || 0;
+            console.log(`EVENTBUS - Now have ${newCount} listeners for event: "${event}"`);
         };
     }
 } 

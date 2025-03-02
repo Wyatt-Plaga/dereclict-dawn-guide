@@ -79,12 +79,19 @@ export class ActionSystem {
   private handleReactorClick(state: GameState): void {
     const reactor = state.categories.reactor;
     
+    console.log('REACTOR CLICK - Before:', reactor.resources.energy, '/', reactor.stats.energyCapacity);
+    
     // Add 1 energy (up to capacity)
     if (reactor.resources.energy < reactor.stats.energyCapacity) {
       reactor.resources.energy = Math.min(
         reactor.resources.energy + 1,
         reactor.stats.energyCapacity
       );
+      console.log('REACTOR CLICK - After update:', reactor.resources.energy);
+      console.log('REACTOR CLICK - State modified directly:', 
+                  state.categories.reactor.resources.energy);
+    } else {
+      console.log('REACTOR CLICK - Already at capacity');
     }
   }
   

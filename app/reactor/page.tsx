@@ -15,8 +15,12 @@ export default function ReactorPage() {
   const { energy } = reactor.resources
   const { energyCapacity, energyPerSecond } = reactor.stats
   
+  // Log component render
+  console.log('COMPONENT - Reactor page rendering with energy:', energy);
+  
   // Generate energy on manual click
   const generateEnergy = () => {
+    console.log('COMPONENT - Generate energy button clicked');
     dispatch({
       type: 'CLICK_RESOURCE',
       payload: {
