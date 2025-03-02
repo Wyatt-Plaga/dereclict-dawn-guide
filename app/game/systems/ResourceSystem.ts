@@ -59,11 +59,28 @@ export class ResourceSystem {
     const crewQuarters = state.categories.crewQuarters;
     const crewProduced = crewQuarters.stats.crewPerSecond * delta;
     
+    // Log crew production
+    if (crewQuarters.stats.crewPerSecond > 0) {
+      console.log(
+        `Crew production: ${crewProduced.toFixed(5)} (rate: ${crewQuarters.stats.crewPerSecond}/s, delta: ${delta.toFixed(5)}s)`
+      );
+    }
+    
     if (crewProduced > 0) {
+      // Log current values before update
+      const oldCrew = crewQuarters.resources.crew;
+      
       crewQuarters.resources.crew = Math.min(
         crewQuarters.resources.crew + crewProduced,
         crewQuarters.stats.crewCapacity
       );
+      
+      // Log the change
+      if (oldCrew !== crewQuarters.resources.crew) {
+        console.log(
+          `Crew updated: ${oldCrew.toFixed(2)} -> ${crewQuarters.resources.crew.toFixed(2)}`
+        );
+      }
     }
   }
 

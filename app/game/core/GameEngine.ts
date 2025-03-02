@@ -100,10 +100,18 @@ export class GameEngine {
      */
     private gameLoop() {
         // Exit if we're no longer running
-        if (!this.isRunning) return;
+        if (!this.isRunning) {
+            console.error("🛑 Game loop stopped: isRunning=false");
+            return;
+        }
+
+        // Log once every 5 seconds to avoid flooding the console
+        const now = Date.now();
+        if (Math.floor(now / 5000) !== Math.floor(this.lastTick / 5000)) {
+            console.log("🔄 Game loop running - timestamp:", new Date().toLocaleTimeString());
+        }
 
         // Calculate time since last update
-        const now = Date.now();
         const delta = (now - this.lastTick) / 1000; // Convert to seconds
         
         // Performance tracking for game loop
@@ -163,7 +171,7 @@ export class GameEngine {
                 context = LogContext.REACTOR_LIFECYCLE;
             } else if (category === 'processor') {
                 context = LogContext.PROCESSOR_LIFECYCLE;
-            } else if (category === 'crew') {
+            } else if (category === 'crewQuarters') {
                 context = LogContext.CREW_LIFECYCLE;
             } else if (category === 'manufacturing') {
                 context = LogContext.MANUFACTURING_LIFECYCLE;

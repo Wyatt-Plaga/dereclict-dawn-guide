@@ -6,15 +6,17 @@ import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/app/game/hooks/useGame"
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
+import { useState, useEffect } from "react"
 
 export default function CrewQuartersPage() {
   const { state, dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
+  const [awakeningFlavor, setAwakeningFlavor] = useState("")
   
   // Get crew quarters data from game state
   const crewQuarters = state.categories.crewQuarters
   const { crew } = crewQuarters.resources
-  const { crewCapacity, crewPerSecond } = crewQuarters.stats
+  const { crewCapacity, crewPerSecond, awakeningProgress } = crewQuarters.stats
   
   // Log component render
   Logger.debug(
@@ -22,6 +24,30 @@ export default function CrewQuartersPage() {
     `Crew quarters page rendering with crew: ${crew}`,
     [LogContext.UI_RENDER, LogContext.CREW_LIFECYCLE]
   );
+  
+  // Get awakening stage text based on progress
+  const getAwakeningStageText = (progress: number) => {
+    if (progress === 0) return "Cryopod dormant";
+    if (progress < 3) return "Initiating warmup";
+    if (progress < 5) return "Vital signs stabilizing";
+    if (progress < 7) return "Neural activity detected";
+    if (progress < 9) return "Consciousness returning";
+    return "Final wake protocols";
+  }
+  
+  // Random flavor texts for awakening process
+  const awakeningFlavorTexts = [
+    "Defrosting cryogel",
+    "Restarting circulatory system",
+    "Stimulating neural pathways",
+    "Administering revival compounds",
+    "Raising core temperature",
+    "Checking cognitive functions", 
+    "Clearing cryogenic fog",
+    "Restoring memory functions",
+    "Calibrating muscle response",
+    "Finalizing wake sequence"
+  ];
   
   // Generate crew on manual click (awakening)
   const awakenCrew = () => {
@@ -32,6 +58,10 @@ export default function CrewQuartersPage() {
       'Awaken crew button clicked', 
       LogContext.CREW_LIFECYCLE
     );
+    
+    // Set a random flavor text when clicked
+    const randomFlavor = awakeningFlavorTexts[Math.floor(Math.random() * awakeningFlavorTexts.length)];
+    setAwakeningFlavor(randomFlavor);
     
     dispatch({
       type: 'CLICK_RESOURCE',
@@ -105,9 +135,31 @@ export default function CrewQuartersPage() {
               </div>
               <span className="font-mono">{formatCrewCount(crew)} / {crewCapacity}</span>
             </div>
-            <Progress value={(crew / crewCapacity) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-3" />
-            <div className="text-xs text-muted-foreground mt-1">
+            <div className="relative h-2">
+              {/* Base progress bar for current crew */}
+              <Progress 
+                value={(crew / crewCapacity) * 100} 
+                className="h-2 bg-muted" 
+                indicatorClassName="bg-chart-3" 
+              />
+              
+              {/* Overlay bar for awakening progress */}
+              {awakeningProgress > 0 && (
+                <div 
+                  className="absolute top-0 h-2 bg-amber-500" 
+                  style={{
+                    left: `${(crew / crewCapacity) * 100}%`,
+                    width: `${(awakeningProgress / 10) * (100 / crewCapacity)}%`,
+                    maxWidth: `${((1 / crewCapacity) * 100)}%`
+                  }}
+                ></div>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1 flex justify-between">
               {crewPerSecond > 0 && <span>+{crewPerSecond.toFixed(1)} per second (auto-awakening)</span>}
+              {awakeningProgress > 0 && (
+                <span className="font-mono text-amber-400">Awakening: {awakeningProgress}/10</span>
+              )}
             </div>
           </div>
           
@@ -115,7 +167,7 @@ export default function CrewQuartersPage() {
           <button 
             onClick={awakenCrew} 
             disabled={crew >= crewCapacity}
-            className={`system-panel w-full py-8 flex items-center justify-center mb-8 transition-colors ${
+            className={`system-panel w-full py-8 flex items-center justify-center mb-2 transition-colors ${
               crew >= crewCapacity ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent/10'
             }`}
           >
@@ -123,10 +175,18 @@ export default function CrewQuartersPage() {
               <User className={`h-12 w-12 text-chart-3 mb-2 ${shouldFlicker('crew') ? 'flickering-text' : ''}`} />
               <span className="terminal-text">Awaken Crew Member</span>
               <span className="text-xs text-muted-foreground mt-1">
-                +0.1 crew per click
+                {awakeningProgress > 0 ? `Progress: ${awakeningProgress}/10` : "Click to begin awakening"}
               </span>
             </div>
           </button>
+          
+          {/* Awakening status texts */}
+          <div className="mb-8 flex justify-between text-xs text-muted-foreground">
+            <span className="font-mono">{getAwakeningStageText(awakeningProgress)}</span>
+            {awakeningFlavor && (
+              <span className="font-mono text-amber-400">{awakeningFlavor}</span>
+            )}
+          </div>
           
           {/* Upgrades section */}
           <div className="space-y-4">

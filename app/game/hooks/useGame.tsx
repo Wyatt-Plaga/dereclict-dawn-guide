@@ -67,6 +67,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // Fix by using a ref to stabilize the engine reference:
   const engineRef = useRef(engine);
 
+  // Start/stop the game engine
+  useEffect(() => {
+    console.log("🚀 Starting game engine...");
+    engineRef.current.start();
+
+    return () => {
+      console.log("⏹️ Stopping game engine...");
+      engineRef.current.stop();
+    };
+  }, []);
+
   // Only set up the event listener once
   useEffect(() => {
     // Track if the component is mounted
