@@ -67,6 +67,14 @@ export class LogSystem {
      * @param state - Current game state
      */
     private checkForUnlockableLogs(state: GameState) {
+        // Make sure logs structure exists
+        if (!state.logs) {
+            state.logs = { discovered: {}, unread: [] };
+        } else if (!state.logs.discovered) {
+            state.logs.discovered = {};
+            state.logs.unread = state.logs.unread || [];
+        }
+        
         Object.entries(this.logDefinitions).forEach(([logId, logDef]) => {
             // Skip already discovered logs
             if (state.logs.discovered[logId]) return;
@@ -140,8 +148,40 @@ export class LogSystem {
      */
     private checkResourceThreshold(state: GameState, condition: ResourceThresholdCondition): boolean {
         const { category, resourceType, threshold } = condition;
-        // @ts-ignore - Dynamic access to categories and resources
-        return state.categories[category].resources[resourceType] >= threshold;
+        
+        try {
+            // Safety check: Make sure category exists
+            if (!state.categories[category]) {
+                return false;
+            }
+            
+            // Get category resources with proper typing
+            const categoryResources = state.categories[category].resources;
+            
+            // Safety check: Make sure resources object exists
+            if (!categoryResources) {
+                return false;
+            }
+            
+            // Use type assertion to access the dynamic property
+            const resourceValue = categoryResources[resourceType as keyof typeof categoryResources];
+            
+            // Return false if resource doesn't exist
+            if (resourceValue === undefined) {
+                return false;
+            }
+            
+            // Handle different resource structures (object vs number)
+            const amount = typeof resourceValue === 'object' 
+                ? (resourceValue as any).amount || 0 
+                : resourceValue as number;
+            
+            return amount >= threshold;
+        } catch (error) {
+            // Log error and return false if any exception occurs
+            console.error('Error checking resource threshold:', error);
+            return false;
+        }
     }
 
     /**
@@ -153,7 +193,35 @@ export class LogSystem {
      */
     private checkUpgradePurchased(state: GameState, condition: UpgradePurchasedCondition): boolean {
         const { category, upgradeId } = condition;
-        // @ts-ignore - Dynamic access to categories and upgrades
-        return state.categories[category].upgrades[upgradeId] > 0;
+        
+        try {
+            // Safety check: Make sure category exists
+            if (!state.categories[category]) {
+                return false;
+            }
+            
+            // Get category upgrades with proper typing
+            const categoryUpgrades = state.categories[category].upgrades;
+            
+            // Safety check: Make sure upgrades object exists
+            if (!categoryUpgrades) {
+                return false;
+            }
+            
+            // Use type assertion to access the dynamic property
+            const upgradeValue = categoryUpgrades[upgradeId as keyof typeof categoryUpgrades];
+            
+            // Return false if upgrade doesn't exist
+            if (upgradeValue === undefined) {
+                return false;
+            }
+            
+            // Check if upgrade level is greater than 0
+            return upgradeValue > 0;
+        } catch (error) {
+            // Log error and return false if any exception occurs
+            console.error('Error checking upgrade purchased:', error);
+            return false;
+        }
     }
 } 

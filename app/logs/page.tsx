@@ -5,9 +5,13 @@ import GameLoader from '@/app/components/GameLoader';
 import { useState } from 'react';
 import { LogCategory, LogEntry } from '@/app/game/types';
 import Link from 'next/link';
+import { NavBar } from "@/components/ui/navbar";
+import { BookOpen } from "lucide-react";
+import { useSystemStatus } from "@/components/providers/system-status-provider";
 
 export default function LogsPage() {
   const { state, dispatch, isInitializing } = useGame();
+  const { shouldFlicker } = useSystemStatus();
   const [selectedLog, setSelectedLog] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<LogCategory | 'all'>('all');
   
@@ -24,7 +28,7 @@ export default function LogsPage() {
   const sortedLogs = filteredLogs.sort((a, b) => b.timestamp - a.timestamp);
   
   // Get the selected log
-  const currentLog = selectedLog ? logs[selectedLog] : null;
+  const currentLog = selectedLog ? logs[selectedLog] : (sortedLogs.length > 0 ? sortedLogs[0] : null);
   
   // Handle clicking on a log
   const handleLogClick = (logId: string) => {
@@ -55,109 +59,126 @@ export default function LogsPage() {
   
   return (
     <GameLoader>
-      <div className="container mx-auto p-4">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-blue-500">Ship Logs</h1>
-          <div className="flex gap-2">
-            <Link href="/" className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition">
-              Back to Dashboard
-            </Link>
-            {unreadCount > 0 && (
-              <button 
-                onClick={handleMarkAllAsRead}
-                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-500 transition"
-              >
-                Mark All as Read
-              </button>
-            )}
-          </div>
-        </div>
+      <main className="flex min-h-screen flex-col">
+        <NavBar />
         
         {logEntries.length === 0 ? (
-          <div className="bg-gray-800 p-8 rounded-lg text-center">
-            <p className="text-gray-400">No logs discovered yet. Explore the ship and restore systems to uncover the ship's story.</p>
+          <div className="flex items-center justify-center flex-1 p-4 md:ml-64">
+            <div className="system-panel p-6">
+              <p className="text-primary">No log entries available. Scanning for recoverable data...</p>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-1 bg-gray-800 rounded-lg p-4">
-              <div className="mb-4">
-                <h2 className="text-lg font-bold text-blue-400 mb-2">Filter by Category</h2>
-                <div className="flex flex-wrap gap-2">
-                  {categories.map(category => (
+          <div className="flex flex-col md:flex-row p-4 md:p-8 md:ml-64">
+            {/* Log list sidebar */}
+            <div className="w-full md:w-64 mb-4 md:mb-0 md:mr-4">
+              <div className="system-panel p-4 mb-4">
+                <h2 className={`text-lg font-bold text-primary mb-2 ${shouldFlicker('logs') ? 'flickering-text' : ''}`}>Ship Logs</h2>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Recovered memory fragments and system records
+                </p>
+                
+                {/* Category filter buttons - show as pills above the log list */}
+                {categories.length > 1 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {categories.map(category => (
+                      <button
+                        key={category}
+                        onClick={() => setSelectedCategory(category)}
+                        className={`px-3 py-1 rounded text-xs ${
+                          selectedCategory === category 
+                            ? 'bg-accent/30 text-primary border border-primary/40' 
+                            : 'hover:bg-accent/10 text-muted-foreground hover:text-primary'
+                        }`}
+                      >
+                        {category === 'all' ? 'All Logs' : category}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Show mark all as read button if there are unread logs */}
+                {unreadCount > 0 && (
+                  <div className="mb-3">
+                    <button 
+                      onClick={handleMarkAllAsRead}
+                      className="text-xs text-blue-400 hover:text-blue-300 transition"
+                    >
+                      Mark all as read
+                    </button>
+                  </div>
+                )}
+                
+                <div className="space-y-2">
+                  {sortedLogs.map(log => (
                     <button
-                      key={category}
-                      onClick={() => setSelectedCategory(category)}
-                      className={`px-3 py-1 rounded text-sm ${
-                        selectedCategory === category 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      key={log.id}
+                      onClick={() => handleLogClick(log.id)}
+                      className={`w-full text-left p-2 rounded-md text-sm transition-colors ${
+                        currentLog?.id === log.id 
+                          ? 'bg-accent/30 text-primary border border-primary/40' 
+                          : 'hover:bg-accent/10 text-muted-foreground hover:text-primary'
                       }`}
                     >
-                      {category === 'all' ? 'All Logs' : category}
+                      <div className="flex items-start justify-between">
+                        <span className="truncate">
+                          {log.title}
+                          {!log.isRead && (
+                            <span className="ml-2 inline-block w-2 h-2 bg-red-500 rounded-full"></span>
+                          )}
+                        </span>
+                      </div>
                     </button>
                   ))}
                 </div>
               </div>
-              
-              <h2 className="text-lg font-bold text-blue-400 mb-2">Log Entries ({sortedLogs.length})</h2>
-              
-              <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
-                {sortedLogs.map(log => (
-                  <div
-                    key={log.id}
-                    onClick={() => handleLogClick(log.id)}
-                    className={`p-3 rounded cursor-pointer transition ${
-                      selectedLog === log.id 
-                        ? 'bg-blue-700 text-white' 
-                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-medium">
-                        {log.title}
-                        {!log.isRead && (
-                          <span className="ml-2 inline-block w-2 h-2 bg-red-500 rounded-full"></span>
-                        )}
-                      </h3>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {log.category} • {new Date(log.timestamp).toLocaleDateString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
             </div>
             
-            <div className="md:col-span-2">
+            {/* Log content */}
+            <div className="flex-1">
               {currentLog ? (
-                <div className="bg-gray-800 rounded-lg p-6">
-                  <div className="mb-4 pb-4 border-b border-gray-700">
-                    <h2 className="text-xl font-bold text-blue-400">{currentLog.title}</h2>
-                    <p className="text-sm text-gray-400 mt-1">
-                      {currentLog.category} • {new Date(currentLog.timestamp).toLocaleDateString()}
+                <div className="system-panel p-6">
+                  <div className="flex items-start justify-between mb-6">
+                    <h1 className={`text-2xl font-bold text-primary ${shouldFlicker('logs') ? 'flickering-text' : ''}`}>
+                      {currentLog.title}
+                    </h1>
+                    <BookOpen className="h-5 w-5 text-primary mt-1" />
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground mb-4">
+                    {currentLog.category} • {new Date(currentLog.timestamp).toLocaleDateString()}
+                  </p>
+                  
+                  <div className="prose prose-invert max-w-none">
+                    <p className="terminal-text text-sm leading-relaxed">
+                      {currentLog.content.split('\n\n').map((paragraph, index) => (
+                        <span key={index}>
+                          {paragraph}
+                          {index < currentLog.content.split('\n\n').length - 1 && (
+                            <><br /><br /></>
+                          )}
+                        </span>
+                      ))}
                     </p>
                   </div>
-                  <div className="prose prose-invert max-w-none">
-                    {currentLog.content.split('\n\n').map((paragraph, index) => (
-                      <p key={index} className="mb-4">
-                        {paragraph}
-                      </p>
-                    ))}
+                  
+                  <div className="mt-8 pt-4 border-t border-border">
+                    <p className="text-xs text-muted-foreground">
+                      {Object.keys(logs).length < 7 
+                        ? "Additional logs may be recovered as ship systems are repaired." 
+                        : "All log entries have been recovered."}
+                    </p>
                   </div>
                 </div>
               ) : (
-                <div className="bg-gray-800 rounded-lg p-8 flex items-center justify-center h-full">
-                  <p className="text-gray-400 text-center">
-                    {logEntries.length > 0 
-                      ? 'Select a log entry to view its contents' 
-                      : 'No logs discovered yet'}
-                  </p>
+                <div className="system-panel p-6">
+                  <p className="text-primary">Select a log entry to view its contents.</p>
                 </div>
               )}
             </div>
           </div>
         )}
-      </div>
+      </main>
     </GameLoader>
   );
 } 
