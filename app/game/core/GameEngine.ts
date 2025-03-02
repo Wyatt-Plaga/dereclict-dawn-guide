@@ -1,5 +1,7 @@
 import { EventBus } from './EventBus';
 import { GameState, initialGameState } from '../types';
+import { GameSystemManager } from '../systems';
+import { GameAction } from '../types/actions';
 
 /**
  * GameEngine: The heart of the game
@@ -20,6 +22,11 @@ export class GameEngine {
     public eventBus: EventBus;
     
     /**
+     * Game systems that handle different aspects of game logic
+     */
+    private systems: GameSystemManager;
+    
+    /**
      * Timestamp of the last update
      */
     private lastTick: number;
@@ -36,9 +43,25 @@ export class GameEngine {
         // Create our communication system
         this.eventBus = new EventBus();
         
+        // Initialize game systems
+        this.systems = new GameSystemManager();
+        
         // Initialize timing variables
         this.lastTick = Date.now();
         this.isRunning = false;
+        
+        // Set up event handlers
+        this.setupEventHandlers();
+    }
+    
+    /**
+     * Set up event handlers for the game engine
+     */
+    private setupEventHandlers() {
+        // Listen for action dispatch events
+        this.eventBus.on('DISPATCH_ACTION', (action: GameAction) => {
+            this.processAction(action);
+        });
     }
 
     /**
@@ -96,56 +119,35 @@ export class GameEngine {
         // Update the last update timestamp
         this.state.lastUpdate = Date.now();
         
-        // Update each category's resources based on their production rates
-        this.updateResources(delta);
+        // Update all game systems
+        this.systems.update(this.state, delta);
         
         // Let everyone know the state has been updated
         this.eventBus.emit('stateUpdated', this.state);
     }
-
+    
     /**
-     * Update resources based on production rates and delta time
+     * Process an action and update the game state
+     * 
+     * @param action - The action to process
      */
-    private updateResources(delta: number) {
-        // Update reactor energy
-        const reactor = this.state.categories.reactor;
-        const energyProduced = reactor.stats.energyPerSecond * delta;
-        if (energyProduced > 0) {
-            reactor.resources.energy = Math.min(
-                reactor.resources.energy + energyProduced,
-                reactor.stats.energyCapacity
-            );
-        }
+    private processAction(action: GameAction) {
+        console.log('Engine processing action:', action.type);
         
-        // Update processor insight
-        const processor = this.state.categories.processor;
-        const insightProduced = processor.stats.insightPerSecond * delta;
-        if (insightProduced > 0) {
-            processor.resources.insight = Math.min(
-                processor.resources.insight + insightProduced,
-                processor.stats.insightCapacity
-            );
-        }
+        // Pass the action to game systems
+        this.systems.processAction(this.state, action);
         
-        // Update crew quarters
-        const crewQuarters = this.state.categories.crewQuarters;
-        const crewProduced = crewQuarters.stats.crewPerSecond * delta;
-        if (crewProduced > 0) {
-            crewQuarters.resources.crew = Math.min(
-                crewQuarters.resources.crew + crewProduced,
-                crewQuarters.stats.crewCapacity
-            );
-        }
-        
-        // Update manufacturing scrap
-        const manufacturing = this.state.categories.manufacturing;
-        const scrapProduced = manufacturing.stats.scrapPerSecond * delta;
-        if (scrapProduced > 0) {
-            manufacturing.resources.scrap = Math.min(
-                manufacturing.resources.scrap + scrapProduced,
-                manufacturing.stats.scrapCapacity
-            );
-        }
+        // Notify that state has been updated
+        this.eventBus.emit('stateUpdated', this.state);
+    }
+    
+    /**
+     * Dispatch an action to modify the game state
+     * 
+     * @param action - The action to dispatch
+     */
+    dispatch(action: GameAction) {
+        this.eventBus.emit('DISPATCH_ACTION', action);
     }
 
     /**
