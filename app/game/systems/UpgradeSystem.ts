@@ -1,6 +1,12 @@
 import { GameState } from '../types';
 import { GameCategory } from '../types/actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
+import { 
+  CrewQuartersConstants,
+  ReactorConstants,
+  ProcessorConstants,
+  ManufacturingConstants
+} from '../config/gameConstants';
 
 /**
  * UpgradeSystem
@@ -51,8 +57,8 @@ export class UpgradeSystem {
     
     switch (upgradeType) {
       case 'reactorExpansions':
-        // Cost: 80% of current capacity
-        const expansionCost = reactor.stats.energyCapacity * 0.8;
+        // Calculate cost using the utility method
+        const expansionCost = this.calculateReactorExpansionCost(reactor.stats.energyCapacity);
         
         Logger.debug(
           LogCategory.UPGRADES,
@@ -88,8 +94,8 @@ export class UpgradeSystem {
         return false;
         
       case 'energyConverters':
-        // Cost: (converters + 1) * 20
-        const converterCost = (reactor.upgrades.energyConverters + 1) * 20;
+        // Calculate cost using the utility method
+        const converterCost = this.calculateEnergyConverterCost(reactor.upgrades.energyConverters);
         
         Logger.debug(
           LogCategory.UPGRADES,
@@ -142,8 +148,8 @@ export class UpgradeSystem {
     
     switch (upgradeType) {
       case 'mainframeExpansions':
-        // Cost: 70% of current capacity
-        const expansionCost = processor.stats.insightCapacity * 0.7;
+        // Calculate cost using the utility method
+        const expansionCost = this.calculateMainframeExpansionCost(processor.stats.insightCapacity);
         
         Logger.debug(
           LogCategory.UPGRADES,
@@ -179,8 +185,8 @@ export class UpgradeSystem {
         return false;
         
       case 'processingThreads':
-        // Cost: (threads + 1) * 15
-        const threadCost = (processor.upgrades.processingThreads + 1) * 15;
+        // Calculate cost using the utility method
+        const threadCost = this.calculateProcessingThreadCost(processor.upgrades.processingThreads);
         
         Logger.debug(
           LogCategory.UPGRADES,
@@ -233,8 +239,8 @@ export class UpgradeSystem {
     
     switch (upgradeType) {
       case 'additionalQuarters':
-        // Cost: 60% of current capacity
-        const quartersCost = Math.floor(crewQuarters.stats.crewCapacity * 0.6);
+        // Calculate cost using the utility method
+        const quartersCost = this.calculateQuartersCost(crewQuarters.stats.crewCapacity);
         
         Logger.debug(
           LogCategory.UPGRADES,
@@ -270,14 +276,14 @@ export class UpgradeSystem {
         return false;
         
       case 'workerCrews':
-        // Cost: (workers + 1) * 2.5
-        const workerCost = Math.floor((crewQuarters.upgrades.workerCrews + 1) * 2.5);
+        // Calculate cost using the utility method
+        const workerCost = this.calculateWorkerCrewCost(crewQuarters.upgrades.workerCrews);
         
         // Check if maxed out (max 5 worker crews)
-        if (crewQuarters.upgrades.workerCrews >= 5) {
+        if (crewQuarters.upgrades.workerCrews >= this.getMaxWorkerCrews()) {
           Logger.debug(
             LogCategory.UPGRADES,
-            `Worker crews already at maximum level (5)`,
+            `Worker crews already at maximum level (${this.getMaxWorkerCrews()})`,
             [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
           );
           return false;
@@ -334,8 +340,8 @@ export class UpgradeSystem {
     
     switch (upgradeType) {
       case 'cargoHoldExpansions':
-        // Cost: 50% of current capacity
-        const expansionCost = Math.floor(manufacturing.stats.scrapCapacity * 0.5);
+        // Calculate cost using the utility method
+        const expansionCost = this.calculateCargoHoldExpansionCost(manufacturing.stats.scrapCapacity);
         
         Logger.debug(
           LogCategory.UPGRADES,
@@ -371,8 +377,8 @@ export class UpgradeSystem {
         return false;
         
       case 'manufacturingBays':
-        // Cost: (bays + 1) * 25
-        const bayCost = (manufacturing.upgrades.manufacturingBays + 1) * 25;
+        // Calculate cost using the utility method
+        const bayCost = this.calculateManufacturingBayCost(manufacturing.upgrades.manufacturingBays);
         
         Logger.debug(
           LogCategory.UPGRADES,
@@ -438,11 +444,12 @@ export class UpgradeSystem {
     
     // Calculate energy capacity based on expansions
     // Base capacity = 100, each expansion adds 50% more
-    reactor.stats.energyCapacity = 100 * Math.pow(1.5, reactor.upgrades.reactorExpansions);
+    reactor.stats.energyCapacity = ReactorConstants.BASE_ENERGY_CAPACITY * 
+      Math.pow(ReactorConstants.ENERGY_CAPACITY_MULTIPLIER, reactor.upgrades.reactorExpansions);
     
     // Calculate energy production based on converters
     // Each converter adds 1 energy per second
-    reactor.stats.energyPerSecond = reactor.upgrades.energyConverters;
+    reactor.stats.energyPerSecond = reactor.upgrades.energyConverters * ReactorConstants.ENERGY_PER_CONVERTER;
   }
   
   /**
@@ -453,11 +460,12 @@ export class UpgradeSystem {
     
     // Calculate insight capacity based on mainframe expansions
     // Base capacity = 50, each expansion adds 50% more
-    processor.stats.insightCapacity = 50 * Math.pow(1.5, processor.upgrades.mainframeExpansions);
+    processor.stats.insightCapacity = ProcessorConstants.BASE_INSIGHT_CAPACITY * 
+      Math.pow(ProcessorConstants.INSIGHT_CAPACITY_MULTIPLIER, processor.upgrades.mainframeExpansions);
     
     // Calculate insight production based on processing threads
     // Each thread adds 0.2 insight per second
-    processor.stats.insightPerSecond = processor.upgrades.processingThreads * 0.2;
+    processor.stats.insightPerSecond = processor.upgrades.processingThreads * ProcessorConstants.INSIGHT_PER_THREAD;
   }
   
   /**
@@ -468,11 +476,12 @@ export class UpgradeSystem {
     
     // Calculate crew capacity based on additional quarters
     // Base capacity = 5, each quarters upgrade adds 3 capacity
-    crewQuarters.stats.crewCapacity = 5 + (crewQuarters.upgrades.additionalQuarters * 3);
+    crewQuarters.stats.crewCapacity = CrewQuartersConstants.BASE_CREW_CAPACITY + 
+      (crewQuarters.upgrades.additionalQuarters * CrewQuartersConstants.QUARTERS_UPGRADE_CAPACITY_INCREASE);
     
     // Calculate crew production based on worker crews
     // Each worker crew adds 1.0 awakening progress per second
-    crewQuarters.stats.crewPerSecond = crewQuarters.upgrades.workerCrews * 1.0;
+    crewQuarters.stats.crewPerSecond = crewQuarters.upgrades.workerCrews * CrewQuartersConstants.WORKER_CREW_PRODUCTION_RATE;
   }
   
   /**
@@ -483,10 +492,102 @@ export class UpgradeSystem {
     
     // Calculate scrap capacity based on cargo hold expansions
     // Base capacity = 100, each expansion adds 50% more
-    manufacturing.stats.scrapCapacity = 100 * Math.pow(1.5, manufacturing.upgrades.cargoHoldExpansions);
+    manufacturing.stats.scrapCapacity = ManufacturingConstants.BASE_SCRAP_CAPACITY * 
+      Math.pow(ManufacturingConstants.SCRAP_CAPACITY_MULTIPLIER, manufacturing.upgrades.cargoHoldExpansions);
     
     // Calculate scrap production based on manufacturing bays
     // Each bay adds 0.5 scrap per second
-    manufacturing.stats.scrapPerSecond = manufacturing.upgrades.manufacturingBays * 0.5;
+    manufacturing.stats.scrapPerSecond = manufacturing.upgrades.manufacturingBays * ManufacturingConstants.SCRAP_PER_BAY;
+  }
+
+  /*** Utility methods for cost calculations ***/
+
+  /**
+   * Calculate the cost of upgrading crew quarters
+   * 
+   * @param crewCapacity Current crew capacity
+   * @returns The cost in crew
+   */
+  calculateQuartersCost(crewCapacity: number): number {
+    return Math.floor(crewCapacity * CrewQuartersConstants.QUARTERS_COST_MULTIPLIER);
+  }
+
+  /**
+   * Calculate the cost of upgrading worker crews
+   * 
+   * @param currentWorkerCrews Current worker crew level
+   * @returns The cost in crew
+   */
+  calculateWorkerCrewCost(currentWorkerCrews: number): number {
+    return Math.floor((currentWorkerCrews + 1) * CrewQuartersConstants.WORKER_CREW_COST_BASE);
+  }
+
+  /**
+   * Get the maximum number of worker crews that can be purchased
+   * 
+   * @returns The maximum worker crew level
+   */
+  getMaxWorkerCrews(): number {
+    return CrewQuartersConstants.MAX_WORKER_CREWS;
+  }
+
+  /**
+   * Calculate the cost of upgrading the reactor
+   * 
+   * @param energyCapacity Current energy capacity
+   * @returns The cost in energy
+   */
+  calculateReactorExpansionCost(energyCapacity: number): number {
+    return energyCapacity * ReactorConstants.EXPANSION_COST_MULTIPLIER;
+  }
+
+  /**
+   * Calculate the cost of upgrading energy converters
+   * 
+   * @param currentConverters Current energy converter level
+   * @returns The cost in energy
+   */
+  calculateEnergyConverterCost(currentConverters: number): number {
+    return (currentConverters + 1) * ReactorConstants.CONVERTER_COST_BASE;
+  }
+
+  /**
+   * Calculate the cost of upgrading the processor mainframe
+   * 
+   * @param insightCapacity Current insight capacity
+   * @returns The cost in insight
+   */
+  calculateMainframeExpansionCost(insightCapacity: number): number {
+    return insightCapacity * ProcessorConstants.EXPANSION_COST_MULTIPLIER;
+  }
+
+  /**
+   * Calculate the cost of upgrading processing threads
+   * 
+   * @param currentThreads Current processing thread level
+   * @returns The cost in insight
+   */
+  calculateProcessingThreadCost(currentThreads: number): number {
+    return (currentThreads + 1) * ProcessorConstants.THREAD_COST_BASE;
+  }
+
+  /**
+   * Calculate the cost of upgrading cargo holds
+   * 
+   * @param scrapCapacity Current scrap capacity
+   * @returns The cost in scrap
+   */
+  calculateCargoHoldExpansionCost(scrapCapacity: number): number {
+    return Math.floor(scrapCapacity * ManufacturingConstants.EXPANSION_COST_MULTIPLIER);
+  }
+
+  /**
+   * Calculate the cost of upgrading manufacturing bays
+   * 
+   * @param currentBays Current manufacturing bay level
+   * @returns The cost in scrap
+   */
+  calculateManufacturingBayCost(currentBays: number): number {
+    return (currentBays + 1) * ManufacturingConstants.BAY_COST_BASE;
   }
 } 
