@@ -35,7 +35,8 @@ export enum LogContext {
   UPGRADE_PURCHASE = 'upgrade',      // Upgrade purchase workflow
   STARTUP = 'startup',               // Game initialization
   SAVE_LOAD = 'saveload',            // Save/load operations
-  UI_RENDER = 'render'               // UI rendering workflow
+  UI_RENDER = 'render',              // UI rendering workflow
+  LOG_INTERACTION = 'logs'           // Log reading/interaction
 }
 
 // Type for context parameter - can be a single context or an array of contexts
@@ -85,7 +86,8 @@ export class LoggerConfig {
     [LogContext.UPGRADE_PURCHASE]: '#f2e6ff',
     [LogContext.STARTUP]: '#ffffcc',
     [LogContext.SAVE_LOAD]: '#e6e6e6',
-    [LogContext.UI_RENDER]: '#f9f9f9'
+    [LogContext.UI_RENDER]: '#f9f9f9',
+    [LogContext.LOG_INTERACTION]: '#e6fffa'
   };
   
   // Enable/disable a category

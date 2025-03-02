@@ -3,6 +3,7 @@ import { GameAction } from '../types/actions';
 import { ResourceSystem } from './ResourceSystem';
 import { ActionSystem } from './ActionSystem';
 import { UpgradeSystem } from './UpgradeSystem';
+import { LogSystem } from './LogSystem';
 
 /**
  * GameSystemManager
@@ -27,12 +28,18 @@ export class GameSystemManager {
   public upgrade: UpgradeSystem;
 
   /**
+   * Log management system
+   */
+  public log: LogSystem;
+
+  /**
    * Initialize all game systems
    */
   constructor() {
     this.resource = new ResourceSystem();
     this.action = new ActionSystem();
     this.upgrade = new UpgradeSystem();
+    this.log = new LogSystem();
     
     // Set the manager reference in the ActionSystem
     this.action.setManager(this);
@@ -50,6 +57,9 @@ export class GameSystemManager {
   update(state: GameState, delta: number) {
     // Update resources based on production rates
     this.resource.update(state, delta);
+    
+    // Check for unlockable logs
+    this.log.update(state, delta);
     
     // In the future, we'll add more system updates here
     // this.upgrade.update(state, delta);

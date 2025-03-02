@@ -12,6 +12,9 @@
   - [GameProvider & useGame Hook](#gameprovider--usegame-hook)
   - [UI Components](#ui-components)
 - [Data Flow](#data-flow)
+- [State Persistence](#state-persistence)
+  - [Memory Caching](#memory-caching)
+  - [Loading States](#loading-states)
 - [Logging System](#logging-system)
 - [Design Patterns](#design-patterns)
 - [Future Considerations](#future-considerations)
@@ -199,10 +202,13 @@ The React integration centers around the `GameProvider` component and `useGame` 
    - Creates and maintains the game engine instance
    - Subscribes to state updates from the event bus
    - Provides game state and dispatch function to React components
+   - Handles loading states during initialization
+   - Manages the memory cache for persistent state during navigation
 
 2. **useGame Hook**:
    - Custom hook for accessing game state and actions
    - Provides a consistent interface for components to interact with the game
+   - Returns loading state to allow components to respond appropriately
 
 ```typescript
 // Location: app/game/hooks/useGame.tsx
@@ -242,30 +248,21 @@ The UI components follow a consistent pattern:
 2. Extract relevant data for the current view
 3. Dispatch actions back to the game engine
 4. Render based on the current state
+5. Handle loading states appropriately using the `GameLoader` component
 
 Example from the Reactor page:
 
 ```tsx
 // Location: app/reactor/page.tsx
 export default function ReactorPage() {
-  const { state, dispatch } = useGame();
+  const { state, dispatch, loading } = useGame();
   
-  // Get reactor data from game state
-  const reactor = state.categories.reactor;
-  const { energy } = reactor.resources;
-  const { energyCapacity, energyPerSecond } = reactor.stats;
-  
-  // Generate energy on manual click
-  const generateEnergy = () => {
-    dispatch({
-      type: 'CLICK_RESOURCE',
-      payload: {
-        category: 'reactor'
-      }
-    });
-  };
-  
-  // Component rendering...
+  // Wrap page content with GameLoader to handle loading states
+  return (
+    <GameLoader>
+      {/* Component content */}
+    </GameLoader>
+  );
 }
 ```
 
@@ -284,6 +281,83 @@ The data flow in the application follows a unidirectional pattern:
 9. React Context Update → **UI Component Re-render**
 
 This unidirectional flow ensures predictable state updates and clear data paths through the application.
+
+## State Persistence
+
+The game implements several mechanisms for state persistence to ensure a smooth user experience and prevent data loss.
+
+### Memory Caching
+
+To maintain game state during navigation between different pages within the application, a memory caching system is implemented:
+
+1. **In-Memory Cache**: A singleton memory cache stores the game state when navigating between pages
+2. **Game Engine Integration**: The game engine checks for cached state during initialization
+3. **Navigation Persistence**: State is preserved when users navigate between different game areas
+
+```typescript
+// Memory cache implementation
+// Location: app/game/core/MemoryCache.ts
+export class MemoryCache {
+  private static instance: MemoryCache;
+  private cache: Record<string, any> = {};
+
+  static getInstance(): MemoryCache {
+    if (!MemoryCache.instance) {
+      MemoryCache.instance = new MemoryCache();
+    }
+    return MemoryCache.instance;
+  }
+
+  set(key: string, value: any): void {
+    this.cache[key] = value;
+  }
+
+  get(key: string): any {
+    return this.cache[key];
+  }
+
+  has(key: string): boolean {
+    return key in this.cache;
+  }
+
+  clear(key?: string): void {
+    if (key) {
+      delete this.cache[key];
+    } else {
+      this.cache = {};
+    }
+  }
+}
+```
+
+### Loading States
+
+The application handles loading states to provide a smooth user experience:
+
+1. **GameLoader Component**: A dedicated component manages loading states to prevent UI flashes
+2. **Loading Indicators**: Visual feedback is provided during state initialization or data fetching
+3. **Graceful Degradation**: Components handle loading states to prevent errors or empty states
+
+```tsx
+// GameLoader component for handling loading states
+// Location: app/components/GameLoader.tsx
+export function GameLoader({ children }: { children: React.ReactNode }) {
+  const { loading } = useGame();
+  
+  if (loading) {
+    return (
+      <div className="h-full w-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="loading-spinner mb-4"></div>
+          <p className="text-blue-300">Initializing systems...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  return <>{children}</>;
+}
+```
 
 ## Logging System
 
@@ -320,11 +394,12 @@ The architecture employs several design patterns:
 
 The current architecture supports several potential extensions:
 
-1. **Saving/Loading**: The clean state structure facilitates easy serialization for save/load functionality
+1. **Enhanced Saving/Loading**: The current memory cache could be extended with persistent storage options like localStorage or IndexedDB
 2. **Multiplayer Features**: The event-driven architecture could be extended to sync with server events
 3. **New Game Systems**: Additional systems can be added to the GameSystemManager with minimal changes
 4. **Game Balancing**: The separation of game logic makes it easier to tune and balance game parameters
 5. **Mobile Optimization**: The throttled state updates already consider performance on mobile devices
+6. **Progressive Web App**: The architecture supports conversion to a PWA for offline play
 
 ---
 

@@ -43,8 +43,29 @@ export interface PurchaseUpgradeAction extends GameAction {
 }
 
 /**
+ * Mark Log as Read Action
+ * Triggered when a player views a log
+ */
+export interface MarkLogReadAction extends GameAction {
+  type: 'MARK_LOG_READ';
+  payload: {
+    logId: string;
+  };
+}
+
+/**
+ * Mark All Logs as Read Action
+ * Triggered when a player clicks "Mark All as Read"
+ */
+export interface MarkAllLogsReadAction extends GameAction {
+  type: 'MARK_ALL_LOGS_READ';
+}
+
+/**
  * Union type of all possible game actions
  */
 export type GameActions = 
   | ClickResourceAction
-  | PurchaseUpgradeAction; 
+  | PurchaseUpgradeAction
+  | MarkLogReadAction
+  | MarkAllLogsReadAction; 

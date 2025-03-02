@@ -3,6 +3,66 @@
  */
 
 /**
+ * Log Categories
+ */
+export enum LogCategory {
+    SHIP_SYSTEMS = "Ship Systems",
+    CREW_RECORDS = "Crew Records",
+    MISSION_DATA = "Mission Data",
+    PERSONAL_LOGS = "Personal Logs",
+    UNKNOWN = "Unknown"
+}
+
+/**
+ * Log Entry interface
+ */
+export interface LogEntry {
+    id: string;
+    title: string;
+    content: string;
+    timestamp: number; // When it was discovered
+    category: LogCategory;
+    isRead: boolean;
+}
+
+/**
+ * Log Unlock Conditions
+ */
+export type LogUnlockCondition = 
+    | ResourceThresholdCondition
+    | UpgradePurchasedCondition
+    | MultiCondition;
+
+export interface ResourceThresholdCondition {
+    type: 'RESOURCE_THRESHOLD';
+    category: keyof GameState['categories'];
+    resourceType: string;
+    threshold: number;
+}
+
+export interface UpgradePurchasedCondition {
+    type: 'UPGRADE_PURCHASED';
+    category: keyof GameState['categories'];
+    upgradeId: string;
+}
+
+export interface MultiCondition {
+    type: 'MULTI_CONDITION';
+    operator: 'AND' | 'OR';
+    conditions: LogUnlockCondition[];
+}
+
+/**
+ * Log Definition interface
+ */
+export interface LogDefinition {
+    title: string;
+    content: string;
+    category: LogCategory;
+    unlockConditions: LogUnlockCondition[];
+}
+
+/**
  * Reactor Category - Energy generation and storage
  */
 export interface ReactorCategory {
@@ -95,6 +155,14 @@ export interface GameState {
      * Game state version for save compatibility
      */
     version: number;
+
+    /**
+     * Game logs for story progression
+     */
+    logs: {
+        discovered: Record<string, LogEntry>;
+        unread: string[]; // IDs of unread logs
+    };
 }
 
 /**
@@ -158,5 +226,9 @@ export const initialGameState: GameState = {
         }
     },
     lastUpdate: Date.now(),
-    version: 1
+    version: 1,
+    logs: {
+        discovered: {},
+        unread: []
+    }
 }; 

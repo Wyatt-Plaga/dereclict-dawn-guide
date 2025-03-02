@@ -48,10 +48,17 @@ export class ActionSystem {
       }
     } else if (action.type === 'PURCHASE_UPGRADE') {
       context = LogContext.UPGRADE_PURCHASE;
+    } else if (action.type === 'MARK_LOG_READ' || action.type === 'MARK_ALL_LOGS_READ') {
+      context = LogContext.LOG_INTERACTION;
     }
     
-    Logger.debug(LogCategory.ACTIONS, `Processing action: ${action.type}`, context);
+    Logger.debug(
+      LogCategory.ACTIONS, 
+      `Processing action: ${action.type}`,
+      context
+    );
     
+    // Process the action
     switch (action.type) {
       case 'CLICK_RESOURCE':
         this.handleResourceClick(state, action.payload.category);
@@ -65,8 +72,20 @@ export class ActionSystem {
         );
         break;
         
+      case 'MARK_LOG_READ':
+        this.handleMarkLogRead(state, action.payload.logId);
+        break;
+        
+      case 'MARK_ALL_LOGS_READ':
+        this.handleMarkAllLogsRead(state);
+        break;
+        
       default:
-        Logger.warn(LogCategory.ACTIONS, `Unknown action type: ${action.type}`, context);
+        Logger.warn(
+          LogCategory.ACTIONS,
+          `Unknown action type: ${action.type}`,
+          context
+        );
     }
   }
   
@@ -318,5 +337,42 @@ export class ActionSystem {
         LogContext.UPGRADE_PURCHASE
       );
     }
+  }
+
+  /**
+   * Handle marking a log as read
+   * 
+   * @param state - Current game state
+   * @param logId - ID of the log to mark as read
+   */
+  private handleMarkLogRead(state: GameState, logId: string): void {
+    if (!this.manager) {
+      Logger.error(
+        LogCategory.ACTIONS,
+        "Cannot mark log as read: manager not set",
+        LogContext.LOG_INTERACTION
+      );
+      return;
+    }
+
+    this.manager.log.markLogRead(state, logId);
+  }
+
+  /**
+   * Handle marking all logs as read
+   * 
+   * @param state - Current game state
+   */
+  private handleMarkAllLogsRead(state: GameState): void {
+    if (!this.manager) {
+      Logger.error(
+        LogCategory.ACTIONS,
+        "Cannot mark all logs as read: manager not set",
+        LogContext.LOG_INTERACTION
+      );
+      return;
+    }
+
+    this.manager.log.markAllLogsRead(state);
   }
 } 
