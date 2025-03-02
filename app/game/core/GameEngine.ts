@@ -46,6 +46,9 @@ export class GameEngine {
         // Initialize game systems
         this.systems = new GameSystemManager();
         
+        // Initialize game stats based on upgrades
+        this.systems.upgrade.updateAllStats(this.state);
+        
         // Initialize timing variables
         this.lastTick = Date.now();
         this.isRunning = false;

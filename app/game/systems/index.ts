@@ -2,6 +2,7 @@ import { GameState } from '../types';
 import { GameAction } from '../types/actions';
 import { ResourceSystem } from './ResourceSystem';
 import { ActionSystem } from './ActionSystem';
+import { UpgradeSystem } from './UpgradeSystem';
 
 /**
  * GameSystemManager
@@ -21,11 +22,23 @@ export class GameSystemManager {
   public action: ActionSystem;
 
   /**
+   * Upgrade management system
+   */
+  public upgrade: UpgradeSystem;
+
+  /**
    * Initialize all game systems
    */
   constructor() {
     this.resource = new ResourceSystem();
     this.action = new ActionSystem();
+    this.upgrade = new UpgradeSystem();
+    
+    // Set the manager reference in the ActionSystem
+    this.action.setManager(this);
+    
+    // Initialize the game stats based on upgrades
+    // This will be done during initialization when loading a game
   }
 
   /**

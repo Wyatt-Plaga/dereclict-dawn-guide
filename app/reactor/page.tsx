@@ -1,57 +1,55 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { NavBar } from "@/components/ui/navbar"
 import { Battery, Zap, ArrowUpCircle } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
-import { useSearchParams } from "next/navigation"
+import { useGame } from "@/app/game/hooks/useGame"
 
 export default function ReactorPage() {
-  const [energy, setEnergy] = useState(0)
-  const [energyCapacity, setEnergyCapacity] = useState(100)
-  const [autoGeneration, setAutoGeneration] = useState(0)
+  const { state, dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
   
-  // Auto-generate energy based on autoGeneration rate (per second)
-  useEffect(() => {
-    if (autoGeneration <= 0) return
-    
-    const interval = setInterval(() => {
-      setEnergy(current => {
-        const newValue = current + autoGeneration
-        return newValue > energyCapacity ? energyCapacity : newValue
-      })
-    }, 1000)
-    
-    return () => clearInterval(interval)
-  }, [autoGeneration, energyCapacity])
+  // Get reactor data from game state
+  const reactor = state.categories.reactor
+  const { energy } = reactor.resources
+  const { energyCapacity, energyPerSecond } = reactor.stats
   
   // Generate energy on manual click
   const generateEnergy = () => {
-    setEnergy(current => {
-      const newValue = current + 1
-      return newValue > energyCapacity ? energyCapacity : newValue
+    dispatch({
+      type: 'CLICK_RESOURCE',
+      payload: {
+        category: 'reactor'
+      }
     })
   }
   
   // Upgrade energy capacity
   const upgradeCapacity = () => {
-    if (energy >= energyCapacity * 0.8) {
-      setEnergy(current => current - energyCapacity * 0.8)
-      setEnergyCapacity(current => current * 1.5)
-    }
+    dispatch({
+      type: 'PURCHASE_UPGRADE',
+      payload: {
+        category: 'reactor',
+        upgradeType: 'reactorExpansions'
+      }
+    })
   }
   
   // Upgrade auto generation
   const upgradeAutoGeneration = () => {
-    const upgradeCost = (autoGeneration + 1) * 20
-    
-    if (energy >= upgradeCost) {
-      setEnergy(current => current - upgradeCost)
-      setAutoGeneration(current => current + 1)
-    }
+    dispatch({
+      type: 'PURCHASE_UPGRADE',
+      payload: {
+        category: 'reactor',
+        upgradeType: 'energyConverters'
+      }
+    })
   }
+  
+  // Calculate upgrade costs
+  const expansionCost = Math.floor(energyCapacity * 0.8)
+  const converterCost = (reactor.upgrades.energyConverters + 1) * 20
   
   return (
     <main className="flex min-h-screen flex-col">
@@ -71,11 +69,11 @@ export default function ReactorPage() {
                 <Battery className="h-5 w-5 text-chart-1 mr-2" />
                 <span className="terminal-text">Energy</span>
               </div>
-              <span className="font-mono">{Math.floor(energy)} / {energyCapacity}</span>
+              <span className="font-mono">{Math.floor(energy)} / {Math.floor(energyCapacity)}</span>
             </div>
             <Progress value={(energy / energyCapacity) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-1" />
             <div className="text-xs text-muted-foreground mt-1">
-              {autoGeneration > 0 && <span>+{autoGeneration} per second</span>}
+              {energyPerSecond > 0 && <span>+{energyPerSecond} per second</span>}
             </div>
           </div>
           
@@ -96,33 +94,39 @@ export default function ReactorPage() {
             <h2 className="text-lg font-semibold terminal-text">Upgrades</h2>
             
             {/* Capacity upgrade */}
-            <div className={`system-panel p-4 ${energy >= energyCapacity * 0.8 ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+            <div className={`system-panel p-4 ${energy >= expansionCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
                  onClick={upgradeCapacity}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center">
                   <ArrowUpCircle className="h-5 w-5 text-chart-1 mr-2" />
                   <span>Reactor Expansion</span>
                 </div>
-                <span className="font-mono text-xs">{Math.floor(energyCapacity * 0.8)} Energy</span>
+                <span className="font-mono text-xs">{expansionCost} Energy</span>
               </div>
               <p className="text-xs text-muted-foreground">
                 Expand energy storage capacity to {Math.floor(energyCapacity * 1.5)}
               </p>
+              <div className="mt-2 text-xs">
+                Level: {reactor.upgrades.reactorExpansions}
+              </div>
             </div>
             
             {/* Auto generation upgrade */}
-            <div className={`system-panel p-4 ${energy >= (autoGeneration + 1) * 20 ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+            <div className={`system-panel p-4 ${energy >= converterCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
                  onClick={upgradeAutoGeneration}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center">
                   <Zap className="h-5 w-5 text-chart-1 mr-2" />
                   <span>Energy Converter</span>
                 </div>
-                <span className="font-mono text-xs">{(autoGeneration + 1) * 20} Energy</span>
+                <span className="font-mono text-xs">{converterCost} Energy</span>
               </div>
               <p className="text-xs text-muted-foreground">
                 Add +1 automatic energy generation per second
               </p>
+              <div className="mt-2 text-xs">
+                Level: {reactor.upgrades.energyConverters}
+              </div>
             </div>
           </div>
         </div>

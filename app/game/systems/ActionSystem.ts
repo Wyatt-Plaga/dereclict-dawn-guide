@@ -1,5 +1,7 @@
 import { GameState } from '../types';
 import { GameAction, GameCategory } from '../types/actions';
+import { GameSystemManager } from './index';
+import { UpgradeSystem } from './UpgradeSystem';
 
 /**
  * ActionSystem
@@ -8,6 +10,19 @@ import { GameAction, GameCategory } from '../types/actions';
  * Think of this as the customer service department that handles requests.
  */
 export class ActionSystem {
+  /**
+   * Reference to the GameSystemManager
+   * This will be set when the ActionSystem is created by the GameSystemManager
+   */
+  private manager: GameSystemManager | null = null;
+
+  /**
+   * Set the GameSystemManager reference
+   */
+  setManager(manager: GameSystemManager): void {
+    this.manager = manager;
+  }
+
   /**
    * Process an action and update the game state
    * 
@@ -127,8 +142,8 @@ export class ActionSystem {
   }
   
   /**
-   * Handle upgrade purchases (placeholder for now)
-   * We'll implement the full upgrade system next
+   * Handle upgrade purchases
+   * Uses the UpgradeSystem to process the purchase
    */
   private handleUpgradePurchase(
     state: GameState, 
@@ -136,6 +151,25 @@ export class ActionSystem {
     upgradeType: string
   ): void {
     console.log(`Upgrade purchase: ${category} - ${upgradeType}`);
-    // We'll implement this in the next step
+    
+    // Use the UpgradeSystem from the manager if available
+    let upgradeSystem: UpgradeSystem;
+    
+    if (this.manager) {
+      upgradeSystem = this.manager.upgrade;
+    } else {
+      // Fallback to a new instance if manager is not set
+      console.warn('GameSystemManager not set in ActionSystem, creating temporary UpgradeSystem');
+      upgradeSystem = new UpgradeSystem();
+    }
+    
+    // Attempt to purchase the upgrade
+    const success = upgradeSystem.purchaseUpgrade(state, category, upgradeType);
+    
+    if (success) {
+      console.log(`Successfully purchased ${upgradeType} for ${category}`);
+    } else {
+      console.log(`Failed to purchase ${upgradeType} for ${category}`);
+    }
   }
 } 
