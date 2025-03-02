@@ -5,6 +5,7 @@ import { Battery, Zap, ArrowUpCircle } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/app/game/hooks/useGame"
+import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 
 export default function ReactorPage() {
   const { state, dispatch } = useGame()
@@ -16,11 +17,20 @@ export default function ReactorPage() {
   const { energyCapacity, energyPerSecond } = reactor.stats
   
   // Log component render
-  console.log('COMPONENT - Reactor page rendering with energy:', energy);
+  Logger.debug(
+    LogCategory.UI, 
+    `Reactor page rendering with energy: ${energy}`,
+    [LogContext.UI_RENDER, LogContext.REACTOR_LIFECYCLE]
+  );
   
   // Generate energy on manual click
   const generateEnergy = () => {
-    console.log('COMPONENT - Generate energy button clicked');
+    Logger.debug(
+      LogCategory.UI, 
+      'Generate energy button clicked', 
+      LogContext.REACTOR_LIFECYCLE
+    );
+    
     dispatch({
       type: 'CLICK_RESOURCE',
       payload: {
@@ -31,6 +41,12 @@ export default function ReactorPage() {
   
   // Upgrade energy capacity
   const upgradeCapacity = () => {
+    Logger.debug(
+      LogCategory.UI, 
+      'Upgrade reactor capacity clicked', 
+      [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
+    );
+    
     dispatch({
       type: 'PURCHASE_UPGRADE',
       payload: {
@@ -42,6 +58,12 @@ export default function ReactorPage() {
   
   // Upgrade auto generation
   const upgradeAutoGeneration = () => {
+    Logger.debug(
+      LogCategory.UI, 
+      'Upgrade energy converters clicked', 
+      [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
+    );
+    
     dispatch({
       type: 'PURCHASE_UPGRADE',
       payload: {

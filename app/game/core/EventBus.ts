@@ -5,6 +5,8 @@
  * between different parts of the game.
  */
 
+import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
+
 /**
  * Function that can be called when an event occurs
  */
@@ -21,6 +23,8 @@ export class EventBus {
      */
     private listeners: Map<string, EventCallback[]>;
 
+    private lastStateUpdateTime: number = 0;
+
     constructor() {
         this.listeners = new Map();
     }
@@ -33,21 +37,51 @@ export class EventBus {
      * @param data - Data to send with the event
      */
     emit(event: string, data: any) {
-        console.log(`EVENTBUS - Emitting event: "${event}"`);
+        // Add throttling for state updates
+        if (event === 'stateUpdated') {
+            const now = Date.now();
+            
+            // Skip if we've emitted a state update too recently
+            if (this.lastStateUpdateTime && now - this.lastStateUpdateTime < 50) {
+                return;
+            }
+            
+            this.lastStateUpdateTime = now;
+        }
+        
+        // Determine context based on event type
+        let context = LogContext.NONE;
+        
+        // Detect specific workflows based on event and data
+        if (event === 'stateUpdated') {
+            // Keep NONE context for general state updates
+            context = LogContext.NONE;
+        } else if (event === 'DISPATCH_ACTION' && data?.type) {
+            // Set context based on action type
+            if (data.type === 'CLICK_RESOURCE' && data.payload?.category === 'reactor') {
+                context = LogContext.REACTOR_LIFECYCLE;
+            } else if (data.type === 'CLICK_RESOURCE' && data.payload?.category === 'processor') {
+                context = LogContext.PROCESSOR_LIFECYCLE;
+            } else if (data.type === 'PURCHASE_UPGRADE') {
+                context = LogContext.UPGRADE_PURCHASE;
+            }
+        }
+        
+        Logger.debug(LogCategory.EVENT_BUS, `Emitting event: "${event}"`, context);
         
         // Get all listeners for this event (or empty array if none)
         const callbacks = this.listeners.get(event) || [];
         
         if (callbacks.length === 0) {
-            console.warn(`EVENTBUS - No listeners registered for event: "${event}"`);
+            Logger.warn(LogCategory.EVENT_BUS, `No listeners registered for event: "${event}"`, context);
         } else {
-            console.log(`EVENTBUS - Found ${callbacks.length} listeners for event: "${event}"`);
+            Logger.debug(LogCategory.EVENT_BUS, `Found ${callbacks.length} listeners for event: "${event}"`, context);
         }
         
         // When emitting state updates, clone the data to ensure React detects changes
         let dataToEmit = data;
         if (event === 'stateUpdated') {
-            console.log('EVENTBUS - Deep copying state data before emitting');
+            Logger.trace(LogCategory.EVENT_BUS, 'Deep copying state data before emitting', context);
             dataToEmit = JSON.parse(JSON.stringify(data));
         }
         
@@ -64,7 +98,14 @@ export class EventBus {
      * @returns A function to remove this listener
      */
     on(event: string, callback: EventCallback) {
-        console.log(`EVENTBUS - Registering listener for event: "${event}"`);
+        // Log with appropriate context based on event type
+        let context = LogContext.NONE;
+        
+        if (event === 'stateUpdated') {
+            context = LogContext.UI_RENDER;
+        }
+        
+        Logger.debug(LogCategory.EVENT_BUS, `Registering listener for event: "${event}"`, context);
         
         // Initialize listener array if it doesn't exist
         if (!this.listeners.has(event)) {
@@ -75,18 +116,20 @@ export class EventBus {
         this.listeners.get(event)?.push(callback);
         
         const currentCount = this.listeners.get(event)?.length || 0;
-        console.log(`EVENTBUS - Now have ${currentCount} listeners for event: "${event}"`);
+        Logger.debug(LogCategory.EVENT_BUS, `Now have ${currentCount} listeners for event: "${event}"`, context);
 
         // Return a function to unsubscribe
         return () => {
-            console.log(`EVENTBUS - Removing listener for event: "${event}"`);
+            Logger.debug(LogCategory.EVENT_BUS, `Removing listener for event: "${event}"`, context);
+            
             const callbacks = this.listeners.get(event) || [];
             this.listeners.set(
                 event,
                 callbacks.filter(cb => cb !== callback)
             );
+            
             const newCount = this.listeners.get(event)?.length || 0;
-            console.log(`EVENTBUS - Now have ${newCount} listeners for event: "${event}"`);
+            Logger.debug(LogCategory.EVENT_BUS, `Now have ${newCount} listeners for event: "${event}"`, context);
         };
     }
 } 

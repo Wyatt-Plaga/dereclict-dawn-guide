@@ -1,5 +1,6 @@
 import { GameState } from '../types';
 import { GameCategory } from '../types/actions';
+import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 
 /**
  * UpgradeSystem
@@ -17,7 +18,11 @@ export class UpgradeSystem {
    * @returns Whether the purchase was successful
    */
   purchaseUpgrade(state: GameState, category: GameCategory, upgradeType: string): boolean {
-    console.log(`Attempting to purchase ${upgradeType} in ${category}`);
+    Logger.debug(
+      LogCategory.UPGRADES, 
+      `Attempting to purchase ${upgradeType} in ${category}`,
+      LogContext.UPGRADE_PURCHASE
+    );
     
     switch (category) {
       case 'reactor':
@@ -29,7 +34,11 @@ export class UpgradeSystem {
       case 'manufacturing':
         return this.purchaseManufacturingUpgrade(state, upgradeType);
       default:
-        console.warn(`Unknown category: ${category}`);
+        Logger.warn(
+          LogCategory.UPGRADES,
+          `Unknown category: ${category}`,
+          LogContext.UPGRADE_PURCHASE
+        );
         return false;
     }
   }
@@ -45,6 +54,12 @@ export class UpgradeSystem {
         // Cost: 80% of current capacity
         const expansionCost = reactor.stats.energyCapacity * 0.8;
         
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Reactor expansion cost: ${expansionCost} energy (available: ${reactor.resources.energy})`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
+        );
+        
         if (reactor.resources.energy >= expansionCost) {
           // Deduct cost
           reactor.resources.energy -= expansionCost;
@@ -55,13 +70,32 @@ export class UpgradeSystem {
           // Update stats
           this.updateReactorStats(state);
           
+          Logger.info(
+            LogCategory.UPGRADES,
+            `Purchased reactor expansion (level ${reactor.upgrades.reactorExpansions})`,
+            [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
+          );
+          
           return true;
         }
+        
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Insufficient energy for reactor expansion`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
+        );
+        
         return false;
         
       case 'energyConverters':
         // Cost: (converters + 1) * 20
         const converterCost = (reactor.upgrades.energyConverters + 1) * 20;
+        
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Energy converter cost: ${converterCost} energy (available: ${reactor.resources.energy})`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
+        );
         
         if (reactor.resources.energy >= converterCost) {
           // Deduct cost
@@ -73,12 +107,29 @@ export class UpgradeSystem {
           // Update stats
           this.updateReactorStats(state);
           
+          Logger.info(
+            LogCategory.UPGRADES,
+            `Purchased energy converter (level ${reactor.upgrades.energyConverters})`,
+            [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
+          );
+          
           return true;
         }
+        
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Insufficient energy for energy converter`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
+        );
+        
         return false;
         
       default:
-        console.warn(`Unknown reactor upgrade: ${upgradeType}`);
+        Logger.warn(
+          LogCategory.UPGRADES,
+          `Unknown reactor upgrade: ${upgradeType}`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
+        );
         return false;
     }
   }
@@ -94,6 +145,12 @@ export class UpgradeSystem {
         // Cost: 70% of current capacity
         const expansionCost = processor.stats.insightCapacity * 0.7;
         
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Mainframe expansion cost: ${expansionCost} insight (available: ${processor.resources.insight})`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+        );
+        
         if (processor.resources.insight >= expansionCost) {
           // Deduct cost
           processor.resources.insight -= expansionCost;
@@ -104,13 +161,32 @@ export class UpgradeSystem {
           // Update stats
           this.updateProcessorStats(state);
           
+          Logger.info(
+            LogCategory.UPGRADES,
+            `Purchased mainframe expansion (level ${processor.upgrades.mainframeExpansions})`,
+            [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+          );
+          
           return true;
         }
+        
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Insufficient insight for mainframe expansion`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+        );
+        
         return false;
         
       case 'processingThreads':
         // Cost: (threads + 1) * 15
         const threadCost = (processor.upgrades.processingThreads + 1) * 15;
+        
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Processing thread cost: ${threadCost} insight (available: ${processor.resources.insight})`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+        );
         
         if (processor.resources.insight >= threadCost) {
           // Deduct cost
@@ -122,12 +198,29 @@ export class UpgradeSystem {
           // Update stats
           this.updateProcessorStats(state);
           
+          Logger.info(
+            LogCategory.UPGRADES,
+            `Purchased processing thread (level ${processor.upgrades.processingThreads})`,
+            [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+          );
+          
           return true;
         }
+        
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Insufficient insight for processing thread`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+        );
+        
         return false;
         
       default:
-        console.warn(`Unknown processor upgrade: ${upgradeType}`);
+        Logger.warn(
+          LogCategory.UPGRADES,
+          `Unknown processor upgrade: ${upgradeType}`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+        );
         return false;
     }
   }
@@ -143,6 +236,12 @@ export class UpgradeSystem {
         // Cost: 60% of current capacity
         const quartersCost = Math.floor(crewQuarters.stats.crewCapacity * 0.6);
         
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Additional quarters cost: ${quartersCost} crew (available: ${crewQuarters.resources.crew})`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
+        );
+        
         if (crewQuarters.resources.crew >= quartersCost) {
           // Deduct cost
           crewQuarters.resources.crew -= quartersCost;
@@ -153,8 +252,21 @@ export class UpgradeSystem {
           // Update stats
           this.updateCrewQuartersStats(state);
           
+          Logger.info(
+            LogCategory.UPGRADES,
+            `Purchased additional quarters (level ${crewQuarters.upgrades.additionalQuarters})`,
+            [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
+          );
+          
           return true;
         }
+        
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Insufficient crew for additional quarters`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
+        );
+        
         return false;
         
       case 'workerCrews':
@@ -163,8 +275,19 @@ export class UpgradeSystem {
         
         // Check if maxed out (max 5 worker crews)
         if (crewQuarters.upgrades.workerCrews >= 5) {
+          Logger.debug(
+            LogCategory.UPGRADES,
+            `Worker crews already at maximum level (5)`,
+            [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
+          );
           return false;
         }
+        
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Worker crew cost: ${workerCost} crew (available: ${crewQuarters.resources.crew})`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
+        );
         
         if (crewQuarters.resources.crew >= workerCost) {
           // Deduct cost
@@ -176,12 +299,29 @@ export class UpgradeSystem {
           // Update stats
           this.updateCrewQuartersStats(state);
           
+          Logger.info(
+            LogCategory.UPGRADES,
+            `Purchased worker crew (level ${crewQuarters.upgrades.workerCrews})`,
+            [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
+          );
+          
           return true;
         }
+        
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Insufficient crew for worker crew`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
+        );
+        
         return false;
         
       default:
-        console.warn(`Unknown crew quarters upgrade: ${upgradeType}`);
+        Logger.warn(
+          LogCategory.UPGRADES,
+          `Unknown crew quarters upgrade: ${upgradeType}`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
+        );
         return false;
     }
   }
@@ -197,6 +337,12 @@ export class UpgradeSystem {
         // Cost: 50% of current capacity
         const expansionCost = Math.floor(manufacturing.stats.scrapCapacity * 0.5);
         
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Cargo hold expansion cost: ${expansionCost} scrap (available: ${manufacturing.resources.scrap})`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
+        );
+        
         if (manufacturing.resources.scrap >= expansionCost) {
           // Deduct cost
           manufacturing.resources.scrap -= expansionCost;
@@ -207,13 +353,32 @@ export class UpgradeSystem {
           // Update stats
           this.updateManufacturingStats(state);
           
+          Logger.info(
+            LogCategory.UPGRADES,
+            `Purchased cargo hold expansion (level ${manufacturing.upgrades.cargoHoldExpansions})`,
+            [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
+          );
+          
           return true;
         }
+        
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Insufficient scrap for cargo hold expansion`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
+        );
+        
         return false;
         
       case 'manufacturingBays':
         // Cost: (bays + 1) * 25
         const bayCost = (manufacturing.upgrades.manufacturingBays + 1) * 25;
+        
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Manufacturing bay cost: ${bayCost} scrap (available: ${manufacturing.resources.scrap})`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
+        );
         
         if (manufacturing.resources.scrap >= bayCost) {
           // Deduct cost
@@ -225,12 +390,29 @@ export class UpgradeSystem {
           // Update stats
           this.updateManufacturingStats(state);
           
+          Logger.info(
+            LogCategory.UPGRADES,
+            `Purchased manufacturing bay (level ${manufacturing.upgrades.manufacturingBays})`,
+            [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
+          );
+          
           return true;
         }
+        
+        Logger.debug(
+          LogCategory.UPGRADES,
+          `Insufficient scrap for manufacturing bay`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
+        );
+        
         return false;
         
       default:
-        console.warn(`Unknown manufacturing upgrade: ${upgradeType}`);
+        Logger.warn(
+          LogCategory.UPGRADES,
+          `Unknown manufacturing upgrade: ${upgradeType}`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
+        );
         return false;
     }
   }
@@ -241,6 +423,7 @@ export class UpgradeSystem {
    * @param state - Current game state
    */
   updateAllStats(state: GameState): void {
+    Logger.debug(LogCategory.UPGRADES, "Updating all stats based on upgrade levels", LogContext.STARTUP);
     this.updateReactorStats(state);
     this.updateProcessorStats(state);
     this.updateCrewQuartersStats(state);

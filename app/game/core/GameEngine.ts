@@ -2,6 +2,7 @@ import { EventBus } from './EventBus';
 import { GameState, initialGameState } from '../types';
 import { GameSystemManager } from '../systems';
 import { GameAction } from '../types/actions';
+import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 
 /**
  * GameEngine: The heart of the game
@@ -55,6 +56,8 @@ export class GameEngine {
         
         // Set up event handlers
         this.setupEventHandlers();
+        
+        Logger.info(LogCategory.ENGINE, "Game engine initialized", LogContext.STARTUP);
     }
     
     /**
@@ -65,6 +68,8 @@ export class GameEngine {
         this.eventBus.on('DISPATCH_ACTION', (action: GameAction) => {
             this.processAction(action);
         });
+        
+        Logger.debug(LogCategory.ENGINE, "Event handlers configured", LogContext.STARTUP);
     }
 
     /**
@@ -74,7 +79,7 @@ export class GameEngine {
     start() {
         if (this.isRunning) return;
         
-        console.log('Game engine started');
+        Logger.info(LogCategory.ENGINE, "Game engine started", LogContext.STARTUP);
         this.isRunning = true;
         this.lastTick = Date.now();
         this.gameLoop();
@@ -85,7 +90,7 @@ export class GameEngine {
      * Like pausing the clock
      */
     stop() {
-        console.log('Game engine stopped');
+        Logger.info(LogCategory.ENGINE, "Game engine stopped", LogContext.NONE);
         this.isRunning = false;
     }
 
@@ -101,11 +106,17 @@ export class GameEngine {
         const now = Date.now();
         const delta = (now - this.lastTick) / 1000; // Convert to seconds
         
+        // Performance tracking for game loop
+        const endMeasure = Logger.measure("Game loop cycle", LogCategory.PERFORMANCE);
+        
         // Update game state
         this.tick(delta);
         
         // Remember when we did this update
         this.lastTick = now;
+        
+        // End performance measurement
+        endMeasure();
 
         // Schedule the next update
         // This is like scheduling the next tick of the clock
@@ -119,14 +130,23 @@ export class GameEngine {
      * @param delta - Time in seconds since last update
      */
     private tick(delta: number) {
+        // Store the previous state for comparison
+        const prevState = JSON.stringify(this.state);
+        
         // Update the last update timestamp
         this.state.lastUpdate = Date.now();
+        
+        // Trace level logging for game ticks
+        Logger.trace(LogCategory.ENGINE, `Tick with delta: ${delta.toFixed(5)}s`, LogContext.NONE);
         
         // Update all game systems
         this.systems.update(this.state, delta);
         
-        // Let everyone know the state has been updated
-        this.eventBus.emit('stateUpdated', this.state);
+        // Only emit state updates if something actually changed
+        const currentState = JSON.stringify(this.state);
+        if (currentState !== prevState) {
+            this.eventBus.emit('stateUpdated', this.state);
+        }
     }
     
     /**
@@ -135,22 +155,46 @@ export class GameEngine {
      * @param action - The action to process
      */
     private processAction(action: GameAction) {
-        console.log('Engine processing action:', action.type);
+        // Determine the context based on action type
+        let context = LogContext.NONE;
+        if (action.type === 'CLICK_RESOURCE') {
+            const category = action.payload?.category;
+            if (category === 'reactor') {
+                context = LogContext.REACTOR_LIFECYCLE;
+            } else if (category === 'processor') {
+                context = LogContext.PROCESSOR_LIFECYCLE;
+            } else if (category === 'crew') {
+                context = LogContext.CREW_LIFECYCLE;
+            } else if (category === 'manufacturing') {
+                context = LogContext.MANUFACTURING_LIFECYCLE;
+            }
+        } else if (action.type === 'PURCHASE_UPGRADE') {
+            context = LogContext.UPGRADE_PURCHASE;
+        }
+        
+        Logger.debug(LogCategory.ENGINE, `Processing action: ${action.type}`, context);
         
         // Log state before processing
         const beforeEnergy = this.state.categories.reactor.resources.energy;
-        console.log('ENGINE - State BEFORE action:', action.type, '- Energy:', beforeEnergy);
+        Logger.debug(
+            LogCategory.ENGINE, 
+            `State BEFORE action: ${action.type} - Energy: ${beforeEnergy}`, 
+            context
+        );
         
         // Pass the action to game systems
         this.systems.processAction(this.state, action);
         
         // Log state after processing
         const afterEnergy = this.state.categories.reactor.resources.energy;
-        console.log('ENGINE - State AFTER action:', action.type, '- Energy:', afterEnergy, 
-            '(Changed:', afterEnergy !== beforeEnergy, ')');
+        Logger.debug(
+            LogCategory.ENGINE, 
+            `State AFTER action: ${action.type} - Energy: ${afterEnergy} (Changed: ${afterEnergy !== beforeEnergy})`, 
+            context
+        );
         
         // Notify that state has been updated
-        console.log('ENGINE - Emitting stateUpdated event');
+        Logger.debug(LogCategory.ENGINE, "Emitting stateUpdated event", context);
         this.eventBus.emit('stateUpdated', this.state);
     }
     

@@ -1,9 +1,10 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { GameEngine } from '../core/GameEngine';
 import { GameState } from '../types';
 import { GameAction } from '../types/actions';
+import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 
 /**
  * The shape of our Game Context
@@ -27,56 +28,76 @@ const GameContext = createContext<GameContextType | null>(null);
  */
 export function GameProvider({ children }: { children: ReactNode }) {
   // Create a game engine instance that persists across renders
-  const [engine] = useState(() => new GameEngine());
+  const [engine] = useState(() => {
+    Logger.info(LogCategory.LIFECYCLE, "Creating game engine instance", LogContext.STARTUP);
+    return new GameEngine();
+  });
   
   // Track the current game state
   const [state, setState] = useState(() => {
     // Deep clone the initial state to ensure proper React state management
-    return JSON.parse(JSON.stringify(engine.getState()));
+    const initialState = JSON.parse(JSON.stringify(engine.getState()));
+    Logger.debug(LogCategory.STATE, "Initializing React state with game state", LogContext.STARTUP);
+    return initialState;
   });
 
   // Create a stable dispatch function that won't change on re-renders
   const dispatch = useCallback((action: GameAction) => {
-    console.log('Dispatching action:', action.type);
+    // Determine appropriate context based on action type
+    let context = LogContext.NONE;
+    if (action.type === 'CLICK_RESOURCE') {
+      const category = action.payload.category;
+      if (category === 'reactor') {
+        context = LogContext.REACTOR_LIFECYCLE;
+      } else if (category === 'processor') {
+        context = LogContext.PROCESSOR_LIFECYCLE;
+      } else if (category === 'crewQuarters') {
+        context = LogContext.CREW_LIFECYCLE;
+      } else if (category === 'manufacturing') {
+        context = LogContext.MANUFACTURING_LIFECYCLE;
+      }
+    } else if (action.type === 'PURCHASE_UPGRADE') {
+      context = LogContext.UPGRADE_PURCHASE;
+    }
+    
+    Logger.debug(LogCategory.ACTIONS, `Dispatching action: ${action.type}`, context);
     engine.dispatch(action);
   }, [engine]);
 
+  // Fix by using a ref to stabilize the engine reference:
+  const engineRef = useRef(engine);
+
+  // Only set up the event listener once
   useEffect(() => {
-    console.log('PROVIDER - Setting up game engine and event listeners');
+    // Track if the component is mounted
+    let isMounted = true;
     
-    // Subscribe to state updates from the game engine
-    const unsubscribe = engine.eventBus.on('stateUpdated', (newState: GameState) => {
-      console.log('PROVIDER - Received stateUpdated event');
-      console.log('PROVIDER - New energy value:', newState.categories.reactor.resources.energy);
-      console.log('PROVIDER - Current React state energy:', state.categories.reactor.resources.energy);
+    // Debounce state updates to prevent rapid re-renders
+    let lastUpdateTime = 0;
+    const updateThreshold = 50; // ms
+    
+    const handleStateUpdate = (newState: GameState) => {
+      if (!isMounted) return;
       
-      // IMPORTANT: Create a deep copy of the state to ensure React detects the change
-      // This is crucial for React's state update mechanism to work correctly
-      const stateCopy = JSON.parse(JSON.stringify(newState));
+      const now = Date.now();
+      if (now - lastUpdateTime < updateThreshold) return;
+      lastUpdateTime = now;
       
-      console.log('PROVIDER - Updating React state with new game state (deep copied)');
-      setState(stateCopy);
-      
-      // Log if there was a change in energy (for debugging)
-      if (stateCopy.categories.reactor.resources.energy !== state.categories.reactor.resources.energy) {
-        console.log('PROVIDER - Energy changed from', 
-          state.categories.reactor.resources.energy, 
-          'to', stateCopy.categories.reactor.resources.energy);
-      } else {
-        console.log('PROVIDER - Energy value unchanged in the new state');
-      }
-    });
-
-    // Start the game engine
-    engine.start();
-
-    // Cleanup when unmounted
+      // Use functional setState to avoid dependency on current state
+      setState(prevState => {
+        // Only update if something meaningful changed
+        // Optional: implement deep comparison here
+        return JSON.parse(JSON.stringify(newState));
+      });
+    };
+    
+    const unsubscribe = engineRef.current.eventBus.on('stateUpdated', handleStateUpdate);
+    
     return () => {
-      console.log('PROVIDER - Cleaning up game engine and event listeners');
-      engine.stop();
+      isMounted = false;
       unsubscribe();
     };
-  }, [engine, state]);
+  }, []); // Empty dependency array - only run once
 
   // Create the context value object with stable references
   const contextValue = useCallback(() => ({

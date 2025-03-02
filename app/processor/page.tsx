@@ -6,6 +6,7 @@ import { CpuIcon, Brain, ArrowUpCircle, CircuitBoard } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useSearchParams } from "next/navigation"
+import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 
 export default function ProcessorPage() {
   const [insight, setInsight] = useState(0)
@@ -13,25 +14,79 @@ export default function ProcessorPage() {
   const [processingThreads, setProcessingThreads] = useState(0)
   const { shouldFlicker } = useSystemStatus()
   
+  // Log component mount
+  useEffect(() => {
+    Logger.debug(
+      LogCategory.UI, 
+      "Processor page mounted",
+      [LogContext.UI_RENDER, LogContext.PROCESSOR_LIFECYCLE]
+    );
+    
+    return () => {
+      Logger.debug(
+        LogCategory.UI, 
+        "Processor page unmounted",
+        [LogContext.UI_RENDER, LogContext.PROCESSOR_LIFECYCLE]
+      );
+    };
+  }, []);
+  
   // Auto-generate insight based on processingThreads rate (per second)
   useEffect(() => {
     if (processingThreads <= 0) return
     
+    Logger.debug(
+      LogCategory.RESOURCES, 
+      `Setting up automatic insight generation: +${processingThreads * 0.2}/s`,
+      LogContext.PROCESSOR_LIFECYCLE
+    );
+    
     const interval = setInterval(() => {
       setInsight(current => {
         const newValue = current + processingThreads * 0.2
-        return newValue > mainframeCapacity ? mainframeCapacity : newValue
+        const capped = newValue > mainframeCapacity ? mainframeCapacity : newValue;
+        
+        if (capped === mainframeCapacity && newValue > mainframeCapacity) {
+          Logger.debug(
+            LogCategory.RESOURCES,
+            "Insight generation capped at maximum capacity",
+            LogContext.PROCESSOR_LIFECYCLE
+          );
+        }
+        
+        return capped;
       })
     }, 1000)
     
-    return () => clearInterval(interval)
+    return () => {
+      Logger.debug(
+        LogCategory.RESOURCES, 
+        "Cleaning up automatic insight generation",
+        LogContext.PROCESSOR_LIFECYCLE
+      );
+      clearInterval(interval);
+    }
   }, [processingThreads, mainframeCapacity])
   
   // Generate insight on manual click
   const generateInsight = () => {
+    Logger.debug(
+      LogCategory.UI, 
+      "Process data button clicked", 
+      LogContext.PROCESSOR_LIFECYCLE
+    );
+    
     setInsight(current => {
       const newValue = current + 0.5
-      return newValue > mainframeCapacity ? mainframeCapacity : newValue
+      const capped = newValue > mainframeCapacity ? mainframeCapacity : newValue;
+      
+      Logger.debug(
+        LogCategory.RESOURCES,
+        `Insight generated: ${current} → ${capped}`,
+        LogContext.PROCESSOR_LIFECYCLE
+      );
+      
+      return capped;
     })
   }
   
@@ -39,9 +94,38 @@ export default function ProcessorPage() {
   const upgradeMainframeCapacity = () => {
     const upgradeCost = mainframeCapacity * 0.7
     
+    Logger.debug(
+      LogCategory.UI, 
+      `Mainframe expansion clicked. Cost: ${upgradeCost.toFixed(1)}`, 
+      [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+    );
+    
     if (insight >= upgradeCost) {
-      setInsight(current => current - upgradeCost)
-      setMainframeCapacity(current => current * 1.5)
+      setInsight(current => {
+        const newValue = current - upgradeCost;
+        Logger.info(
+          LogCategory.UPGRADES,
+          `Purchased mainframe expansion. Insight: ${current.toFixed(1)} → ${newValue.toFixed(1)}`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+        );
+        return newValue;
+      });
+      
+      setMainframeCapacity(current => {
+        const newValue = current * 1.5;
+        Logger.info(
+          LogCategory.UPGRADES,
+          `Mainframe capacity increased: ${current} → ${newValue.toFixed(1)}`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+        );
+        return newValue;
+      });
+    } else {
+      Logger.debug(
+        LogCategory.UPGRADES,
+        `Insufficient insight for mainframe expansion (have: ${insight.toFixed(1)}, need: ${upgradeCost.toFixed(1)})`,
+        [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+      );
     }
   }
   
@@ -49,19 +133,66 @@ export default function ProcessorPage() {
   const upgradeProcessingThreads = () => {
     const threadCost = (processingThreads + 1) * 15
     
+    Logger.debug(
+      LogCategory.UI, 
+      `Processing thread upgrade clicked. Cost: ${threadCost}`, 
+      [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+    );
+    
     if (insight >= threadCost) {
-      setInsight(current => current - threadCost)
-      setProcessingThreads(current => current + 1)
+      setInsight(current => {
+        const newValue = current - threadCost;
+        Logger.info(
+          LogCategory.UPGRADES,
+          `Purchased processing thread. Insight: ${current.toFixed(1)} → ${newValue.toFixed(1)}`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+        );
+        return newValue;
+      });
+      
+      setProcessingThreads(current => {
+        const newValue = current + 1;
+        Logger.info(
+          LogCategory.UPGRADES,
+          `Processing threads increased: ${current} → ${newValue}`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+        );
+        return newValue;
+      });
+    } else {
+      Logger.debug(
+        LogCategory.UPGRADES,
+        `Insufficient insight for processing thread (have: ${insight.toFixed(1)}, need: ${threadCost})`,
+        [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+      );
     }
   }
   
   // Unlock tech tree item (placeholder for future expansion)
   const unlockTechItem = (itemId: string, cost: number) => {
     // This would be expanded with actual tech tree implementation
+    Logger.debug(
+      LogCategory.UI,
+      `Tech item ${itemId} unlock attempted. Cost: ${cost}`,
+      [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+    );
+    
     if (insight >= cost) {
-      setInsight(current => current - cost)
-      // Add logic to unlock specific tech item
-      console.log(`Tech item ${itemId} unlocked`)
+      setInsight(current => {
+        const newValue = current - cost;
+        Logger.info(
+          LogCategory.UPGRADES,
+          `Tech item ${itemId} unlocked. Insight: ${current.toFixed(1)} → ${newValue.toFixed(1)}`,
+          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+        );
+        return newValue;
+      });
+    } else {
+      Logger.debug(
+        LogCategory.UPGRADES,
+        `Insufficient insight for tech item ${itemId} (have: ${insight.toFixed(1)}, need: ${cost})`,
+        [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
+      );
     }
   }
   
