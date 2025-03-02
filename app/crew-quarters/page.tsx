@@ -1,66 +1,84 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { NavBar } from "@/components/ui/navbar"
 import { Users, User, Home, Wrench, Plus } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
+import { useGame } from "@/app/game/hooks/useGame"
+import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 
 export default function CrewQuartersPage() {
-  const [crew, setCrew] = useState(0)
-  const [crewCapacity, setCrewCapacity] = useState(5)
-  const [awakening, setAwakening] = useState(0)
-  const [workerCrews, setWorkerCrews] = useState(0)
+  const { state, dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
   
-  // Auto-generate crew based on workerCrews rate (per 10 seconds)
-  useEffect(() => {
-    if (workerCrews <= 0) return
-    
-    const interval = setInterval(() => {
-      setCrew(current => {
-        if (current >= crewCapacity) return current
-        const newValue = current + workerCrews * 0.1 // 1 crew per 10 seconds per worker crew
-        return newValue > crewCapacity ? crewCapacity : newValue
-      })
-    }, 1000)
-    
-    return () => clearInterval(interval)
-  }, [workerCrews, crewCapacity])
+  // Get crew quarters data from game state
+  const crewQuarters = state.categories.crewQuarters
+  const { crew } = crewQuarters.resources
+  const { crewCapacity, crewPerSecond } = crewQuarters.stats
+  
+  // Log component render
+  Logger.debug(
+    LogCategory.UI, 
+    `Crew quarters page rendering with crew: ${crew}`,
+    [LogContext.UI_RENDER, LogContext.CREW_LIFECYCLE]
+  );
   
   // Generate crew on manual click (awakening)
   const awakenCrew = () => {
-    if (crew >= crewCapacity) return
+    if (crew >= crewCapacity) return;
     
-    // Add 0.1 to crew for each click (it takes 10 clicks to awaken 1 crew member)
-    setCrew(current => {
-      const newValue = current + 0.1
-      return newValue > crewCapacity ? crewCapacity : newValue
+    Logger.debug(
+      LogCategory.UI, 
+      'Awaken crew button clicked', 
+      LogContext.CREW_LIFECYCLE
+    );
+    
+    dispatch({
+      type: 'CLICK_RESOURCE',
+      payload: {
+        category: 'crewQuarters'
+      }
     })
-    
-    // Increment awakening counter
-    setAwakening(current => current + 1)
   }
   
   // Upgrade crew capacity
   const upgradeQuarters = () => {
-    const upgradeCost = Math.floor(crewCapacity * 0.6)
+    Logger.debug(
+      LogCategory.UI, 
+      'Upgrade crew quarters clicked', 
+      [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
+    );
     
-    if (crew >= upgradeCost) {
-      setCrew(current => current - upgradeCost)
-      setCrewCapacity(current => current + 3)
-    }
+    dispatch({
+      type: 'PURCHASE_UPGRADE',
+      payload: {
+        category: 'crewQuarters',
+        upgradeType: 'additionalQuarters'
+      }
+    })
   }
   
   // Upgrade auto awakening
   const upgradeWorkerCrews = () => {
-    const upgradeCost = Math.floor((workerCrews + 1) * 2.5)
+    Logger.debug(
+      LogCategory.UI, 
+      'Upgrade worker crews clicked', 
+      [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
+    );
     
-    if (crew >= upgradeCost && workerCrews < 5) { // max 5 worker crews
-      setCrew(current => current - upgradeCost)
-      setWorkerCrews(current => current + 1)
-    }
+    dispatch({
+      type: 'PURCHASE_UPGRADE',
+      payload: {
+        category: 'crewQuarters',
+        upgradeType: 'workerCrews'
+      }
+    })
   }
+  
+  // Calculate upgrade costs
+  const quartersCost = Math.floor(crewCapacity * 0.6)
+  const workerCrewCost = Math.floor((crewQuarters.upgrades.workerCrews + 1) * 2.5)
+  const maxWorkerCrews = 5
   
   // Format crew count (show as integers when whole numbers, 1 decimal when partial)
   const formatCrewCount = (count: number) => {
@@ -89,7 +107,7 @@ export default function CrewQuartersPage() {
             </div>
             <Progress value={(crew / crewCapacity) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-3" />
             <div className="text-xs text-muted-foreground mt-1">
-              {workerCrews > 0 && <span>+{(workerCrews * 0.1).toFixed(1)} per second (auto-awakening)</span>}
+              {crewPerSecond > 0 && <span>+{crewPerSecond.toFixed(1)} per second (auto-awakening)</span>}
             </div>
           </div>
           
@@ -105,10 +123,7 @@ export default function CrewQuartersPage() {
               <User className={`h-12 w-12 text-chart-3 mb-2 ${shouldFlicker('crew') ? 'flickering-text' : ''}`} />
               <span className="terminal-text">Awaken Crew Member</span>
               <span className="text-xs text-muted-foreground mt-1">
-                {awakening % 10 === 0 ? 
-                  "Initiate awakening sequence" : 
-                  `Awakening progress: ${awakening % 10}/10`
-                }
+                +0.1 crew per click
               </span>
             </div>
           </button>
@@ -119,7 +134,7 @@ export default function CrewQuartersPage() {
             
             {/* Quarters upgrade */}
             <div 
-              className={`system-panel p-4 ${crew >= Math.floor(crewCapacity * 0.6) ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+              className={`system-panel p-4 ${crew >= quartersCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
               onClick={upgradeQuarters}
             >
               <div className="flex items-center justify-between mb-2">
@@ -127,17 +142,20 @@ export default function CrewQuartersPage() {
                   <Home className="h-5 w-5 text-chart-3 mr-2" />
                   <span>Additional Quarters</span>
                 </div>
-                <span className="font-mono text-xs">{Math.floor(crewCapacity * 0.6)} Crew</span>
+                <span className="font-mono text-xs">{quartersCost} Crew</span>
               </div>
               <p className="text-xs text-muted-foreground">
                 Prepare {3} more crew quarters, increasing capacity to {crewCapacity + 3}
               </p>
+              <div className="mt-2 text-xs">
+                Level: {crewQuarters.upgrades.additionalQuarters}
+              </div>
             </div>
             
             {/* Worker crews upgrade */}
-            {workerCrews < 5 && (
+            {crewQuarters.upgrades.workerCrews < maxWorkerCrews && (
               <div 
-                className={`system-panel p-4 ${crew >= Math.floor((workerCrews + 1) * 2.5) ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+                className={`system-panel p-4 ${crew >= workerCrewCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
                 onClick={upgradeWorkerCrews}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -145,11 +163,14 @@ export default function CrewQuartersPage() {
                     <Wrench className="h-5 w-5 text-chart-3 mr-2" />
                     <span>Worker Crew</span>
                   </div>
-                  <span className="font-mono text-xs">{Math.floor((workerCrews + 1) * 2.5)} Crew</span>
+                  <span className="font-mono text-xs">{workerCrewCost} Crew</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Dedicate crew to help awaken others (+0.1 crew per second)
                 </p>
+                <div className="mt-2 text-xs">
+                  Level: {crewQuarters.upgrades.workerCrews}
+                </div>
               </div>
             )}
             

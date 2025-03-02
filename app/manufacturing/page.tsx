@@ -1,58 +1,81 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { NavBar } from "@/components/ui/navbar"
 import { Package, Cog, Warehouse, Factory } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
+import { useGame } from "@/app/game/hooks/useGame"
+import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 
 export default function ManufacturingPage() {
-  const [scrap, setScrap] = useState(0)
-  const [cargoCapacity, setCargoCapacity] = useState(100)
-  const [manufacturingBays, setManufacturingBays] = useState(0)
+  const { state, dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
   
-  // Auto-generate scrap based on manufacturingBays rate (per second)
-  useEffect(() => {
-    if (manufacturingBays <= 0) return
-    
-    const interval = setInterval(() => {
-      setScrap(current => {
-        const newValue = current + manufacturingBays * 0.5
-        return newValue > cargoCapacity ? cargoCapacity : newValue
-      })
-    }, 1000)
-    
-    return () => clearInterval(interval)
-  }, [manufacturingBays, cargoCapacity])
+  // Get manufacturing data from game state
+  const manufacturing = state.categories.manufacturing
+  const { scrap } = manufacturing.resources
+  const { scrapCapacity, scrapPerSecond } = manufacturing.stats
+  
+  // Log component render
+  Logger.debug(
+    LogCategory.UI, 
+    `Manufacturing page rendering with scrap: ${scrap}`,
+    [LogContext.UI_RENDER, LogContext.MANUFACTURING_LIFECYCLE]
+  );
   
   // Collect scrap on manual click
   const collectScrap = () => {
-    setScrap(current => {
-      const newValue = current + 1
-      return newValue > cargoCapacity ? cargoCapacity : newValue
+    Logger.debug(
+      LogCategory.UI, 
+      'Collect scrap button clicked', 
+      LogContext.MANUFACTURING_LIFECYCLE
+    );
+    
+    dispatch({
+      type: 'CLICK_RESOURCE',
+      payload: {
+        category: 'manufacturing'
+      }
     })
   }
   
   // Upgrade cargo capacity
   const upgradeCargoHold = () => {
-    const upgradeCost = Math.floor(cargoCapacity * 0.5)
+    Logger.debug(
+      LogCategory.UI, 
+      'Upgrade cargo hold clicked', 
+      [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
+    );
     
-    if (scrap >= upgradeCost) {
-      setScrap(current => current - upgradeCost)
-      setCargoCapacity(current => current * 1.5)
-    }
+    dispatch({
+      type: 'PURCHASE_UPGRADE',
+      payload: {
+        category: 'manufacturing',
+        upgradeType: 'cargoHoldExpansions'
+      }
+    })
   }
   
   // Upgrade manufacturing bay
   const upgradeManufacturingBay = () => {
-    const upgradeCost = (manufacturingBays + 1) * 25
+    Logger.debug(
+      LogCategory.UI, 
+      'Upgrade manufacturing bay clicked', 
+      [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
+    );
     
-    if (scrap >= upgradeCost) {
-      setScrap(current => current - upgradeCost)
-      setManufacturingBays(current => current + 1)
-    }
+    dispatch({
+      type: 'PURCHASE_UPGRADE',
+      payload: {
+        category: 'manufacturing',
+        upgradeType: 'manufacturingBays'
+      }
+    })
   }
+  
+  // Calculate upgrade costs
+  const expansionCost = Math.floor(scrapCapacity * 0.5)
+  const bayCost = (manufacturing.upgrades.manufacturingBays + 1) * 25
   
   return (
     <main className="flex min-h-screen flex-col">
@@ -72,20 +95,20 @@ export default function ManufacturingPage() {
                 <Package className="h-5 w-5 text-chart-4 mr-2" />
                 <span className="terminal-text">Scrap</span>
               </div>
-              <span className="font-mono">{Math.floor(scrap)} / {Math.floor(cargoCapacity)}</span>
+              <span className="font-mono">{Math.floor(scrap)} / {Math.floor(scrapCapacity)}</span>
             </div>
-            <Progress value={(scrap / cargoCapacity) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-4" />
+            <Progress value={(scrap / scrapCapacity) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-4" />
             <div className="text-xs text-muted-foreground mt-1">
-              {manufacturingBays > 0 && <span>+{manufacturingBays * 0.5} per second</span>}
+              {scrapPerSecond > 0 && <span>+{scrapPerSecond} per second</span>}
             </div>
           </div>
           
           {/* Manual button */}
           <button 
             onClick={collectScrap} 
-            disabled={scrap >= cargoCapacity}
+            disabled={scrap >= scrapCapacity}
             className={`system-panel w-full py-8 flex items-center justify-center mb-8 transition-colors ${
-              scrap >= cargoCapacity ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent/10'
+              scrap >= scrapCapacity ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent/10'
             }`}
           >
             <div className="flex flex-col items-center">
@@ -101,7 +124,7 @@ export default function ManufacturingPage() {
             
             {/* Cargo hold upgrade */}
             <div 
-              className={`system-panel p-4 ${scrap >= Math.floor(cargoCapacity * 0.5) ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+              className={`system-panel p-4 ${scrap >= expansionCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
               onClick={upgradeCargoHold}
             >
               <div className="flex items-center justify-between mb-2">
@@ -109,16 +132,19 @@ export default function ManufacturingPage() {
                   <Warehouse className="h-5 w-5 text-chart-4 mr-2" />
                   <span>Cargo Hold Expansion</span>
                 </div>
-                <span className="font-mono text-xs">{Math.floor(cargoCapacity * 0.5)} Scrap</span>
+                <span className="font-mono text-xs">{expansionCost} Scrap</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Expand cargo storage capacity to {Math.floor(cargoCapacity * 1.5)}
+                Expand cargo storage capacity to {Math.floor(scrapCapacity * 1.5)}
               </p>
+              <div className="mt-2 text-xs">
+                Level: {manufacturing.upgrades.cargoHoldExpansions}
+              </div>
             </div>
             
             {/* Manufacturing bay upgrade */}
             <div 
-              className={`system-panel p-4 ${scrap >= (manufacturingBays + 1) * 25 ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+              className={`system-panel p-4 ${scrap >= bayCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
               onClick={upgradeManufacturingBay}
             >
               <div className="flex items-center justify-between mb-2">
@@ -126,11 +152,14 @@ export default function ManufacturingPage() {
                   <Factory className="h-5 w-5 text-chart-4 mr-2" />
                   <span>Manufacturing Bay</span>
                 </div>
-                <span className="font-mono text-xs">{(manufacturingBays + 1) * 25} Scrap</span>
+                <span className="font-mono text-xs">{bayCost} Scrap</span>
               </div>
               <p className="text-xs text-muted-foreground">
                 Automated scrap collection (+0.5 per second)
               </p>
+              <div className="mt-2 text-xs">
+                Level: {manufacturing.upgrades.manufacturingBays}
+              </div>
             </div>
             
             {/* Manufacturing projects placeholder */}
