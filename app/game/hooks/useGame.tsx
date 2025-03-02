@@ -70,7 +70,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // Start/stop the game engine
   useEffect(() => {
     console.log("🚀 Starting game engine...");
-    engineRef.current.start();
+    
+    // Initialize the game engine - will load saved game or start new game
+    const initGame = async () => {
+      try {
+        await engineRef.current.initialize();
+      } catch (error) {
+        console.error("Failed to initialize game:", error);
+        // Fallback to starting the game if initialization fails
+        engineRef.current.start();
+      }
+    };
+    
+    initGame();
 
     return () => {
       console.log("⏹️ Stopping game engine...");
@@ -95,7 +107,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       lastUpdateTime = now;
       
       // Use functional setState to avoid dependency on current state
-      setState(prevState => {
+      setState((prevState: GameState) => {
         // Only update if something meaningful changed
         // Optional: implement deep comparison here
         return JSON.parse(JSON.stringify(newState));

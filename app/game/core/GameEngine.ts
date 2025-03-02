@@ -3,6 +3,7 @@ import { GameState, initialGameState } from '../types';
 import { GameSystemManager } from '../systems';
 import { GameAction } from '../types/actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
+import { SaveSystem } from './SaveSystem';
 
 /**
  * GameEngine: The heart of the game
@@ -37,6 +38,11 @@ export class GameEngine {
      */
     private isRunning: boolean;
 
+    /**
+     * Save system for persisting game state
+     */
+    private saveSystem: SaveSystem;
+
     constructor() {
         // Start with a fresh game state
         this.state = JSON.parse(JSON.stringify(initialGameState));
@@ -46,6 +52,9 @@ export class GameEngine {
         
         // Initialize game systems
         this.systems = new GameSystemManager();
+        
+        // Initialize save system
+        this.saveSystem = new SaveSystem();
         
         // Initialize game stats based on upgrades
         this.systems.upgrade.updateAllStats(this.state);
@@ -73,6 +82,22 @@ export class GameEngine {
     }
 
     /**
+     * Initialize game state - load save or start fresh
+     */
+    public async initialize(): Promise<void> {
+        // Initialize save system
+        await this.saveSystem.init();
+        
+        // Try to load the most recent save
+        const savedGame = await this.loadGame();
+        
+        if (!savedGame) {
+            // If no save, start the game fresh
+            this.start();
+        }
+    }
+
+    /**
      * Start the game loop
      * Like turning on the clock
      */
@@ -82,6 +107,11 @@ export class GameEngine {
         Logger.info(LogCategory.ENGINE, "Game engine started", LogContext.STARTUP);
         this.isRunning = true;
         this.lastTick = Date.now();
+        
+        // Start autosave
+        this.saveSystem.startAutoSave(() => this.getState(), 250); // Save every 250ms (quarter second)
+        
+        // Start the game loop
         this.gameLoop();
     }
 
@@ -90,6 +120,12 @@ export class GameEngine {
      * Like pausing the clock
      */
     stop() {
+        // Save game state before stopping
+        this.saveGame();
+        
+        // Stop autosave
+        this.saveSystem.stopAutoSave();
+        
         Logger.info(LogCategory.ENGINE, "Game engine stopped", LogContext.NONE);
         this.isRunning = false;
     }
@@ -222,5 +258,38 @@ export class GameEngine {
     getState(): GameState {
         // Return a deep copy of the state to prevent accidental mutations
         return JSON.parse(JSON.stringify(this.state));
+    }
+    
+    /**
+     * Save the current game state
+     * @returns Promise<string> - The save ID
+     */
+    public async saveGame(): Promise<string> {
+        return await this.saveSystem.save(this.getState());
+    }
+    
+    /**
+     * Load a game state
+     * @returns Promise<boolean> - Whether a save was loaded
+     */
+    public async loadGame(): Promise<boolean> {
+        const saveData = await this.saveSystem.load();
+        
+        if (!saveData) {
+            return false;
+        }
+        
+        // Replace current state with saved state
+        this.state = saveData.state;
+        
+        // Notify about state update
+        this.eventBus.emit('stateUpdated', this.state);
+        
+        // Start the game if not already running
+        if (!this.isRunning) {
+            this.start();
+        }
+        
+        return true;
     }
 } 
