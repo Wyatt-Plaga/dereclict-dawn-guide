@@ -194,29 +194,31 @@ export class ActionSystem {
       LogContext.CREW_LIFECYCLE
     );
     
+    // Don't proceed if already at capacity
+    if (crewQuarters.resources.crew >= crewQuarters.stats.crewCapacity) {
+      Logger.info(
+        LogCategory.RESOURCES, 
+        `Cannot awaken more crew - at capacity (${crewQuarters.stats.crewCapacity})`,
+        LogContext.CREW_LIFECYCLE
+      );
+      return;
+    }
+    
     // Increment awakening progress
     crewQuarters.stats.awakeningProgress += 1;
     
     // If reached 10 clicks, add 1 crew member (up to capacity)
     if (crewQuarters.stats.awakeningProgress >= 10) {
-      if (crewQuarters.resources.crew < crewQuarters.stats.crewCapacity) {
-        crewQuarters.resources.crew = Math.min(
-          crewQuarters.resources.crew + 1,
-          crewQuarters.stats.crewCapacity
-        );
-        
-        Logger.info(
-          LogCategory.RESOURCES, 
-          `Crew member awakened! Current crew: ${crewQuarters.resources.crew}`,
-          LogContext.CREW_LIFECYCLE
-        );
-      } else {
-        Logger.info(
-          LogCategory.RESOURCES, 
-          `Cannot awaken more crew - at capacity (${crewQuarters.stats.crewCapacity})`,
-          LogContext.CREW_LIFECYCLE
-        );
-      }
+      crewQuarters.resources.crew = Math.min(
+        crewQuarters.resources.crew + 1,
+        crewQuarters.stats.crewCapacity
+      );
+      
+      Logger.info(
+        LogCategory.RESOURCES, 
+        `Crew member awakened! Current crew: ${crewQuarters.resources.crew}`,
+        LogContext.CREW_LIFECYCLE
+      );
       
       // Reset progress
       crewQuarters.stats.awakeningProgress = 0;
@@ -226,6 +228,9 @@ export class ActionSystem {
         LogContext.CREW_LIFECYCLE
       );
     } else {
+      // Cap awakening progress at 10
+      crewQuarters.stats.awakeningProgress = Math.min(crewQuarters.stats.awakeningProgress, 10);
+      
       Logger.debug(
         LogCategory.RESOURCES, 
         `Awakening progress increased to ${crewQuarters.stats.awakeningProgress}/10`,

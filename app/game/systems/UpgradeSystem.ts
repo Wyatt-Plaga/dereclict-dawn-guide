@@ -471,8 +471,8 @@ export class UpgradeSystem {
     crewQuarters.stats.crewCapacity = 5 + (crewQuarters.upgrades.additionalQuarters * 3);
     
     // Calculate crew production based on worker crews
-    // Each worker crew adds 0.1 crew per second
-    crewQuarters.stats.crewPerSecond = crewQuarters.upgrades.workerCrews * 0.1;
+    // Each worker crew adds 1.0 awakening progress per second
+    crewQuarters.stats.crewPerSecond = crewQuarters.upgrades.workerCrews * 1.0;
   }
   
   /**

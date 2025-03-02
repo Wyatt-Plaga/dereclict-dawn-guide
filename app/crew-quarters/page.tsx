@@ -27,7 +27,7 @@ export default function CrewQuartersPage() {
   
   // Get awakening stage text based on progress
   const getAwakeningStageText = (progress: number) => {
-    if (progress === 0) return "Cryopod dormant";
+    if (progress < 0.5) return "Cryopod dormant";
     if (progress < 3) return "Initiating warmup";
     if (progress < 5) return "Vital signs stabilizing";
     if (progress < 7) return "Neural activity detected";
@@ -144,21 +144,25 @@ export default function CrewQuartersPage() {
               />
               
               {/* Overlay bar for awakening progress */}
-              {awakeningProgress > 0 && (
+              {awakeningProgress > 0 && crew < crewCapacity && (
                 <div 
                   className="absolute top-0 h-2 bg-amber-500" 
                   style={{
                     left: `${(crew / crewCapacity) * 100}%`,
-                    width: `${(awakeningProgress / 10) * (100 / crewCapacity)}%`,
-                    maxWidth: `${((1 / crewCapacity) * 100)}%`
+                    width: `${Math.min(
+                      // The width of a single unit's progress bar
+                      (awakeningProgress / 10) * (100 / crewCapacity),
+                      // Don't exceed the remaining space
+                      100 - (crew / crewCapacity) * 100
+                    )}%`
                   }}
                 ></div>
               )}
             </div>
             <div className="text-xs text-muted-foreground mt-1 flex justify-between">
-              {crewPerSecond > 0 && <span>+{crewPerSecond.toFixed(1)} per second (auto-awakening)</span>}
+              {crewPerSecond > 0 && <span>+{crewPerSecond.toFixed(1)} awakening progress per second</span>}
               {awakeningProgress > 0 && (
-                <span className="font-mono text-amber-400">Awakening: {awakeningProgress}/10</span>
+                <span className="font-mono text-amber-400">Awakening: {awakeningProgress.toFixed(1)}/10</span>
               )}
             </div>
           </div>
@@ -175,7 +179,7 @@ export default function CrewQuartersPage() {
               <User className={`h-12 w-12 text-chart-3 mb-2 ${shouldFlicker('crew') ? 'flickering-text' : ''}`} />
               <span className="terminal-text">Awaken Crew Member</span>
               <span className="text-xs text-muted-foreground mt-1">
-                {awakeningProgress > 0 ? `Progress: ${awakeningProgress}/10` : "Click to begin awakening"}
+                {awakeningProgress > 0 ? `Progress: ${awakeningProgress.toFixed(1)}/10` : "Click to begin awakening"}
               </span>
             </div>
           </button>
@@ -226,7 +230,7 @@ export default function CrewQuartersPage() {
                   <span className="font-mono text-xs">{workerCrewCost} Crew</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Dedicate crew to help awaken others (+0.1 crew per second)
+                  Dedicate crew to help awaken others (+1.0 awakening progress per second)
                 </p>
                 <div className="mt-2 text-xs">
                   Level: {crewQuarters.upgrades.workerCrews}

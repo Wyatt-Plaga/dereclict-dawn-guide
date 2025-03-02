@@ -57,29 +57,54 @@ export class ResourceSystem {
    */
   private updateCrewQuarters(state: GameState, delta: number) {
     const crewQuarters = state.categories.crewQuarters;
-    const crewProduced = crewQuarters.stats.crewPerSecond * delta;
+    const awakeningProgressPerSecond = crewQuarters.stats.crewPerSecond;
+    const progressAdded = awakeningProgressPerSecond * delta;
     
     // Log crew production
-    if (crewQuarters.stats.crewPerSecond > 0) {
+    if (awakeningProgressPerSecond > 0) {
       console.log(
-        `Crew production: ${crewProduced.toFixed(5)} (rate: ${crewQuarters.stats.crewPerSecond}/s, delta: ${delta.toFixed(5)}s)`
+        `Crew production: ${progressAdded.toFixed(5)} progress (rate: ${awakeningProgressPerSecond}/s, delta: ${delta.toFixed(5)}s)`
       );
     }
     
-    if (crewProduced > 0) {
+    if (progressAdded > 0 && crewQuarters.resources.crew < crewQuarters.stats.crewCapacity) {
       // Log current values before update
+      const oldProgress = crewQuarters.stats.awakeningProgress;
       const oldCrew = crewQuarters.resources.crew;
       
-      crewQuarters.resources.crew = Math.min(
-        crewQuarters.resources.crew + crewProduced,
-        crewQuarters.stats.crewCapacity
-      );
+      // Add progress
+      crewQuarters.stats.awakeningProgress += progressAdded;
+      
+      // Check if we've reached the threshold to add crew
+      while (crewQuarters.stats.awakeningProgress >= 10 && crewQuarters.resources.crew < crewQuarters.stats.crewCapacity) {
+        // Add one crew member
+        crewQuarters.resources.crew = Math.min(
+          crewQuarters.resources.crew + 1,
+          crewQuarters.stats.crewCapacity
+        );
+        
+        // Subtract 10 from progress
+        crewQuarters.stats.awakeningProgress -= 10;
+        
+        console.log(
+          `Crew member auto-awakened! Current crew: ${crewQuarters.resources.crew}`
+        );
+      }
+      
+      // Cap awakening progress at 10
+      crewQuarters.stats.awakeningProgress = Math.min(crewQuarters.stats.awakeningProgress, 10);
       
       // Log the change
-      if (oldCrew !== crewQuarters.resources.crew) {
+      if (oldProgress !== crewQuarters.stats.awakeningProgress || oldCrew !== crewQuarters.resources.crew) {
         console.log(
-          `Crew updated: ${oldCrew.toFixed(2)} -> ${crewQuarters.resources.crew.toFixed(2)}`
+          `Awakening progress updated: ${oldProgress.toFixed(2)} -> ${crewQuarters.stats.awakeningProgress.toFixed(2)}`
         );
+        
+        if (oldCrew !== crewQuarters.resources.crew) {
+          console.log(
+            `Crew updated: ${oldCrew.toFixed(2)} -> ${crewQuarters.resources.crew.toFixed(2)}`
+          );
+        }
       }
     }
   }
