@@ -1,7 +1,7 @@
 "use client"
 
 import { NavBar } from "@/components/ui/navbar"
-import { Package, Cog, Warehouse, Factory } from "lucide-react"
+import { Package, Cog, Warehouse, Factory, Shield } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/app/game/hooks/useGame"
@@ -174,25 +174,25 @@ export default function ManufacturingPage() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center">
                     <Cog className="h-5 w-5 text-chart-4 mr-2" />
-                    <span>Hull Plating</span>
+                    <span>Navigation System</span>
                   </div>
-                  <span className="font-mono text-xs">200 Scrap</span>
+                  <span className="font-mono text-xs">300 Scrap</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Reinforce ship's hull integrity [Coming Soon]
+                  Repair ship&apos;s navigation capabilities [Coming Soon]
                 </p>
               </div>
               
               <div className="opacity-60 system-panel p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center">
-                    <Cog className="h-5 w-5 text-chart-4 mr-2" />
-                    <span>Navigation System</span>
+                    <Shield className="h-5 w-5 text-chart-5 mr-2" />
+                    <span>Hull Integrity</span>
                   </div>
-                  <span className="font-mono text-xs">300 Scrap</span>
+                  <span className="font-mono text-xs">500 Scrap</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Repair ship's navigation capabilities [Coming Soon]
+                  Reinforce ship&apos;s hull integrity [Coming Soon]
                 </p>
               </div>
             </div>

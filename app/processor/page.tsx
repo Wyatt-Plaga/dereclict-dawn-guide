@@ -87,7 +87,7 @@ export default function ProcessorPage() {
           <div className="system-panel p-6 mb-6">
             <h1 className={`text-2xl font-bold text-primary mb-4 ${shouldFlicker('processor') ? 'flickering-text' : ''}`}>Quantum Processor</h1>
             <p className="text-muted-foreground mb-6">
-              Manage ship's computational resources. Generate Insight to unlock advanced ship capabilities.
+              Manage ship&apos;s computational resources. Generate Insight to unlock advanced ship capabilities.
             </p>
             
             {/* Resource display */}

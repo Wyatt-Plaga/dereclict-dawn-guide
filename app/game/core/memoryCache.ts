@@ -12,9 +12,9 @@ let cachedGameState: GameState | null = null;
 
 // Window-level cache for improved resilience during development
 if (typeof window !== 'undefined') {
-  // @ts-ignore - Using a non-standard property
+  // @ts-expect-error - Using a non-standard property
   if (window.__GAME_STATE_CACHE__) {
-    // @ts-ignore
+    // @ts-expect-error
     cachedGameState = window.__GAME_STATE_CACHE__;
   }
 }
@@ -35,7 +35,7 @@ export function cacheState(state: GameState): void {
   
   // Also store in window object for more resilience
   if (typeof window !== 'undefined') {
-    // @ts-ignore
+    // @ts-expect-error
     window.__GAME_STATE_CACHE__ = JSON.parse(JSON.stringify(state));
   }
 } 

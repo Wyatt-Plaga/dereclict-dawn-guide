@@ -20,7 +20,7 @@ interface Enemy {
 }
 
 export default function BattlePage() {
-  const { state, dispatch } = useGame()
+  const { state } = useGame()
   const { shouldFlicker } = useSystemStatus()
   
   // Get resources from game state
