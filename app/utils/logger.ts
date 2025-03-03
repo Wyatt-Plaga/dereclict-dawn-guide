@@ -46,7 +46,7 @@ export type ContextParam = LogContext | LogContext[];
 export class LoggerConfig {
   // Current log level
   static level: LogLevel = process.env.NODE_ENV === 'development' 
-    ? LogLevel.DEBUG 
+    ? LogLevel.INFO 
     : LogLevel.ERROR;
   
   // Enabled categories

@@ -78,7 +78,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   // Start/stop the game engine
   useEffect(() => {
-    console.log("🚀 Starting game engine...");
+    Logger.info(LogCategory.LIFECYCLE, "🚀 Starting game engine...", LogContext.STARTUP);
     
     // Initialize the game engine - will load saved game or start new game
     const initGame = async () => {
@@ -97,7 +97,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     initGame();
 
     return () => {
-      console.log("⏹️ Stopping game engine...");
+      Logger.info(LogCategory.LIFECYCLE, "⏹️ Stopping game engine...", LogContext.NONE);
       engineRef.current.stop();
     };
   }, []);

@@ -35,7 +35,7 @@ export default function NavigationPage() {
   
   // For a complete implementation, we would dispatch a proper action
   const initiateJump = () => {
-    console.log('Initiating jump sequence');
+    Logger.info(LogCategory.ACTIONS, 'Initiating jump sequence', LogContext.NONE);
     // In a full implementation, we would:
     // dispatch({ type: 'INITIATE_JUMP' })
   }

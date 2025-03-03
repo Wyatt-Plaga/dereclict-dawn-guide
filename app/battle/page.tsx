@@ -78,27 +78,27 @@ export default function BattlePage() {
   
   // For a complete implementation, we would dispatch proper actions
   const useShield = () => {
-    console.log('Using shield');
+    Logger.info(LogCategory.ACTIONS, 'Using shield', LogContext.NONE);
     // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'shield' } })
   }
   
   const useWeapon = () => {
-    console.log('Using weapon');
+    Logger.info(LogCategory.ACTIONS, 'Using weapon', LogContext.NONE);
     // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'weapon' } })
   }
   
   const useRepair = () => {
-    console.log('Using repair');
+    Logger.info(LogCategory.ACTIONS, 'Using repair', LogContext.NONE);
     // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'repair' } })
   }
   
   const useSabotage = () => {
-    console.log('Using sabotage');
+    Logger.info(LogCategory.ACTIONS, 'Using sabotage', LogContext.NONE);
     // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'sabotage' } })
   }
   
   const retreat = () => {
-    console.log('Retreating from battle');
+    Logger.info(LogCategory.ACTIONS, 'Retreating from battle', LogContext.NONE);
     // In a full implementation, we would:
     // dispatch({ type: 'RETREAT_FROM_BATTLE' })
   }

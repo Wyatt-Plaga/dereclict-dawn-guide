@@ -184,7 +184,7 @@ export class GameEngine {
         // Log once every 5 seconds to avoid flooding the console
         const now = Date.now();
         if (Math.floor(now / 5000) !== Math.floor(this.lastTick / 5000)) {
-            console.log("🔄 Game loop running - timestamp:", new Date().toLocaleTimeString());
+            Logger.debug(LogCategory.ENGINE, "🔄 Game loop running - timestamp: " + new Date().toLocaleTimeString(), LogContext.NONE);
         }
 
         // Calculate time since last update

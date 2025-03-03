@@ -1,4 +1,5 @@
 import { GameState } from '../types';
+import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 
 /**
  * ResourceSystem
@@ -62,8 +63,10 @@ export class ResourceSystem {
     
     // Log crew production
     if (awakeningProgressPerSecond > 0) {
-      console.log(
-        `Crew production: ${progressAdded.toFixed(5)} progress (rate: ${awakeningProgressPerSecond}/s, delta: ${delta.toFixed(5)}s)`
+      Logger.debug(
+        LogCategory.RESOURCES,
+        `Crew production: ${progressAdded.toFixed(5)} progress (rate: ${awakeningProgressPerSecond}/s, delta: ${delta.toFixed(5)}s)`,
+        LogContext.CREW_LIFECYCLE
       );
     }
     
@@ -86,8 +89,10 @@ export class ResourceSystem {
         // Subtract 10 from progress
         crewQuarters.stats.awakeningProgress -= 10;
         
-        console.log(
-          `Crew member auto-awakened! Current crew: ${crewQuarters.resources.crew}`
+        Logger.info(
+          LogCategory.RESOURCES,
+          `Crew member auto-awakened! Current crew: ${crewQuarters.resources.crew}`,
+          LogContext.CREW_LIFECYCLE
         );
       }
       
@@ -96,13 +101,17 @@ export class ResourceSystem {
       
       // Log the change
       if (oldProgress !== crewQuarters.stats.awakeningProgress || oldCrew !== crewQuarters.resources.crew) {
-        console.log(
-          `Awakening progress updated: ${oldProgress.toFixed(2)} -> ${crewQuarters.stats.awakeningProgress.toFixed(2)}`
+        Logger.debug(
+          LogCategory.RESOURCES,
+          `Awakening progress updated: ${oldProgress.toFixed(2)} -> ${crewQuarters.stats.awakeningProgress.toFixed(2)}`,
+          LogContext.CREW_LIFECYCLE
         );
         
         if (oldCrew !== crewQuarters.resources.crew) {
-          console.log(
-            `Crew updated: ${oldCrew.toFixed(2)} -> ${crewQuarters.resources.crew.toFixed(2)}`
+          Logger.debug(
+            LogCategory.RESOURCES,
+            `Crew updated: ${oldCrew.toFixed(2)} -> ${crewQuarters.resources.crew.toFixed(2)}`,
+            LogContext.CREW_LIFECYCLE
           );
         }
       }
