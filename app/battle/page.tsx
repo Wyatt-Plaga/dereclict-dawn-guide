@@ -188,123 +188,149 @@ export default function BattlePage() {
               </div>
             </div>
             
-            {/* Combat actions - Reorganized into compact quarters */}
+            {/* Combat actions - Categories in quadrants, with actions also in quadrants within each category */}
             <h2 className="text-lg font-semibold mb-4 terminal-text">Combat Actions</h2>
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            
+            <div className="grid grid-cols-2 gap-4 mb-4">
               {/* Energy Shields section - 1 action */}
-              <div className="system-panel p-3">
-                <h3 className="text-sm font-semibold mb-2 flex items-center">
-                  <Shield className="h-4 w-4 mr-2 text-chart-1" />
-                  <span>Energy Shields</span>
-                  <span className="text-xs text-muted-foreground ml-1">(Reactor)</span>
+              <div className="system-panel p-4 flex flex-col">
+                <h3 className="text-sm font-semibold mb-3 flex items-center">
+                  <Shield className="h-5 w-5 mr-2 text-chart-1" />
+                  Energy Shields <span className="text-xs text-muted-foreground ml-2">(Reactor)</span>
                 </h3>
-                <div className="space-y-1">
+                <div className="grid grid-cols-1 gap-2 flex-grow">
                   <button 
                     onClick={useShield}
-                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                    className="system-panel p-3 flex items-center justify-between hover:bg-accent/10 transition-colors h-full"
                   >
-                    <Shield className="h-3 w-3 mr-2 text-chart-1" />
-                    <span className="mr-auto">Raise Shields</span>
-                    <span className="text-xs px-1.5 py-0.5 bg-chart-1/20 text-chart-1 rounded">10</span>
+                    <div className="flex items-center">
+                      <Shield className="h-4 w-4 mr-2 text-chart-1" />
+                      <span>Raise Shields</span>
+                    </div>
+                    <span className="text-xs px-1.5 py-0.5 bg-chart-1/20 text-chart-1 rounded">10 Energy</span>
                   </button>
                 </div>
               </div>
               
               {/* Weapons Systems section - 2 actions */}
-              <div className="system-panel p-3">
-                <h3 className="text-sm font-semibold mb-2 flex items-center">
-                  <Zap className="h-4 w-4 mr-2 text-chart-2" />
-                  <span>Weapons Systems</span>
-                  <span className="text-xs text-muted-foreground ml-1">(Manufacturing)</span>
+              <div className="system-panel p-4 flex flex-col">
+                <h3 className="text-sm font-semibold mb-3 flex items-center">
+                  <Zap className="h-5 w-5 mr-2 text-chart-2" />
+                  Weapons Systems <span className="text-xs text-muted-foreground ml-2">(Manufacturing)</span>
                 </h3>
-                <div className="space-y-1">
+                <div className="grid grid-cols-2 gap-2 flex-grow">
                   <button 
                     onClick={useWeapon}
-                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
                   >
-                    <Zap className="h-3 w-3 mr-2 text-chart-2" />
-                    <span className="mr-auto">Plasma Cannon</span>
-                    <span className="text-xs px-1.5 py-0.5 bg-chart-2/20 text-chart-2 rounded">15</span>
+                    <div className="flex items-center mb-1">
+                      <Zap className="h-4 w-4 mr-2 text-chart-2" />
+                      <span>Plasma Cannon</span>
+                    </div>
+                    <span className="text-xs self-start bg-chart-2/20 text-chart-2 px-1.5 py-0.5 rounded mt-auto">15 Scrap</span>
                   </button>
+                  
                   <button 
-                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
                   >
-                    <Zap className="h-3 w-3 mr-2 text-chart-2" />
-                    <span className="mr-auto">Missile Barrage</span>
-                    <span className="text-xs px-1.5 py-0.5 bg-chart-2/20 text-chart-2 rounded">25</span>
+                    <div className="flex items-center mb-1">
+                      <Zap className="h-4 w-4 mr-2 text-chart-2" />
+                      <span>Missile Barrage</span>
+                    </div>
+                    <span className="text-xs self-start bg-chart-2/20 text-chart-2 px-1.5 py-0.5 rounded mt-auto">25 Scrap</span>
                   </button>
                 </div>
               </div>
               
               {/* Repair Drones section - 3 actions */}
-              <div className="system-panel p-3">
-                <h3 className="text-sm font-semibold mb-2 flex items-center">
-                  <Wrench className="h-4 w-4 mr-2 text-chart-3" />
-                  <span>Repair Drones</span>
-                  <span className="text-xs text-muted-foreground ml-1">(Crew)</span>
+              <div className="system-panel p-4 flex flex-col">
+                <h3 className="text-sm font-semibold mb-3 flex items-center">
+                  <Wrench className="h-5 w-5 mr-2 text-chart-3" />
+                  Repair Drones <span className="text-xs text-muted-foreground ml-2">(Crew)</span>
                 </h3>
-                <div className="space-y-1">
+                <div className="grid grid-cols-2 gap-2 flex-grow">
                   <button 
                     onClick={useRepair}
-                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
                   >
-                    <Wrench className="h-3 w-3 mr-2 text-chart-3" />
-                    <span className="mr-auto">Hull Repair</span>
-                    <span className="text-xs px-1.5 py-0.5 bg-chart-3/20 text-chart-3 rounded">2</span>
+                    <div className="flex items-center mb-1">
+                      <Wrench className="h-4 w-4 mr-2 text-chart-3" />
+                      <span>Hull Repair</span>
+                    </div>
+                    <span className="text-xs self-start bg-chart-3/20 text-chart-3 px-1.5 py-0.5 rounded mt-auto">2 Crew</span>
                   </button>
+                  
                   <button 
-                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
                   >
-                    <Shield className="h-3 w-3 mr-2 text-chart-3" />
-                    <span className="mr-auto">Shield Recharge</span>
-                    <span className="text-xs px-1.5 py-0.5 bg-chart-3/20 text-chart-3 rounded">3</span>
+                    <div className="flex items-center mb-1">
+                      <Shield className="h-4 w-4 mr-2 text-chart-3" />
+                      <span>Shield Recharge</span>
+                    </div>
+                    <span className="text-xs self-start bg-chart-3/20 text-chart-3 px-1.5 py-0.5 rounded mt-auto">3 Crew</span>
                   </button>
+                  
                   <button 
-                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
                   >
-                    <Wrench className="h-3 w-3 mr-2 text-chart-3" />
-                    <span className="mr-auto">System Bypass</span>
-                    <span className="text-xs px-1.5 py-0.5 bg-chart-3/20 text-chart-3 rounded">4</span>
+                    <div className="flex items-center mb-1">
+                      <Wrench className="h-4 w-4 mr-2 text-chart-3" />
+                      <span>System Bypass</span>
+                    </div>
+                    <span className="text-xs self-start bg-chart-3/20 text-chart-3 px-1.5 py-0.5 rounded mt-auto">4 Crew</span>
                   </button>
+                  
+                  {/* Fourth cell is intentionally left empty for layout consistency */}
+                  <div className="hidden"></div>
                 </div>
               </div>
               
               {/* Electronic Countermeasures section - 4 actions */}
-              <div className="system-panel p-3">
-                <h3 className="text-sm font-semibold mb-2 flex items-center">
-                  <Cpu className="h-4 w-4 mr-2 text-chart-4" />
-                  <span>Electronic CM</span>
-                  <span className="text-xs text-muted-foreground ml-1">(Processor)</span>
+              <div className="system-panel p-4 flex flex-col">
+                <h3 className="text-sm font-semibold mb-3 flex items-center">
+                  <Cpu className="h-5 w-5 mr-2 text-chart-4" />
+                  Electronic CM <span className="text-xs text-muted-foreground ml-2">(Processor)</span>
                 </h3>
-                <div className="space-y-1">
+                <div className="grid grid-cols-2 gap-2 flex-grow">
                   <button 
                     onClick={useSabotage}
-                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
                   >
-                    <ZapOff className="h-3 w-3 mr-2 text-chart-4" />
-                    <span className="mr-auto">Sabotage</span>
-                    <span className="text-xs px-1.5 py-0.5 bg-chart-4/20 text-chart-4 rounded">8</span>
+                    <div className="flex items-center mb-1">
+                      <ZapOff className="h-4 w-4 mr-2 text-chart-4" />
+                      <span>Sabotage</span>
+                    </div>
+                    <span className="text-xs self-start bg-chart-4/20 text-chart-4 px-1.5 py-0.5 rounded mt-auto">8 Insight</span>
                   </button>
+                  
                   <button 
-                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
                   >
-                    <Scan className="h-3 w-3 mr-2 text-chart-4" />
-                    <span className="mr-auto">Scan</span>
-                    <span className="text-xs px-1.5 py-0.5 bg-chart-4/20 text-chart-4 rounded">5</span>
+                    <div className="flex items-center mb-1">
+                      <Scan className="h-4 w-4 mr-2 text-chart-4" />
+                      <span>Scan</span>
+                    </div>
+                    <span className="text-xs self-start bg-chart-4/20 text-chart-4 px-1.5 py-0.5 rounded mt-auto">5 Insight</span>
                   </button>
+                  
                   <button 
-                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
                   >
-                    <Search className="h-3 w-3 mr-2 text-chart-4" />
-                    <span className="mr-auto">Find Weakness</span>
-                    <span className="text-xs px-1.5 py-0.5 bg-chart-4/20 text-chart-4 rounded">12</span>
+                    <div className="flex items-center mb-1">
+                      <Search className="h-4 w-4 mr-2 text-chart-4" />
+                      <span>Find Weakness</span>
+                    </div>
+                    <span className="text-xs self-start bg-chart-4/20 text-chart-4 px-1.5 py-0.5 rounded mt-auto">12 Insight</span>
                   </button>
+                  
                   <button 
-                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
                   >
-                    <Compass className="h-3 w-3 mr-2 text-chart-4" />
-                    <span className="mr-auto">Sensor Overload</span>
-                    <span className="text-xs px-1.5 py-0.5 bg-chart-4/20 text-chart-4 rounded">10</span>
+                    <div className="flex items-center mb-1">
+                      <Compass className="h-4 w-4 mr-2 text-chart-4" />
+                      <span>Sensor Overload</span>
+                    </div>
+                    <span className="text-xs self-start bg-chart-4/20 text-chart-4 px-1.5 py-0.5 rounded mt-auto">10 Insight</span>
                   </button>
                 </div>
               </div>
