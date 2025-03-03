@@ -1,107 +1,141 @@
 "use client"
 
 import { NavBar } from "@/components/ui/navbar"
-import { Shield, Zap, Wrench, Cpu, AlertTriangle, ChevronDown, ChevronUp, Scan, ZapOff, Search, Compass } from "lucide-react"
+import { Shield, Zap, Wrench, Cpu, ZapOff, Scan, Search, Compass } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
+import { useState, useEffect } from "react"
 import { useGame } from "@/app/game/hooks/useGame"
-import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
-import Link from "next/link"
-import { Progress } from "@/components/ui/progress"
-import { useState } from "react"
-
-// Enemy type
-interface Enemy {
-  id: string;
-  name: string;
-  description: string;
-  health: number;
-  maxHealth: number;
-  shield: number;
-  maxShield: number;
-  image: string;
-  weakness: 'shield' | 'weapon' | 'repair' | 'countermeasure';
-}
+import { useRouter } from 'next/navigation'
+import { CombatActionCategory } from "../game/types/combat"
+import { PLAYER_ACTIONS } from "../game/content/combatActions"
+import { ENEMY_DEFINITIONS } from "../game/content/enemies"
 
 export default function BattlePage() {
   const { state, dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
+  const router = useRouter()
   
-  // Get resources from game state
-  const reactor = state.categories.reactor
-  const processor = state.categories.processor
-  const crewQuarters = state.categories.crewQuarters
-  const manufacturing = state.categories.manufacturing
-  
-  // Track which action categories are expanded
+  // Track expanded action categories
   const [expandedActions, setExpandedActions] = useState<string[]>([])
   
-  // Toggle expansion of an action category
-  const toggleActionExpansion = (actionType: string) => {
-    if (expandedActions.includes(actionType)) {
-      setExpandedActions(expandedActions.filter(a => a !== actionType))
-    } else {
-      setExpandedActions([...expandedActions, actionType])
+  // If combat is not active and not just completed, redirect to navigation
+  useEffect(() => {
+    // Add safety check for combat state
+    if (!state.combat) {
+      router.push('/navigation');
+      return;
     }
-  }
+    
+    // If not in active combat and the encounter isn't just completed, redirect to navigation
+    if (!state.combat.active && !state.combat.encounterCompleted) {
+      router.push('/navigation');
+      return;
+    }
+    
+    // If encounter just completed, show results for 5 seconds then redirect
+    if (!state.combat.active && state.combat.encounterCompleted) {
+      const redirectTimer = setTimeout(() => {
+        router.push('/navigation');
+      }, 5000); // 5 seconds to view results
+      
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [state.combat?.active, state.combat?.encounterCompleted, router]);
   
-  // Check if an action is expanded
-  const isActionExpanded = (actionType: string) => {
-    return expandedActions.includes(actionType)
-  }
-  
-  // Log component render
-  Logger.debug(
-    LogCategory.UI,
-    `Rendering BattlePage`,
-    LogContext.UI_RENDER
-  )
-  
-  // Mock battle state - in a full implementation this would be part of the game state
-  const shipHealth = 80;
-  const maxShipHealth = 100;
-  const shipShield = 35;
-  const maxShipShield = 50;
-  
-  // Example enemy with shield weakness
-  const enemy: Enemy = {
-    id: 'void-stalker',
-    name: 'Void Stalker',
-    description: 'A mysterious entity that lurks in the void between stars. It appears to feed on energy and is drawn to functioning ships.',
-    health: 70,
-    maxHealth: 100,
-    shield: 20,
-    maxShield: 40,
-    image: '/enemy-void.png',
-    weakness: 'shield'
+  // Toggle action category expansion
+  const toggleActionExpansion = (actionType: string) => {
+    setExpandedActions(prev => {
+      if (prev.includes(actionType)) {
+        return prev.filter(type => type !== actionType);
+      } else {
+        return [...prev, actionType];
+      }
+    });
   };
   
-  // For a complete implementation, we would dispatch proper actions
+  // Check if action category is expanded
+  const isActionExpanded = (actionType: string) => {
+    return expandedActions.includes(actionType);
+  };
+  
+  // Get enemy data
+  const enemy = state.combat?.currentEnemy 
+    ? ENEMY_DEFINITIONS[state.combat.currentEnemy] 
+    : {
+        id: 'unknown',
+        name: 'Unknown Vessel',
+        description: 'Unable to identify target.',
+        health: 0,
+        maxHealth: 100,
+        shield: 0,
+        maxShield: 50,
+        image: '/enemies/unknown.png',
+        type: 'vessel',
+        actions: [],
+        loot: [],
+        regions: [],
+        difficultyTier: 1
+      };
+  
+  // Filter actions by category
+  const getActionsByCategory = (category: CombatActionCategory) => {
+    return Object.values(PLAYER_ACTIONS).filter(
+      action => action.category === category
+    );
+  };
+  
+  // Get player and enemy stats
+  const playerStats = state.combat?.playerStats || {
+    health: 0,
+    maxHealth: 100,
+    shield: 0,
+    maxShield: 50,
+    statusEffects: []
+  };
+  
+  const enemyStats = state.combat?.enemyStats || {
+    health: 0,
+    maxHealth: 0,
+    shield: 0,
+    maxShield: 0,
+    statusEffects: []
+  };
+  
+  // Combat actions
   const useShield = () => {
-    console.log('Using shield');
-    // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'shield' } })
-  }
+    dispatch({
+      type: 'PERFORM_COMBAT_ACTION',
+      payload: { actionId: 'raise-shields' }
+    });
+  };
   
   const useWeapon = () => {
-    console.log('Using weapon');
-    // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'weapon' } })
-  }
+    dispatch({
+      type: 'PERFORM_COMBAT_ACTION',
+      payload: { actionId: 'plasma-cannon' }
+    });
+  };
   
   const useRepair = () => {
-    console.log('Using repair');
-    // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'repair' } })
-  }
+    dispatch({
+      type: 'PERFORM_COMBAT_ACTION',
+      payload: { actionId: 'hull-repair' }
+    });
+  };
   
   const useSabotage = () => {
-    console.log('Using sabotage');
-    // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'sabotage' } })
-  }
+    dispatch({
+      type: 'PERFORM_COMBAT_ACTION',
+      payload: { actionId: 'sabotage' }
+    });
+  };
   
   const retreat = () => {
-    console.log('Retreating from battle');
-    // In a full implementation, we would:
-    // dispatch({ type: 'RETREAT_FROM_BATTLE' })
-  }
+    dispatch({
+      type: 'RETREAT_FROM_COMBAT'
+    });
+  };
   
   return (
     <GameLoader>
@@ -112,79 +146,126 @@ export default function BattlePage() {
           <div className="system-panel p-6 mb-6">
             <h1 className={`text-2xl font-bold text-primary mb-4 ${shouldFlicker('battle') ? 'flickering-text' : ''}`}>Combat Encounter</h1>
             
-            {/* Battle status */}
+            {/* Battle status panels */}
             <div className="grid md:grid-cols-2 gap-6 mb-8">
-              {/* Ship status */}
-              <div className="system-panel p-4 flex flex-col">
-                <div>
-                  <h2 className="text-lg font-medium mb-3">Dawn Status</h2>
-                  
-                  {/* Resource readouts at top */}
-                  <div className="grid grid-cols-2 gap-2 text-sm mb-4">
-                    <div>
-                      <span className="text-muted-foreground">Energy:</span> {Math.floor(reactor.resources.energy)}
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Scrap:</span> {Math.floor(manufacturing.resources.scrap)}
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Crew:</span> {Math.floor(crewQuarters.resources.crew)}
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Insight:</span> {Math.floor(processor.resources.insight)}
-                    </div>
+              {/* Enemy status */}
+              <div className="system-panel p-4">
+                <h2 className="text-lg font-medium mb-4 terminal-text">Enemy Vessel</h2>
+                <div className="flex mb-4">
+                  <div className="w-20 h-20 bg-gray-700 rounded mr-4 flex items-center justify-center overflow-hidden">
+                    <div className="text-4xl text-red-500">👾</div>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-medium">{enemy.name}</h3>
+                    <p className="text-sm text-muted-foreground mb-2">{enemy.description}</p>
                   </div>
                 </div>
                 
-                {/* Push shield and hull to bottom with auto margin */}
-                <div className="mt-auto">
-                  {/* Ship shield */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span>Shield Strength</span>
-                      <span>{shipShield}/{maxShipShield}</span>
+                {/* Enemy health and shield */}
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm">Hull Integrity</span>
+                      <span className="text-sm">{enemyStats.health}/{enemyStats.maxHealth}</span>
                     </div>
-                    <Progress value={(shipShield / maxShipShield) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-1" />
+                    <div className="h-2 bg-background rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-green-500 rounded-full" 
+                        style={{ width: `${(enemyStats.health / enemyStats.maxHealth) * 100}%` }}
+                      ></div>
+                    </div>
                   </div>
                   
-                  {/* Ship hull */}
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span>Hull Integrity</span>
-                      <span>{shipHealth}/{maxShipHealth}</span>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm">Shields</span>
+                      <span className="text-sm">{enemyStats.shield}/{enemyStats.maxShield}</span>
                     </div>
-                    <Progress value={(shipHealth / maxShipHealth) * 100} className="h-2 bg-muted" indicatorClassName="bg-green-500" />
+                    <div className="h-2 bg-background rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500 rounded-full" 
+                        style={{ width: `${(enemyStats.shield / (enemyStats.maxShield || 1)) * 100}%` }}
+                      ></div>
+                    </div>
                   </div>
+                  
+                  {enemyStats.statusEffects.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {enemyStats.statusEffects.map((effect, index) => (
+                        <span key={index} className="text-xs px-2 py-1 rounded bg-accent text-accent-foreground">
+                          {effect.type} ({effect.remainingTurns})
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               
-              {/* Enemy status */}
-              <div className="system-panel p-4 flex flex-col">
-                <div>
-                  <h2 className="text-lg font-medium mb-2">{enemy.name}</h2>
-                  <p className="text-sm text-muted-foreground">{enemy.description}</p>
-                </div>
-                
-                {/* Push shield and hull to bottom with auto margin */}
-                <div className="mt-auto">
-                  {/* Enemy shield - aligned with ship shield */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span>Shield Strength</span>
-                      <span>{enemy.shield}/{enemy.maxShield}</span>
+              {/* Dawn status */}
+              <div className="system-panel p-4">
+                <h2 className="text-lg font-medium mb-4 terminal-text">Dawn Status</h2>
+                {/* Player health and shield */}
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm">Hull Integrity</span>
+                      <span className="text-sm">{playerStats.health}/{playerStats.maxHealth}</span>
                     </div>
-                    <Progress value={(enemy.shield / enemy.maxShield) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-1" />
+                    <div className="h-2 bg-background rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-green-500 rounded-full" 
+                        style={{ width: `${(playerStats.health / playerStats.maxHealth) * 100}%` }}
+                      ></div>
+                    </div>
                   </div>
                   
-                  {/* Enemy hull - aligned with ship hull */}
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span>Hull Integrity</span>
-                      <span>{enemy.health}/{enemy.maxHealth}</span>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm">Shields</span>
+                      <span className="text-sm">{playerStats.shield}/{playerStats.maxShield}</span>
                     </div>
-                    <Progress value={(enemy.health / enemy.maxHealth) * 100} className="h-2 bg-muted" indicatorClassName="bg-green-500" />
+                    <div className="h-2 bg-background rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500 rounded-full" 
+                        style={{ width: `${(playerStats.shield / playerStats.maxShield) * 100}%` }}
+                      ></div>
+                    </div>
                   </div>
                 </div>
+                
+                {/* Resources */}
+                <h3 className="text-sm font-medium mb-2">Resources</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-background/30 p-2 rounded">
+                    <div className="text-xs text-muted-foreground">Energy</div>
+                    <div className="text-lg">{state.categories.reactor.resources.energy}</div>
+                  </div>
+                  <div className="bg-background/30 p-2 rounded">
+                    <div className="text-xs text-muted-foreground">Insight</div>
+                    <div className="text-lg">{state.categories.processor.resources.insight}</div>
+                  </div>
+                  <div className="bg-background/30 p-2 rounded">
+                    <div className="text-xs text-muted-foreground">Crew</div>
+                    <div className="text-lg">{state.categories.crewQuarters.resources.crew}</div>
+                  </div>
+                  <div className="bg-background/30 p-2 rounded">
+                    <div className="text-xs text-muted-foreground">Scrap</div>
+                    <div className="text-lg">{state.categories.manufacturing.resources.scrap}</div>
+                  </div>
+                </div>
+                
+                {playerStats.statusEffects.length > 0 && (
+                  <div className="mt-3">
+                    <h3 className="text-sm font-medium mb-1">Status Effects</h3>
+                    <div className="flex flex-wrap gap-1">
+                      {playerStats.statusEffects.map((effect, index) => (
+                        <span key={index} className="text-xs px-2 py-1 rounded bg-accent text-accent-foreground">
+                          {effect.type} ({effect.remainingTurns})
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -202,6 +283,7 @@ export default function BattlePage() {
                   <button 
                     onClick={useShield}
                     className="system-panel p-3 flex items-center justify-between hover:bg-accent/10 transition-colors h-full"
+                    disabled={!state.combat?.active || playerStats.health <= 0}
                   >
                     <div className="flex items-center">
                       <Shield className="h-4 w-4 mr-2 text-chart-1" />
@@ -222,6 +304,7 @@ export default function BattlePage() {
                   <button 
                     onClick={useWeapon}
                     className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
+                    disabled={!state.combat?.active || playerStats.health <= 0}
                   >
                     <div className="flex items-center mb-1">
                       <Zap className="h-4 w-4 mr-2 text-chart-2" />
@@ -231,7 +314,12 @@ export default function BattlePage() {
                   </button>
                   
                   <button 
+                    onClick={() => dispatch({
+                      type: 'PERFORM_COMBAT_ACTION',
+                      payload: { actionId: 'missile-barrage' }
+                    })}
                     className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
+                    disabled={!state.combat?.active || playerStats.health <= 0}
                   >
                     <div className="flex items-center mb-1">
                       <Zap className="h-4 w-4 mr-2 text-chart-2" />
@@ -252,6 +340,7 @@ export default function BattlePage() {
                   <button 
                     onClick={useRepair}
                     className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
+                    disabled={!state.combat?.active || playerStats.health <= 0}
                   >
                     <div className="flex items-center mb-1">
                       <Wrench className="h-4 w-4 mr-2 text-chart-3" />
@@ -261,7 +350,12 @@ export default function BattlePage() {
                   </button>
                   
                   <button 
+                    onClick={() => dispatch({
+                      type: 'PERFORM_COMBAT_ACTION',
+                      payload: { actionId: 'shield-recharge' }
+                    })}
                     className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
+                    disabled={!state.combat?.active || playerStats.health <= 0}
                   >
                     <div className="flex items-center mb-1">
                       <Shield className="h-4 w-4 mr-2 text-chart-3" />
@@ -271,7 +365,12 @@ export default function BattlePage() {
                   </button>
                   
                   <button 
+                    onClick={() => dispatch({
+                      type: 'PERFORM_COMBAT_ACTION',
+                      payload: { actionId: 'system-bypass' }
+                    })}
                     className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
+                    disabled={!state.combat?.active || playerStats.health <= 0}
                   >
                     <div className="flex items-center mb-1">
                       <Wrench className="h-4 w-4 mr-2 text-chart-3" />
@@ -295,6 +394,7 @@ export default function BattlePage() {
                   <button 
                     onClick={useSabotage}
                     className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
+                    disabled={!state.combat?.active || playerStats.health <= 0}
                   >
                     <div className="flex items-center mb-1">
                       <ZapOff className="h-4 w-4 mr-2 text-chart-4" />
@@ -304,7 +404,12 @@ export default function BattlePage() {
                   </button>
                   
                   <button 
+                    onClick={() => dispatch({
+                      type: 'PERFORM_COMBAT_ACTION',
+                      payload: { actionId: 'scan' }
+                    })}
                     className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
+                    disabled={!state.combat?.active || playerStats.health <= 0}
                   >
                     <div className="flex items-center mb-1">
                       <Scan className="h-4 w-4 mr-2 text-chart-4" />
@@ -314,7 +419,12 @@ export default function BattlePage() {
                   </button>
                   
                   <button 
+                    onClick={() => dispatch({
+                      type: 'PERFORM_COMBAT_ACTION',
+                      payload: { actionId: 'find-weakness' }
+                    })}
                     className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
+                    disabled={!state.combat?.active || playerStats.health <= 0}
                   >
                     <div className="flex items-center mb-1">
                       <Search className="h-4 w-4 mr-2 text-chart-4" />
@@ -324,7 +434,12 @@ export default function BattlePage() {
                   </button>
                   
                   <button 
+                    onClick={() => dispatch({
+                      type: 'PERFORM_COMBAT_ACTION',
+                      payload: { actionId: 'sensor-overload' }
+                    })}
                     className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
+                    disabled={!state.combat?.active || playerStats.health <= 0}
                   >
                     <div className="flex items-center mb-1">
                       <Compass className="h-4 w-4 mr-2 text-chart-4" />
@@ -340,22 +455,31 @@ export default function BattlePage() {
             <div className="mb-4">
               <h2 className="text-lg font-semibold mb-2 terminal-text">Battle Log</h2>
               <div className="system-panel p-3 h-28 overflow-y-auto font-mono text-xs">
-                <p className="text-green-400">► System: Unknown vessel detected.</p>
-                <p className="text-blue-400">► Dawn: Shields activated.</p>
-                <p className="text-red-400">► {enemy.name}: Approaching on intercept course.</p>
-                <p className="text-yellow-400">► Analysis: Scanning for vulnerabilities...</p>
+                {!state.combat?.battleLog || state.combat.battleLog.length === 0 ? (
+                  <p className="text-muted-foreground">Awaiting combat data...</p>
+                ) : (
+                  state.combat.battleLog.slice().reverse().map(entry => (
+                    <p key={entry.id} className={`
+                      ${entry.type === 'SYSTEM' ? 'text-green-400' : ''}
+                      ${entry.type === 'PLAYER' ? 'text-blue-400' : ''}
+                      ${entry.type === 'ENEMY' ? 'text-red-400' : ''}
+                      ${entry.type === 'ANALYSIS' ? 'text-yellow-400' : ''}
+                    `}>
+                      ► {entry.text}
+                    </p>
+                  ))
+                )}
               </div>
             </div>
             
             {/* Retreat button */}
-            <Link href="/navigation">
-              <button 
-                onClick={retreat}
-                className="system-panel w-full p-3 flex items-center justify-center hover:bg-accent/10 transition-colors"
-              >
-                <span className="terminal-text">Retreat from Battle</span>
-              </button>
-            </Link>
+            <button 
+              onClick={retreat}
+              className="system-panel w-full p-3 flex items-center justify-center hover:bg-accent/10 transition-colors"
+              disabled={!state.combat?.active || state.combat.encounterCompleted}
+            >
+              <span className="terminal-text">Retreat from Battle</span>
+            </button>
           </div>
         </div>
       </main>

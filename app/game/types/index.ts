@@ -1,3 +1,5 @@
+import { CombatState } from './combat';
+
 /**
  * Core game state type definitions
  */
@@ -163,6 +165,20 @@ export interface GameState {
         discovered: Record<string, LogEntry>;
         unread: string[]; // IDs of unread logs
     };
+
+    /**
+     * Combat system state
+     */
+    combat: CombatState;
+
+    /**
+     * Navigation state
+     */
+    navigation: {
+        currentRegion: string;
+        exploredRegions: string[];
+        availableRegions: string[];
+    };
 }
 
 /**
@@ -230,5 +246,41 @@ export const initialGameState: GameState = {
     logs: {
         discovered: {},
         unread: []
+    },
+    combat: {
+        active: false,
+        battleLog: [],
+        turn: 0,
+        playerStats: {
+            health: 100,
+            maxHealth: 100,
+            shield: 50,
+            maxShield: 50,
+            statusEffects: []
+        },
+        enemyStats: {
+            health: 0,
+            maxHealth: 0,
+            shield: 0,
+            maxShield: 0,
+            statusEffects: []
+        },
+        availableActions: [],
+        cooldowns: {},
+        encounterCompleted: false,
+        currentEnemy: null,
+        currentRegion: null,
+        enemyIntentions: null,
+        rewards: {
+            energy: 0,
+            insight: 0,
+            crew: 0,
+            scrap: 0
+        }
+    },
+    navigation: {
+        currentRegion: 'void',
+        exploredRegions: ['void'],
+        availableRegions: ['void', 'nebula']
     }
 }; 

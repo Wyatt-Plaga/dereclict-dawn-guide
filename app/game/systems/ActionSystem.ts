@@ -3,6 +3,13 @@ import { GameAction, GameCategory } from '../types/actions';
 import { GameSystemManager } from './index';
 import { UpgradeSystem } from './UpgradeSystem';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
+import { 
+  EndCombatAction, 
+  InitiateJumpAction, 
+  PerformCombatAction, 
+  RetreatFromCombatAction, 
+  StartCombatAction 
+} from '../types/actions';
 
 /**
  * ActionSystem
@@ -78,6 +85,26 @@ export class ActionSystem {
         
       case 'MARK_ALL_LOGS_READ':
         this.handleMarkAllLogsRead(state);
+        break;
+        
+      case 'INITIATE_JUMP':
+        this.handleInitiateJump(state, action as InitiateJumpAction);
+        break;
+        
+      case 'START_COMBAT':
+        this.handleStartCombat(state, action as StartCombatAction);
+        break;
+        
+      case 'PERFORM_COMBAT_ACTION':
+        this.handlePerformCombatAction(state, action as PerformCombatAction);
+        break;
+        
+      case 'END_COMBAT':
+        this.handleEndCombat(state, action as EndCombatAction);
+        break;
+        
+      case 'RETREAT_FROM_COMBAT':
+        this.handleRetreatFromCombat(state, action as RetreatFromCombatAction);
         break;
         
       default:
@@ -374,5 +401,208 @@ export class ActionSystem {
     }
 
     this.manager.log.markAllLogsRead(state);
+  }
+
+  /**
+   * Handle initiating a jump to a new region
+   */
+  private handleInitiateJump(state: GameState, action: InitiateJumpAction): void {
+    Logger.info(
+      LogCategory.COMBAT,
+      `Handling INITIATE_JUMP action from ${action.payload.fromRegion}`,
+      LogContext.COMBAT
+    );
+    
+    if (!this.manager) {
+      Logger.error(
+        LogCategory.COMBAT,
+        "Failed to handle jump: Manager not set",
+        LogContext.COMBAT
+      );
+      return;
+    }
+    
+    const fromRegion = action.payload.fromRegion;
+    let toRegion = action.payload.toRegion;
+    
+    // Check if navigation state is undefined and initialize it if needed
+    if (!state.navigation) {
+      Logger.warn(
+        LogCategory.COMBAT,
+        `Navigation state was undefined in handleInitiateJump - initializing with default values`,
+        LogContext.COMBAT
+      );
+      
+      // Initialize with default navigation values
+      state.navigation = {
+        currentRegion: 'void',
+        exploredRegions: ['void'],
+        availableRegions: ['void', 'nebula']
+      };
+    }
+    
+    Logger.debug(
+      LogCategory.COMBAT,
+      `Current navigation state: ${JSON.stringify(state.navigation)}`,
+      LogContext.COMBAT
+    );
+    
+    // If no destination provided, pick a random available region
+    if (!toRegion && state.navigation.availableRegions && state.navigation.availableRegions.length > 0) {
+      // Filter out current region
+      const possibleRegions = state.navigation.availableRegions.filter(
+        region => region !== fromRegion
+      );
+      
+      Logger.debug(
+        LogCategory.COMBAT,
+        `Available regions: ${JSON.stringify(possibleRegions)}`,
+        LogContext.COMBAT
+      );
+      
+      // Pick random region
+      if (possibleRegions.length > 0) {
+        const randomIndex = Math.floor(Math.random() * possibleRegions.length);
+        toRegion = possibleRegions[randomIndex];
+        Logger.debug(
+          LogCategory.COMBAT,
+          `Selected random region: ${toRegion}`,
+          LogContext.COMBAT
+        );
+      } else {
+        // If no other regions available, stay in current region
+        toRegion = fromRegion;
+        Logger.debug(
+          LogCategory.COMBAT,
+          `No other regions available, staying in ${fromRegion}`,
+          LogContext.COMBAT
+        );
+      }
+    }
+    // If no available regions or they're undefined, stay in current region
+    else if (!toRegion) {
+      toRegion = fromRegion;
+      Logger.debug(
+        LogCategory.COMBAT,
+        `No available regions, staying in ${fromRegion}`,
+        LogContext.COMBAT
+      );
+    }
+    
+    // Update current region
+    if (toRegion) {
+      Logger.debug(
+        LogCategory.COMBAT,
+        `Updating current region to ${toRegion}`,
+        LogContext.COMBAT
+      );
+      state.navigation.currentRegion = toRegion;
+      
+      // Add to explored regions if not already there
+      if (!state.navigation.exploredRegions.includes(toRegion)) {
+        state.navigation.exploredRegions.push(toRegion);
+        Logger.debug(
+          LogCategory.COMBAT,
+          `Added ${toRegion} to explored regions`,
+          LogContext.COMBAT
+        );
+      }
+    }
+    
+    // Check for encounter
+    if (this.manager.combat && toRegion) {
+      Logger.debug(
+        LogCategory.COMBAT,
+        `Checking for encounter in ${toRegion}`,
+        LogContext.COMBAT
+      );
+      const encounterGenerated = this.manager.combat.checkForEncounter(state, toRegion);
+      
+      if (encounterGenerated) {
+        Logger.info(
+          LogCategory.COMBAT,
+          `Encounter triggered in ${toRegion}`,
+          LogContext.COMBAT
+        );
+        
+        // Generate random enemy
+        const enemyId = this.manager.combat.generateRandomEncounter(state);
+        
+        if (enemyId) {
+          Logger.info(
+            LogCategory.COMBAT,
+            `Starting combat with enemy: ${enemyId}`,
+            LogContext.COMBAT
+          );
+          
+          // Start combat encounter
+          this.handleStartCombat(state, {
+            type: 'START_COMBAT',
+            payload: {
+              enemyId,
+              regionId: toRegion
+            }
+          });
+        } else {
+          Logger.error(
+            LogCategory.COMBAT,
+            `Failed to generate enemy for encounter in ${toRegion}`,
+            LogContext.COMBAT
+          );
+        }
+      } else {
+        Logger.debug(
+          LogCategory.COMBAT,
+          `No encounter generated in ${toRegion}`,
+          LogContext.COMBAT
+        );
+      }
+    } else {
+      Logger.error(
+        LogCategory.COMBAT,
+        `Cannot check for encounter: Combat system not available or no target region`,
+        LogContext.COMBAT
+      );
+    }
+  }
+  
+  /**
+   * Handle starting a combat encounter
+   */
+  private handleStartCombat(state: GameState, action: StartCombatAction): void {
+    if (!this.manager?.combat) return;
+    
+    this.manager.combat.startCombatEncounter(
+      state,
+      action.payload.enemyId,
+      action.payload.regionId
+    );
+  }
+  
+  /**
+   * Handle performing a combat action
+   */
+  private handlePerformCombatAction(state: GameState, action: PerformCombatAction): void {
+    if (!this.manager?.combat) return;
+    
+    this.manager.combat.performCombatAction(state, action.payload.actionId);
+  }
+  
+  /**
+   * Handle ending combat
+   */
+  private handleEndCombat(state: GameState, action: EndCombatAction): void {
+    if (!this.manager?.combat) return;
+    
+    this.manager.combat.endCombatEncounter(state, action.payload.outcome);
+  }
+  
+  /**
+   * Handle retreating from combat
+   */
+  private handleRetreatFromCombat(state: GameState, action: RetreatFromCombatAction): void {
+    if (!this.manager?.combat) return;
+    
+    this.manager.combat.retreat(state);
   }
 } 

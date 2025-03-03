@@ -4,6 +4,7 @@ import { ResourceSystem } from './ResourceSystem';
 import { ActionSystem } from './ActionSystem';
 import { UpgradeSystem } from './UpgradeSystem';
 import { LogSystem } from './LogSystem';
+import { CombatSystem } from './CombatSystem';
 
 /**
  * GameSystemManager
@@ -33,6 +34,11 @@ export class GameSystemManager {
   public log: LogSystem;
 
   /**
+   * Combat system
+   */
+  public combat: CombatSystem;
+
+  /**
    * Initialize all game systems
    */
   constructor() {
@@ -40,9 +46,13 @@ export class GameSystemManager {
     this.action = new ActionSystem();
     this.upgrade = new UpgradeSystem();
     this.log = new LogSystem();
+    this.combat = new CombatSystem();
     
     // Set the manager reference in the ActionSystem
     this.action.setManager(this);
+    
+    // Set the resource system reference in the CombatSystem
+    this.combat.setResourceSystem(this.resource);
     
     // Initialize the game stats based on upgrades
     // This will be done during initialization when loading a game
@@ -60,6 +70,9 @@ export class GameSystemManager {
     
     // Check for unlockable logs
     this.log.update(state, delta);
+    
+    // Update combat system if needed
+    this.combat.update(state, delta);
     
     // In the future, we'll add more system updates here
     // this.upgrade.update(state, delta);

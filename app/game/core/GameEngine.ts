@@ -59,6 +59,9 @@ export class GameEngine {
             this.state = JSON.parse(JSON.stringify(initialGameState));
         }
         
+        // Ensure critical state components are initialized
+        this.ensureCriticalStateComponents();
+        
         // Create our communication system
         this.eventBus = new EventBus();
         
@@ -79,6 +82,158 @@ export class GameEngine {
         this.setupEventHandlers();
         
         Logger.info(LogCategory.ENGINE, "Game engine initialized", LogContext.STARTUP);
+    }
+    
+    /**
+     * Ensure critical components of the state are initialized
+     * This prevents crashes when accessing required state properties
+     */
+    private ensureCriticalStateComponents(): void {
+        // Ensure categories exist
+        if (!this.state.categories) {
+            Logger.warn(
+                LogCategory.ENGINE,
+                "Categories state was missing - initializing with default values",
+                LogContext.STARTUP
+            );
+            
+            this.state.categories = {
+                reactor: {
+                    resources: {
+                        energy: 10,
+                    },
+                    stats: {
+                        energyPerSecond: 0.1,
+                        energyCapacity: 100
+                    },
+                    upgrades: {
+                        reactorExpansions: 0,
+                        energyConverters: 0
+                    }
+                },
+                processor: {
+                    resources: {
+                        insight: 0,
+                    },
+                    stats: {
+                        insightPerSecond: 0,
+                        insightCapacity: 100,
+                        insightPerClick: 1
+                    },
+                    upgrades: {
+                        mainframeExpansions: 0,
+                        processingThreads: 0
+                    }
+                },
+                crewQuarters: {
+                    resources: {
+                        crew: 1,
+                    },
+                    stats: {
+                        crewPerSecond: 0,
+                        crewCapacity: 10,
+                        awakeningProgress: 0
+                    },
+                    upgrades: {
+                        additionalQuarters: 0,
+                        workerCrews: 0
+                    }
+                },
+                manufacturing: {
+                    resources: {
+                        scrap: 0,
+                    },
+                    stats: {
+                        scrapCapacity: 100,
+                        scrapPerSecond: 0
+                    },
+                    upgrades: {
+                        cargoHoldExpansions: 0,
+                        manufacturingBays: 0
+                    }
+                }
+            };
+        }
+        
+        // Ensure navigation state is initialized
+        if (!this.state.navigation) {
+            Logger.warn(
+                LogCategory.ENGINE,
+                "Navigation state was missing - initializing with default values",
+                LogContext.STARTUP
+            );
+            
+            this.state.navigation = {
+                currentRegion: 'void',
+                exploredRegions: ['void'],
+                availableRegions: ['void', 'nebula']
+            };
+        }
+        
+        // Ensure combat state is initialized
+        if (!this.state.combat) {
+            Logger.warn(
+                LogCategory.ENGINE,
+                "Combat state was missing - initializing with default values",
+                LogContext.STARTUP
+            );
+            
+            this.state.combat = {
+                active: false,
+                battleLog: [],
+                turn: 0,
+                playerStats: {
+                    health: 100,
+                    maxHealth: 100,
+                    shield: 50,
+                    maxShield: 50,
+                    statusEffects: []
+                },
+                enemyStats: {
+                    health: 0,
+                    maxHealth: 0,
+                    shield: 0,
+                    maxShield: 0,
+                    statusEffects: []
+                },
+                availableActions: [],
+                cooldowns: {},
+                encounterCompleted: false,
+                currentEnemy: null,
+                currentRegion: null,
+                enemyIntentions: null,
+                rewards: {
+                    energy: 0,
+                    insight: 0,
+                    crew: 0,
+                    scrap: 0
+                }
+            };
+        }
+        
+        // Ensure logs are initialized
+        if (!this.state.logs) {
+            Logger.warn(
+                LogCategory.ENGINE,
+                "Logs state was missing - initializing with default values",
+                LogContext.STARTUP
+            );
+            
+            this.state.logs = {
+                discovered: {},
+                unread: []
+            };
+        }
+        
+        // Set timestamp if missing
+        if (!this.state.lastUpdate) {
+            this.state.lastUpdate = Date.now();
+        }
+        
+        // Set version if missing
+        if (!this.state.version) {
+            this.state.version = 1;
+        }
     }
     
     /**

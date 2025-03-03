@@ -12,7 +12,6 @@ const navigation = [
   { name: "Crew Quarters", href: "/crew-quarters", icon: Users },
   { name: "Manufacturing", href: "/manufacturing", icon: Package },
   { name: "Navigation", href: "/navigation", icon: Rocket },
-  { name: "Battle", href: "/battle", icon: Swords },
   { name: "Logs", href: "/logs", icon: BookOpen },
 ]
 

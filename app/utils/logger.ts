@@ -22,7 +22,9 @@ export enum LogCategory {
   UPGRADES = 'upgrades',     // Upgrade system
   UI = 'ui',                 // UI interactions
   LIFECYCLE = 'lifecycle',   // Component/system lifecycle
-  PERFORMANCE = 'performance' // Performance measurements
+  PERFORMANCE = 'performance', // Performance measurements
+  GAME_SYSTEMS = "Game Systems",
+  COMBAT = "Combat"
 }
 
 // Common context tags for cross-category workflows
@@ -36,7 +38,11 @@ export enum LogContext {
   STARTUP = 'startup',               // Game initialization
   SAVE_LOAD = 'saveload',            // Save/load operations
   UI_RENDER = 'render',              // UI rendering workflow
-  LOG_INTERACTION = 'logs'           // Log reading/interaction
+  LOG_INTERACTION = 'logs',           // Log reading/interaction
+  COMBAT = "Combat",
+  COMBAT_ACTION = "Combat Action",
+  COMBAT_ENEMY = "Combat Enemy",
+  COMBAT_REWARDS = "Combat Rewards"
 }
 
 // Type for context parameter - can be a single context or an array of contexts
@@ -46,21 +52,21 @@ export type ContextParam = LogContext | LogContext[];
 export class LoggerConfig {
   // Current log level
   static level: LogLevel = process.env.NODE_ENV === 'development' 
-    ? LogLevel.DEBUG 
+    ? LogLevel.WARN 
     : LogLevel.ERROR;
   
   // Enabled categories
   static enabledCategories: Record<LogCategory, boolean> = Object.values(LogCategory)
     .reduce((acc, category) => ({
       ...acc,
-      [category]: process.env.NODE_ENV === 'development'
+      [category]: category === LogCategory.COMBAT  // Only enable COMBAT category by default
     }), {} as Record<LogCategory, boolean>);
     
   // Enabled context tags
   static enabledContexts: Record<LogContext, boolean> = Object.values(LogContext)
     .reduce((acc, context) => ({
       ...acc,
-      [context]: process.env.NODE_ENV === 'development'
+      [context]: [LogContext.COMBAT, LogContext.COMBAT_ACTION, LogContext.COMBAT_ENEMY, LogContext.COMBAT_REWARDS].includes(context)  // Only enable combat-related contexts
     }), {} as Record<LogContext, boolean>);
   
   // Color coding for different categories
@@ -73,7 +79,9 @@ export class LoggerConfig {
     [LogCategory.UPGRADES]: 'brown',
     [LogCategory.UI]: 'magenta',
     [LogCategory.LIFECYCLE]: 'gray',
-    [LogCategory.PERFORMANCE]: 'red'
+    [LogCategory.PERFORMANCE]: 'red',
+    [LogCategory.GAME_SYSTEMS]: 'darkblue',
+    [LogCategory.COMBAT]: 'crimson'
   };
   
   // Background colors for context tags
@@ -87,7 +95,11 @@ export class LoggerConfig {
     [LogContext.STARTUP]: '#ffffcc',
     [LogContext.SAVE_LOAD]: '#e6e6e6',
     [LogContext.UI_RENDER]: '#f9f9f9',
-    [LogContext.LOG_INTERACTION]: '#e6fffa'
+    [LogContext.LOG_INTERACTION]: '#e6fffa',
+    [LogContext.COMBAT]: '#ffcccc',
+    [LogContext.COMBAT_ACTION]: '#ffe6e6',
+    [LogContext.COMBAT_ENEMY]: '#ffccdd',
+    [LogContext.COMBAT_REWARDS]: '#ffddcc'
   };
   
   // Enable/disable a category

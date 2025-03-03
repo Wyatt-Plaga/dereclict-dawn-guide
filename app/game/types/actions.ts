@@ -62,10 +62,81 @@ export interface MarkAllLogsReadAction extends GameAction {
 }
 
 /**
+ * Initiate Jump Action
+ * Triggered when player initiates a jump in navigation
+ */
+export interface InitiateJumpAction extends GameAction {
+  type: 'INITIATE_JUMP';
+  payload: {
+    fromRegion: string;
+    toRegion?: string; // Optional, if not provided, will be randomly selected
+  };
+}
+
+/**
+ * Start Combat Action
+ * Triggered when an encounter is generated
+ */
+export interface StartCombatAction extends GameAction {
+  type: 'START_COMBAT';
+  payload: {
+    enemyId: string;
+    regionId: string;
+  };
+}
+
+/**
+ * Perform Combat Action
+ * Triggered when player uses a combat ability
+ */
+export interface PerformCombatAction extends GameAction {
+  type: 'PERFORM_COMBAT_ACTION';
+  payload: {
+    actionId: string;
+  };
+}
+
+/**
+ * End Combat Action
+ * Triggered when combat ends
+ */
+export interface EndCombatAction extends GameAction {
+  type: 'END_COMBAT';
+  payload: {
+    outcome: 'victory' | 'defeat' | 'retreat';
+  };
+}
+
+/**
+ * Retreat from Combat Action
+ * Triggered when player chooses to retreat
+ */
+export interface RetreatFromCombatAction extends GameAction {
+  type: 'RETREAT_FROM_COMBAT';
+}
+
+/**
+ * Select Region Action
+ * Triggered when player selects a region to jump to
+ */
+export interface SelectRegionAction extends GameAction {
+  type: 'SELECT_REGION';
+  payload: {
+    regionId: string;
+  };
+}
+
+/**
  * Union type of all possible game actions
  */
 export type GameActions = 
   | ClickResourceAction
   | PurchaseUpgradeAction
   | MarkLogReadAction
-  | MarkAllLogsReadAction; 
+  | MarkAllLogsReadAction
+  | InitiateJumpAction
+  | StartCombatAction
+  | PerformCombatAction
+  | EndCombatAction
+  | RetreatFromCombatAction
+  | SelectRegionAction; 

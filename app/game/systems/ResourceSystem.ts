@@ -1,4 +1,6 @@
 import { GameState } from '../types';
+import { ResourceCost } from '../types/combat';
+import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 
 /**
  * ResourceSystem
@@ -62,8 +64,10 @@ export class ResourceSystem {
     
     // Log crew production
     if (awakeningProgressPerSecond > 0) {
-      console.log(
-        `Crew production: ${progressAdded.toFixed(5)} progress (rate: ${awakeningProgressPerSecond}/s, delta: ${delta.toFixed(5)}s)`
+      Logger.debug(
+        LogCategory.RESOURCES,
+        `Crew production: ${progressAdded.toFixed(5)} progress (rate: ${awakeningProgressPerSecond}/s, delta: ${delta.toFixed(5)}s)`,
+        LogContext.CREW_LIFECYCLE
       );
     }
     
@@ -86,8 +90,10 @@ export class ResourceSystem {
         // Subtract 10 from progress
         crewQuarters.stats.awakeningProgress -= 10;
         
-        console.log(
-          `Crew member auto-awakened! Current crew: ${crewQuarters.resources.crew}`
+        Logger.info(
+          LogCategory.RESOURCES,
+          `Crew member auto-awakened! Current crew: ${crewQuarters.resources.crew}`,
+          LogContext.CREW_LIFECYCLE
         );
       }
       
@@ -96,13 +102,17 @@ export class ResourceSystem {
       
       // Log the change
       if (oldProgress !== crewQuarters.stats.awakeningProgress || oldCrew !== crewQuarters.resources.crew) {
-        console.log(
-          `Awakening progress updated: ${oldProgress.toFixed(2)} -> ${crewQuarters.stats.awakeningProgress.toFixed(2)}`
+        Logger.debug(
+          LogCategory.RESOURCES,
+          `Awakening progress updated: ${oldProgress.toFixed(2)} -> ${crewQuarters.stats.awakeningProgress.toFixed(2)}`,
+          LogContext.CREW_LIFECYCLE
         );
         
         if (oldCrew !== crewQuarters.resources.crew) {
-          console.log(
-            `Crew updated: ${oldCrew.toFixed(2)} -> ${crewQuarters.resources.crew.toFixed(2)}`
+          Logger.debug(
+            LogCategory.RESOURCES,
+            `Crew updated: ${oldCrew.toFixed(2)} -> ${crewQuarters.resources.crew.toFixed(2)}`,
+            LogContext.CREW_LIFECYCLE
           );
         }
       }
@@ -121,6 +131,114 @@ export class ResourceSystem {
         manufacturing.resources.scrap + scrapProduced,
         manufacturing.stats.scrapCapacity
       );
+    }
+  }
+
+  /**
+   * Check if the player has enough resources for a combat action
+   */
+  hasResources(state: GameState, costs: ResourceCost[]): boolean {
+    // Safety check for state categories
+    if (!state.categories) {
+      Logger.error(
+        LogCategory.COMBAT,
+        "Cannot check resources: state.categories is undefined",
+        LogContext.COMBAT_ACTION
+      );
+      return false;
+    }
+    
+    for (const cost of costs) {
+      let currentAmount = 0;
+      
+      // Get the current amount based on resource type
+      switch (cost.type) {
+        case 'energy':
+          currentAmount = state.categories.reactor?.resources?.energy || 0;
+          break;
+        case 'insight':
+          currentAmount = state.categories.processor?.resources?.insight || 0;
+          break;
+        case 'crew':
+          currentAmount = state.categories.crewQuarters?.resources?.crew || 0;
+          break;
+        case 'scrap':
+          currentAmount = state.categories.manufacturing?.resources?.scrap || 0;
+          break;
+      }
+      
+      // Check if we have enough
+      if (currentAmount < cost.amount) {
+        Logger.debug(
+          LogCategory.COMBAT,
+          `Not enough ${cost.type}. Required: ${cost.amount}, Available: ${currentAmount}`,
+          LogContext.COMBAT_ACTION
+        );
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  /**
+   * Consume resources for a combat action
+   */
+  consumeResources(state: GameState, costs: ResourceCost[]): void {
+    // Safety check for state categories
+    if (!state.categories) {
+      Logger.error(
+        LogCategory.COMBAT,
+        "Cannot consume resources: state.categories is undefined",
+        LogContext.COMBAT_ACTION
+      );
+      return;
+    }
+    
+    for (const cost of costs) {
+      // Deduct the cost based on resource type
+      switch (cost.type) {
+        case 'energy':
+          if (state.categories.reactor?.resources) {
+            state.categories.reactor.resources.energy -= cost.amount;
+            Logger.debug(
+              LogCategory.COMBAT,
+              `Consumed ${cost.amount} energy. Remaining: ${state.categories.reactor.resources.energy}`,
+              LogContext.COMBAT_ACTION
+            );
+          }
+          break;
+        case 'insight':
+          if (state.categories.processor?.resources) {
+            state.categories.processor.resources.insight -= cost.amount;
+            Logger.debug(
+              LogCategory.COMBAT,
+              `Consumed ${cost.amount} insight. Remaining: ${state.categories.processor.resources.insight}`,
+              LogContext.COMBAT_ACTION
+            );
+          }
+          break;
+        case 'crew':
+          if (state.categories.crewQuarters?.resources) {
+            state.categories.crewQuarters.resources.crew -= cost.amount;
+            Logger.debug(
+              LogCategory.COMBAT,
+              `Consumed ${cost.amount} crew. Remaining: ${state.categories.crewQuarters.resources.crew}`,
+              LogContext.COMBAT_ACTION
+            );
+          }
+          break;
+        case 'scrap':
+          if (state.categories.manufacturing?.resources) {
+            state.categories.manufacturing.resources.scrap -= cost.amount;
+            Logger.debug(
+              LogCategory.COMBAT,
+              `Consumed ${cost.amount} scrap. Remaining: ${state.categories.manufacturing.resources.scrap}`,
+              LogContext.COMBAT_ACTION
+            );
+          }
+          break;
+      }
     }
   }
 } 
