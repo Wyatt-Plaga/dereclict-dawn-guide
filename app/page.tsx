@@ -1,8 +1,19 @@
 "use client"
 
-import { Hero } from '@/components/ui/animated-hero'
-import Image from 'next/image'
+import Link from "next/link"
+import { useSystemStatus } from "@/components/providers/system-status-provider"
+import { NavBar } from "@/components/ui/navbar"
+import GameLoader from '@/app/components/GameLoader'
 
-export default function Home() {
-  return <Hero />
+export default function HomePage() {
+  const { shouldFlicker } = useSystemStatus();
+  
+  return (
+    <GameLoader>
+      <main className="flex min-h-screen flex-col">
+        <NavBar />
+        {/* Rest of component content */}
+      </main>
+    </GameLoader>
+  )
 }

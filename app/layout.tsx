@@ -2,6 +2,9 @@ import type { Metadata } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
 import TanstackClientProvider from '@/components/providers/tanstack-client-provider'
+import { ThemeProvider } from '@/components/providers/theme-provider'
+import { SystemStatusProvider } from '@/components/providers/system-status-provider'
+import { GameProvider } from '@/app/game/hooks/useGame'
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -15,8 +18,8 @@ const geistMono = localFont({
 })
 
 export const metadata: Metadata = {
-  title: 'CodeGuide Starter Pro',
-  description: 'Starter kit from codeguide.dev',
+  title: 'Derelict Dawn',
+  description: 'A sci-fi incremental game about reviving an abandoned spaceship',
 }
 
 export default function RootLayout({
@@ -25,9 +28,17 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <TanstackClientProvider>{children}</TanstackClientProvider>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <SystemStatusProvider>
+            <TanstackClientProvider>
+              <GameProvider>
+                {children}
+              </GameProvider>
+            </TanstackClientProvider>
+          </SystemStatusProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

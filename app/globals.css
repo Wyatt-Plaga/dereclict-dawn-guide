@@ -51,38 +51,41 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Dark sci-fi theme with broken-down aesthetic */
+    --background: 220 14% 8%; /* Dark blue-gray background */
+    --foreground: 195 30% 90%; /* Slightly blue-tinted text */
+    --card: 220 20% 10%; /* Slightly lighter than background */
+    --card-foreground: 195 30% 90%;
+    --popover: 220 16% 12%;
+    --popover-foreground: 195 30% 90%;
+    --primary: 195 80% 50%; /* Bright teal for primary actions */
+    --primary-foreground: 220 14% 8%;
+    --secondary: 220 30% 16%; /* Darker blue-gray */
+    --secondary-foreground: 195 30% 90%;
+    --muted: 215 28% 17%;
+    --muted-foreground: 195 20% 65%;
+    --accent: 195 80% 30%; /* Darker teal for accents */
+    --accent-foreground: 195 30% 90%;
+    --destructive: 350 90% 40%; /* Red-ish for warnings */
+    --destructive-foreground: 195 30% 90%;
+    --border: 215 25% 18%; /* Slightly visible borders */
+    --input: 215 25% 18%;
+    --ring: 195 80% 40%;
+    /* Ship system colors */
+    --chart-1: 195 80% 50%; /* Energy - Teal */
+    --chart-2: 260 70% 55%; /* Insight - Purple */
+    --chart-3: 340 60% 55%; /* Crew - Pink/Red */
+    --chart-4: 40 80% 60%; /* Scrap - Gold/Amber */
+    --chart-5: 150 60% 45%; /* Ship Status - Green */
+    --radius: 0.3rem; /* Sharper edges for a more tech look */
+    --sidebar-background: 220 20% 12%;
+    --sidebar-foreground: 195 30% 90%;
+    --sidebar-primary: 195 80% 50%;
+    --sidebar-primary-foreground: 220 14% 8%;
+    --sidebar-accent: 220 30% 16%;
+    --sidebar-accent-foreground: 195 30% 90%;
+    --sidebar-border: 215 25% 18%;
+    --sidebar-ring: 195 80% 40%;
   }
 }
 
@@ -93,4 +96,40 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Add some sci-fi themed utility classes */
+.terminal-text {
+  font-family: var(--font-geist-mono);
+  @apply text-primary tracking-wider;
+}
+
+.system-panel {
+  @apply border border-border rounded-md bg-card/80 backdrop-blur-sm;
+}
+
+/* System status based effects */
+
+/* Improved unreliable flickering for critical systems */
+.flickering-text {
+  animation: erratic-flicker 5s steps(1) infinite;
+  text-shadow: 0 0 5px hsl(var(--primary)), 0 0 10px hsl(var(--primary) / 0.5);
+}
+
+/* More subtle glows for other elements */
+.glow-container {
+  box-shadow: 0 0 10px 1px hsl(var(--primary) / 0.15);
+}
+
+/* Animation keyframes */
+@keyframes erratic-flicker {
+  0%, 100% { opacity: 1; }
+  5% { opacity: 0.8; }
+  10% { opacity: 1; }
+  25% { opacity: 0.9; }
+  30% { opacity: 1; }
+  40% { opacity: 0.7; }
+  50% { opacity: 1; }
+  70% { opacity: 0.8; }
+  80%, 95% { opacity: 1; }
 }
