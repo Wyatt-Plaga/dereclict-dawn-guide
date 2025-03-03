@@ -1,20 +1,24 @@
 "use client"
 
 import { NavBar } from "@/components/ui/navbar"
-import { Shield, Zap, Wrench, Cpu, AlertTriangle } from "lucide-react"
+import { Shield, Zap, Wrench, Cpu, AlertTriangle, ChevronDown, ChevronUp, Scan, ZapOff, Search, Compass } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/app/game/hooks/useGame"
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
 import Link from "next/link"
 import { Progress } from "@/components/ui/progress"
+import { useState } from "react"
 
 // Enemy type
 interface Enemy {
   id: string;
   name: string;
+  description: string;
   health: number;
   maxHealth: number;
+  shield: number;
+  maxShield: number;
   image: string;
   weakness: 'shield' | 'weapon' | 'repair' | 'countermeasure';
 }
@@ -29,6 +33,23 @@ export default function BattlePage() {
   const crewQuarters = state.categories.crewQuarters
   const manufacturing = state.categories.manufacturing
   
+  // Track which action categories are expanded
+  const [expandedActions, setExpandedActions] = useState<string[]>([])
+  
+  // Toggle expansion of an action category
+  const toggleActionExpansion = (actionType: string) => {
+    if (expandedActions.includes(actionType)) {
+      setExpandedActions(expandedActions.filter(a => a !== actionType))
+    } else {
+      setExpandedActions([...expandedActions, actionType])
+    }
+  }
+  
+  // Check if an action is expanded
+  const isActionExpanded = (actionType: string) => {
+    return expandedActions.includes(actionType)
+  }
+  
   // Log component render
   Logger.debug(
     LogCategory.UI,
@@ -39,13 +60,18 @@ export default function BattlePage() {
   // Mock battle state - in a full implementation this would be part of the game state
   const shipHealth = 80;
   const maxShipHealth = 100;
+  const shipShield = 35;
+  const maxShipShield = 50;
   
   // Example enemy with shield weakness
   const enemy: Enemy = {
     id: 'void-stalker',
     name: 'Void Stalker',
+    description: 'A mysterious entity that lurks in the void between stars. It appears to feed on energy and is drawn to functioning ships.',
     health: 70,
     maxHealth: 100,
+    shield: 20,
+    maxShield: 40,
     image: '/enemy-void.png',
     weakness: 'shield'
   };
@@ -66,9 +92,9 @@ export default function BattlePage() {
     // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'repair' } })
   }
   
-  const useCountermeasure = () => {
-    console.log('Using countermeasure');
-    // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'countermeasure' } })
+  const useSabotage = () => {
+    console.log('Using sabotage');
+    // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'sabotage' } })
   }
   
   const retreat = () => {
@@ -89,105 +115,209 @@ export default function BattlePage() {
             {/* Battle status */}
             <div className="grid md:grid-cols-2 gap-6 mb-8">
               {/* Ship status */}
-              <div className="system-panel p-4">
-                <h2 className="text-lg font-medium mb-4">Dawn Status</h2>
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span>Hull Integrity</span>
-                    <span>{shipHealth}/{maxShipHealth}</span>
+              <div className="system-panel p-4 flex flex-col">
+                <div>
+                  <h2 className="text-lg font-medium mb-3">Dawn Status</h2>
+                  
+                  {/* Resource readouts at top */}
+                  <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+                    <div>
+                      <span className="text-muted-foreground">Energy:</span> {Math.floor(reactor.resources.energy)}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Scrap:</span> {Math.floor(manufacturing.resources.scrap)}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Crew:</span> {Math.floor(crewQuarters.resources.crew)}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Insight:</span> {Math.floor(processor.resources.insight)}
+                    </div>
                   </div>
-                  <Progress value={(shipHealth / maxShipHealth) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-3" />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Energy:</span> {Math.floor(reactor.resources.energy)}
+                {/* Push shield and hull to bottom with auto margin */}
+                <div className="mt-auto">
+                  {/* Ship shield */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span>Shield Strength</span>
+                      <span>{shipShield}/{maxShipShield}</span>
+                    </div>
+                    <Progress value={(shipShield / maxShipShield) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-1" />
                   </div>
+                  
+                  {/* Ship hull */}
                   <div>
-                    <span className="text-muted-foreground">Scrap:</span> {Math.floor(manufacturing.resources.scrap)}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Crew:</span> {Math.floor(crewQuarters.resources.crew)}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Insight:</span> {Math.floor(processor.resources.insight)}
+                    <div className="flex items-center justify-between mb-2">
+                      <span>Hull Integrity</span>
+                      <span>{shipHealth}/{maxShipHealth}</span>
+                    </div>
+                    <Progress value={(shipHealth / maxShipHealth) * 100} className="h-2 bg-muted" indicatorClassName="bg-green-500" />
                   </div>
                 </div>
               </div>
               
               {/* Enemy status */}
-              <div className="system-panel p-4">
-                <h2 className="text-lg font-medium mb-4">Enemy: {enemy.name}</h2>
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span>Health</span>
-                    <span>{enemy.health}/{enemy.maxHealth}</span>
-                  </div>
-                  <Progress value={(enemy.health / enemy.maxHealth) * 100} className="h-2 bg-muted" indicatorClassName="bg-red-500" />
+              <div className="system-panel p-4 flex flex-col">
+                <div>
+                  <h2 className="text-lg font-medium mb-2">{enemy.name}</h2>
+                  <p className="text-sm text-muted-foreground">{enemy.description}</p>
                 </div>
                 
-                <div className="text-sm mt-4">
-                  <p className="text-yellow-400 flex items-center">
-                    <AlertTriangle className="h-4 w-4 mr-1" />
-                    Weakness detected: {enemy.weakness === 'shield' ? 'Energy Shields' : 
-                      enemy.weakness === 'weapon' ? 'Direct Weapons' : 
-                      enemy.weakness === 'repair' ? 'Repair Drones' : 
-                      'Countermeasures'}
-                  </p>
+                {/* Push shield and hull to bottom with auto margin */}
+                <div className="mt-auto">
+                  {/* Enemy shield - aligned with ship shield */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span>Shield Strength</span>
+                      <span>{enemy.shield}/{enemy.maxShield}</span>
+                    </div>
+                    <Progress value={(enemy.shield / enemy.maxShield) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-1" />
+                  </div>
+                  
+                  {/* Enemy hull - aligned with ship hull */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span>Hull Integrity</span>
+                      <span>{enemy.health}/{enemy.maxHealth}</span>
+                    </div>
+                    <Progress value={(enemy.health / enemy.maxHealth) * 100} className="h-2 bg-muted" indicatorClassName="bg-green-500" />
+                  </div>
                 </div>
               </div>
             </div>
             
-            {/* Combat actions */}
-            <div className="mb-8">
-              <h2 className="text-lg font-semibold mb-4 terminal-text">Combat Actions</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <button 
-                  onClick={useShield}
-                  className={`system-panel p-4 text-center hover:bg-accent/10 transition-colors ${enemy.weakness === 'shield' ? 'border-2 border-yellow-400' : ''}`}
-                >
-                  <Shield className="h-8 w-8 mx-auto mb-2 text-chart-1" />
-                  <h3 className="text-sm font-semibold">Shields</h3>
-                  <p className="text-xs text-muted-foreground">Cost: 10 Energy</p>
-                </button>
-                
-                <button 
-                  onClick={useWeapon}
-                  className={`system-panel p-4 text-center hover:bg-accent/10 transition-colors ${enemy.weakness === 'weapon' ? 'border-2 border-yellow-400' : ''}`}
-                >
-                  <Zap className="h-8 w-8 mx-auto mb-2 text-chart-2" />
-                  <h3 className="text-sm font-semibold">Weapons</h3>
-                  <p className="text-xs text-muted-foreground">Cost: 15 Scrap</p>
-                </button>
-                
-                <button 
-                  onClick={useRepair}
-                  className={`system-panel p-4 text-center hover:bg-accent/10 transition-colors ${enemy.weakness === 'repair' ? 'border-2 border-yellow-400' : ''}`}
-                >
-                  <Wrench className="h-8 w-8 mx-auto mb-2 text-chart-3" />
-                  <h3 className="text-sm font-semibold">Repairs</h3>
-                  <p className="text-xs text-muted-foreground">Cost: 2 Crew</p>
-                </button>
-                
-                <button 
-                  onClick={useCountermeasure}
-                  className={`system-panel p-4 text-center hover:bg-accent/10 transition-colors ${enemy.weakness === 'countermeasure' ? 'border-2 border-yellow-400' : ''}`}
-                >
-                  <Cpu className="h-8 w-8 mx-auto mb-2 text-chart-4" />
-                  <h3 className="text-sm font-semibold">Countermeasures</h3>
-                  <p className="text-xs text-muted-foreground">Cost: 8 Insight</p>
-                </button>
+            {/* Combat actions - Reorganized into compact quarters */}
+            <h2 className="text-lg font-semibold mb-4 terminal-text">Combat Actions</h2>
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* Energy Shields section - 1 action */}
+              <div className="system-panel p-3">
+                <h3 className="text-sm font-semibold mb-2 flex items-center">
+                  <Shield className="h-4 w-4 mr-2 text-chart-1" />
+                  <span>Energy Shields</span>
+                  <span className="text-xs text-muted-foreground ml-1">(Reactor)</span>
+                </h3>
+                <div className="space-y-1">
+                  <button 
+                    onClick={useShield}
+                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                  >
+                    <Shield className="h-3 w-3 mr-2 text-chart-1" />
+                    <span className="mr-auto">Raise Shields</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-chart-1/20 text-chart-1 rounded">10</span>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Weapons Systems section - 2 actions */}
+              <div className="system-panel p-3">
+                <h3 className="text-sm font-semibold mb-2 flex items-center">
+                  <Zap className="h-4 w-4 mr-2 text-chart-2" />
+                  <span>Weapons Systems</span>
+                  <span className="text-xs text-muted-foreground ml-1">(Manufacturing)</span>
+                </h3>
+                <div className="space-y-1">
+                  <button 
+                    onClick={useWeapon}
+                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                  >
+                    <Zap className="h-3 w-3 mr-2 text-chart-2" />
+                    <span className="mr-auto">Plasma Cannon</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-chart-2/20 text-chart-2 rounded">15</span>
+                  </button>
+                  <button 
+                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                  >
+                    <Zap className="h-3 w-3 mr-2 text-chart-2" />
+                    <span className="mr-auto">Missile Barrage</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-chart-2/20 text-chart-2 rounded">25</span>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Repair Drones section - 3 actions */}
+              <div className="system-panel p-3">
+                <h3 className="text-sm font-semibold mb-2 flex items-center">
+                  <Wrench className="h-4 w-4 mr-2 text-chart-3" />
+                  <span>Repair Drones</span>
+                  <span className="text-xs text-muted-foreground ml-1">(Crew)</span>
+                </h3>
+                <div className="space-y-1">
+                  <button 
+                    onClick={useRepair}
+                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                  >
+                    <Wrench className="h-3 w-3 mr-2 text-chart-3" />
+                    <span className="mr-auto">Hull Repair</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-chart-3/20 text-chart-3 rounded">2</span>
+                  </button>
+                  <button 
+                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                  >
+                    <Shield className="h-3 w-3 mr-2 text-chart-3" />
+                    <span className="mr-auto">Shield Recharge</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-chart-3/20 text-chart-3 rounded">3</span>
+                  </button>
+                  <button 
+                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                  >
+                    <Wrench className="h-3 w-3 mr-2 text-chart-3" />
+                    <span className="mr-auto">System Bypass</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-chart-3/20 text-chart-3 rounded">4</span>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Electronic Countermeasures section - 4 actions */}
+              <div className="system-panel p-3">
+                <h3 className="text-sm font-semibold mb-2 flex items-center">
+                  <Cpu className="h-4 w-4 mr-2 text-chart-4" />
+                  <span>Electronic CM</span>
+                  <span className="text-xs text-muted-foreground ml-1">(Processor)</span>
+                </h3>
+                <div className="space-y-1">
+                  <button 
+                    onClick={useSabotage}
+                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                  >
+                    <ZapOff className="h-3 w-3 mr-2 text-chart-4" />
+                    <span className="mr-auto">Sabotage</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-chart-4/20 text-chart-4 rounded">8</span>
+                  </button>
+                  <button 
+                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                  >
+                    <Scan className="h-3 w-3 mr-2 text-chart-4" />
+                    <span className="mr-auto">Scan</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-chart-4/20 text-chart-4 rounded">5</span>
+                  </button>
+                  <button 
+                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                  >
+                    <Search className="h-3 w-3 mr-2 text-chart-4" />
+                    <span className="mr-auto">Find Weakness</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-chart-4/20 text-chart-4 rounded">12</span>
+                  </button>
+                  <button 
+                    className="w-full p-2 bg-background/40 rounded flex items-center text-sm hover:bg-accent/10 transition-colors"
+                  >
+                    <Compass className="h-3 w-3 mr-2 text-chart-4" />
+                    <span className="mr-auto">Sensor Overload</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-chart-4/20 text-chart-4 rounded">10</span>
+                  </button>
+                </div>
               </div>
             </div>
             
             {/* Battle log */}
-            <div className="mb-8">
+            <div className="mb-4">
               <h2 className="text-lg font-semibold mb-2 terminal-text">Battle Log</h2>
-              <div className="system-panel p-4 h-32 overflow-y-auto font-mono text-xs">
-                <p className="text-green-400">► System: Enemy vessel detected.</p>
+              <div className="system-panel p-3 h-28 overflow-y-auto font-mono text-xs">
+                <p className="text-green-400">► System: Unknown vessel detected.</p>
                 <p className="text-blue-400">► Dawn: Shields activated.</p>
-                <p className="text-red-400">► Enemy: Attacking with plasma barrage.</p>
-                <p className="text-yellow-400">► Analysis: Enemy weak against energy shields.</p>
+                <p className="text-red-400">► {enemy.name}: Approaching on intercept course.</p>
+                <p className="text-yellow-400">► Analysis: Scanning for vulnerabilities...</p>
               </div>
             </div>
             
@@ -195,7 +325,7 @@ export default function BattlePage() {
             <Link href="/navigation">
               <button 
                 onClick={retreat}
-                className="system-panel w-full p-4 flex items-center justify-center hover:bg-accent/10 transition-colors"
+                className="system-panel w-full p-3 flex items-center justify-center hover:bg-accent/10 transition-colors"
               >
                 <span className="terminal-text">Retreat from Battle</span>
               </button>
