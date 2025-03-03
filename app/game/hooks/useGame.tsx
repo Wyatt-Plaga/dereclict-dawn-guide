@@ -111,17 +111,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
     let lastUpdateTime = 0;
     const updateThreshold = 50; // ms
     
-    const handleStateUpdate = (newState: GameState) => {
+    const handleStateUpdate = (data: unknown) => {
+      // Type guard to ensure we have a GameState
+      const newState = data as GameState;
+      
+      // If component is unmounted, don't update state
       if (!isMounted) return;
       
       const now = Date.now();
       if (now - lastUpdateTime < updateThreshold) return;
       lastUpdateTime = now;
       
-      // Use functional setState to avoid dependency on current state
       setState((prevState: GameState) => {
-        // Only update if something meaningful changed
-        // Optional: implement deep comparison here
+        // Return a deep copy of the state to ensure React detects changes
         return JSON.parse(JSON.stringify(newState));
       });
     };

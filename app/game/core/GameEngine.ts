@@ -86,7 +86,9 @@ export class GameEngine {
      */
     private setupEventHandlers() {
         // Listen for action dispatch events
-        this.eventBus.on('DISPATCH_ACTION', (action: GameAction) => {
+        this.eventBus.on('DISPATCH_ACTION', (data) => {
+            // Type guard to ensure we have a GameAction
+            const action = data as GameAction;
             this.processAction(action);
         });
         

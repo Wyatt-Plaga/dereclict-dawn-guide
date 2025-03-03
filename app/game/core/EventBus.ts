@@ -6,11 +6,18 @@
  */
 
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
+import { GameState } from '../types';
+import { GameAction } from '../types/actions';
+
+/**
+ * Event data can be GameState, GameAction, or unknown for other event types
+ */
+type EventData = GameState | GameAction | unknown;
 
 /**
  * Function that can be called when an event occurs
  */
-type EventCallback = (data: any) => void;
+type EventCallback = (data: EventData) => void;
 
 /**
  * The EventBus manages communication between game systems
@@ -36,7 +43,7 @@ export class EventBus {
      * @param event - The name of the event
      * @param data - Data to send with the event
      */
-    emit(event: string, data: any) {
+    emit(event: string, data: EventData) {
         // Add throttling for state updates
         if (event === 'stateUpdated') {
             const now = Date.now();
@@ -56,13 +63,14 @@ export class EventBus {
         if (event === 'stateUpdated') {
             // Keep NONE context for general state updates
             context = LogContext.NONE;
-        } else if (event === 'DISPATCH_ACTION' && data?.type) {
+        } else if (event === 'DISPATCH_ACTION' && typeof data === 'object' && data !== null) {
+            const action = data as GameAction;
             // Set context based on action type
-            if (data.type === 'CLICK_RESOURCE' && data.payload?.category === 'reactor') {
+            if (action.type === 'CLICK_RESOURCE' && action.payload?.category === 'reactor') {
                 context = LogContext.REACTOR_LIFECYCLE;
-            } else if (data.type === 'CLICK_RESOURCE' && data.payload?.category === 'processor') {
+            } else if (action.type === 'CLICK_RESOURCE' && action.payload?.category === 'processor') {
                 context = LogContext.PROCESSOR_LIFECYCLE;
-            } else if (data.type === 'PURCHASE_UPGRADE') {
+            } else if (action.type === 'PURCHASE_UPGRADE') {
                 context = LogContext.UPGRADE_PURCHASE;
             }
         }

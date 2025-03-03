@@ -80,7 +80,7 @@ export default function ReactorPage() {
           <div className="system-panel p-6 mb-6">
             <h1 className={`text-2xl font-bold text-primary mb-4 ${shouldFlicker('reactor') ? 'flickering-text' : ''}`}>Reactor Core</h1>
             <p className="text-muted-foreground mb-6">
-              The ship's primary energy generation system. Repair and enhance to power all ship functions.
+              The ship&apos;s primary energy generation system. Repair and enhance to power all ship functions.
             </p>
             
             {/* Resource display */}
