@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Zap, CpuIcon, Users, Package, BookOpen, Settings } from "lucide-react"
+import { Zap, CpuIcon, Users, Package, BookOpen, Settings, Rocket, Swords } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/app/game/hooks/useGame"
 
@@ -11,6 +11,8 @@ const navigation = [
   { name: "Processor", href: "/processor", icon: CpuIcon },
   { name: "Crew Quarters", href: "/crew-quarters", icon: Users },
   { name: "Manufacturing", href: "/manufacturing", icon: Package },
+  { name: "Navigation", href: "/navigation", icon: Rocket },
+  { name: "Battle", href: "/battle", icon: Swords },
   { name: "Logs", href: "/logs", icon: BookOpen },
 ]
 
@@ -48,7 +50,7 @@ export function NavBar() {
               
               {/* Notification indicator for unread logs */}
               {isLogs && unreadLogsCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                <span className="ml-auto mr-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                   {unreadLogsCount > 9 ? '9+' : unreadLogsCount}
                 </span>
               )}

@@ -78,33 +78,17 @@ export default function LogsPage() {
                   Recovered memory fragments and system records
                 </p>
                 
-                {/* Category filter buttons - show as pills above the log list */}
-                {categories.length > 1 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {categories.map(category => (
-                      <button
-                        key={category}
-                        onClick={() => setSelectedCategory(category)}
-                        className={`px-3 py-1 rounded text-xs ${
-                          selectedCategory === category 
-                            ? 'bg-accent/30 text-primary border border-primary/40' 
-                            : 'hover:bg-accent/10 text-muted-foreground hover:text-primary'
-                        }`}
-                      >
-                        {category === 'all' ? 'All Logs' : category}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                
                 {/* Show mark all as read button if there are unread logs */}
                 {unreadCount > 0 && (
                   <div className="mb-3">
                     <button 
                       onClick={handleMarkAllAsRead}
-                      className="text-xs text-blue-400 hover:text-blue-300 transition"
+                      className="px-3 py-1 bg-red-900/40 text-red-200 border border-red-700/60 text-xs rounded-md hover:bg-red-800/60 transition flex items-center"
                     >
-                      Mark all as read
+                      <span>Mark all as read</span>
+                      <span className="ml-2 bg-red-700/80 rounded-full h-5 w-5 flex items-center justify-center">
+                        {unreadCount}
+                      </span>
                     </button>
                   </div>
                 )}
