@@ -1,4 +1,5 @@
 import { GameState } from '../types';
+import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 
 /**
  * ResourceSystem
@@ -62,8 +63,10 @@ export class ResourceSystem {
     
     // Log crew production
     if (awakeningProgressPerSecond > 0) {
-      console.log(
-        `Crew production: ${progressAdded.toFixed(5)} progress (rate: ${awakeningProgressPerSecond}/s, delta: ${delta.toFixed(5)}s)`
+      Logger.debug(
+        LogCategory.RESOURCES,
+        `Crew production: ${progressAdded.toFixed(5)} progress (rate: ${awakeningProgressPerSecond}/s, delta: ${delta.toFixed(5)}s)`,
+        LogContext.CREW_LIFECYCLE
       );
     }
     
@@ -86,8 +89,10 @@ export class ResourceSystem {
         // Subtract 10 from progress
         crewQuarters.stats.awakeningProgress -= 10;
         
-        console.log(
-          `Crew member auto-awakened! Current crew: ${crewQuarters.resources.crew}`
+        Logger.info(
+          LogCategory.RESOURCES,
+          `Crew member auto-awakened! Current crew: ${crewQuarters.resources.crew}`,
+          LogContext.CREW_LIFECYCLE
         );
       }
       
@@ -96,13 +101,17 @@ export class ResourceSystem {
       
       // Log the change
       if (oldProgress !== crewQuarters.stats.awakeningProgress || oldCrew !== crewQuarters.resources.crew) {
-        console.log(
-          `Awakening progress updated: ${oldProgress.toFixed(2)} -> ${crewQuarters.stats.awakeningProgress.toFixed(2)}`
+        Logger.debug(
+          LogCategory.RESOURCES,
+          `Awakening progress updated: ${oldProgress.toFixed(2)} -> ${crewQuarters.stats.awakeningProgress.toFixed(2)}`,
+          LogContext.CREW_LIFECYCLE
         );
         
         if (oldCrew !== crewQuarters.resources.crew) {
-          console.log(
-            `Crew updated: ${oldCrew.toFixed(2)} -> ${crewQuarters.resources.crew.toFixed(2)}`
+          Logger.debug(
+            LogCategory.RESOURCES,
+            `Crew updated: ${oldCrew.toFixed(2)} -> ${crewQuarters.resources.crew.toFixed(2)}`,
+            LogContext.CREW_LIFECYCLE
           );
         }
       }
@@ -122,5 +131,121 @@ export class ResourceSystem {
         manufacturing.stats.scrapCapacity
       );
     }
+  }
+
+  /**
+   * Check if the player has enough resources for a cost
+   * 
+   * @param state - Current game state
+   * @param costs - Array of resource costs to check
+   * @returns True if the player has enough resources, false otherwise
+   */
+  hasResources(state: GameState, costs: { type: string, amount: number }[]): boolean {
+    for (const cost of costs) {
+      const { type, amount } = cost;
+      
+      // Skip if no cost
+      if (amount <= 0) continue;
+      
+      // Check resource type and amount
+      switch (type) {
+        case 'energy':
+          if (state.categories.reactor.resources.energy < amount) {
+            return false;
+          }
+          break;
+        case 'insight':
+          if (state.categories.processor.resources.insight < amount) {
+            return false;
+          }
+          break;
+        case 'crew':
+          if (state.categories.crewQuarters.resources.crew < amount) {
+            return false;
+          }
+          break;
+        case 'scrap':
+          if (state.categories.manufacturing.resources.scrap < amount) {
+            return false;
+          }
+          break;
+        default:
+          Logger.warn(
+            LogCategory.RESOURCES,
+            `Unknown resource type: ${type}`,
+            LogContext.COMBAT
+          );
+          return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  /**
+   * Consume resources for a cost
+   * 
+   * @param state - Current game state
+   * @param costs - Array of resource costs to consume
+   * @returns True if resources were consumed, false if not enough resources
+   */
+  consumeResources(state: GameState, costs: { type: string, amount: number }[]): boolean {
+    // First check if we have enough resources
+    if (!this.hasResources(state, costs)) {
+      return false;
+    }
+    
+    // Then consume the resources
+    for (const cost of costs) {
+      const { type, amount } = cost;
+      
+      // Skip if no cost
+      if (amount <= 0) continue;
+      
+      // Consume resource
+      switch (type) {
+        case 'energy':
+          state.categories.reactor.resources.energy -= amount;
+          Logger.debug(
+            LogCategory.RESOURCES,
+            `Consumed ${amount} energy`,
+            LogContext.COMBAT
+          );
+          break;
+        case 'insight':
+          state.categories.processor.resources.insight -= amount;
+          Logger.debug(
+            LogCategory.RESOURCES,
+            `Consumed ${amount} insight`,
+            LogContext.COMBAT
+          );
+          break;
+        case 'crew':
+          state.categories.crewQuarters.resources.crew -= amount;
+          Logger.debug(
+            LogCategory.RESOURCES,
+            `Consumed ${amount} crew`,
+            LogContext.COMBAT
+          );
+          break;
+        case 'scrap':
+          state.categories.manufacturing.resources.scrap -= amount;
+          Logger.debug(
+            LogCategory.RESOURCES,
+            `Consumed ${amount} scrap`,
+            LogContext.COMBAT
+          );
+          break;
+        default:
+          Logger.warn(
+            LogCategory.RESOURCES,
+            `Unknown resource type: ${type}`,
+            LogContext.COMBAT
+          );
+          return false;
+      }
+    }
+    
+    return true;
   }
 } 

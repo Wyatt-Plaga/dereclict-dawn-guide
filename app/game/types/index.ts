@@ -3,6 +3,11 @@
  */
 
 /**
+ * Region Types
+ */
+export type RegionType = 'void' | 'nebula' | 'asteroid' | 'deepspace' | 'blackhole';
+
+/**
  * Log Categories
  */
 export enum LogCategory {
@@ -133,6 +138,143 @@ export interface ManufacturingCategory {
 }
 
 /**
+ * Encounter Types
+ */
+export interface BaseEncounter {
+    id: string;
+    type: 'combat' | 'story' | 'empty';
+    title: string;
+    description: string;
+    region: RegionType;
+}
+
+export interface EmptyEncounter extends BaseEncounter {
+    type: 'empty';
+    resources?: ResourceReward[];
+    message: string;
+}
+
+export interface StoryEncounter extends BaseEncounter {
+    type: 'story';
+    choices: EncounterChoice[];
+    message?: string;
+}
+
+export interface EncounterChoice {
+    id: string;
+    text: string;
+    outcome: {
+        resources?: ResourceReward[];
+        text: string;
+        continuesToNextEncounter?: boolean;
+    };
+}
+
+export interface ResourceReward {
+    type: string;
+    amount: number;
+    message?: string;
+}
+
+export interface EncounterHistory {
+    type: 'combat' | 'story' | 'empty';
+    id: string;
+    result: string;
+    date: number;
+    region: RegionType;
+}
+
+/**
+ * Combat Related Types
+ */
+
+/**
+ * Enemy Action interface
+ */
+export interface EnemyAction {
+  name: string;
+  description: string;
+  damage: number;
+  target: 'health' | 'shield';
+  probability: number;
+}
+
+/**
+ * Enemy interface
+ */
+export interface Enemy {
+  id: string;
+  name: string;
+  description: string;
+  health: number;
+  maxHealth: number;
+  shield: number;
+  maxShield: number;
+  image: string;
+  attackDelay: number; // Time in ms between enemy attacks
+  lastAttackTime: number; // Last time the enemy attacked
+  actions: EnemyAction[];
+  region: RegionType;
+}
+
+/**
+ * Battle Log Entry interface
+ */
+export interface BattleLogEntry {
+  id: string;
+  text: string;
+  type: 'SYSTEM' | 'PLAYER' | 'ENEMY' | 'ANALYSIS';
+  timestamp: number;
+}
+
+/**
+ * Combat State interface
+ */
+export interface CombatState {
+  active: boolean;
+  currentEnemy: string | null;
+  currentRegion: string | null;
+  turn: number;
+  encounterCompleted: boolean;
+  outcome?: 'victory' | 'defeat' | 'retreat';
+  playerStats: {
+    health: number;
+    maxHealth: number;
+    shield: number;
+    maxShield: number;
+    statusEffects: any[];
+  };
+  enemyStats: {
+    health: number;
+    maxHealth: number;
+    shield: number;
+    maxShield: number;
+    statusEffects: any[];
+  };
+  battleLog: BattleLogEntry[];
+  availableActions: string[];
+  cooldowns: Record<string, number>;
+  lastActionResult?: any;
+  rewards?: {
+    energy: number;
+    insight: number;
+    crew: number;
+    scrap: number;
+  };
+  enemyIntentions: any | null;
+}
+
+/**
+ * Combat Encounter interface
+ */
+export interface CombatEncounter extends BaseEncounter {
+  type: 'combat';
+  enemy: Enemy;
+  rewards?: ResourceReward[];
+  escapePenalty?: ResourceReward[];
+}
+
+/**
  * Main game state that holds all game data
  */
 export interface GameState {
@@ -163,6 +305,28 @@ export interface GameState {
         discovered: Record<string, LogEntry>;
         unread: string[]; // IDs of unread logs
     };
+
+    /**
+     * Navigation state
+     */
+    navigation: {
+        currentRegion: RegionType;
+        completedRegions: RegionType[];
+    };
+
+    /**
+     * Encounter state
+     */
+    encounters: {
+        active: boolean;
+        encounter?: BaseEncounter;
+        history: EncounterHistory[];
+    };
+
+    /**
+     * Combat state
+     */
+    combat: CombatState;
 }
 
 /**
@@ -230,5 +394,45 @@ export const initialGameState: GameState = {
     logs: {
         discovered: {},
         unread: []
+    },
+    navigation: {
+        currentRegion: 'void',
+        completedRegions: []
+    },
+    encounters: {
+        active: false,
+        history: []
+    },
+    combat: {
+        active: false,
+        currentEnemy: null,
+        currentRegion: null,
+        turn: 0,
+        encounterCompleted: false,
+        playerStats: {
+            health: 100,
+            maxHealth: 100,
+            shield: 50,
+            maxShield: 50,
+            statusEffects: []
+        },
+        enemyStats: {
+            health: 100,
+            maxHealth: 100,
+            shield: 50,
+            maxShield: 50,
+            statusEffects: []
+        },
+        battleLog: [],
+        availableActions: [],
+        cooldowns: {},
+        lastActionResult: null,
+        rewards: {
+            energy: 0,
+            insight: 0,
+            crew: 0,
+            scrap: 0
+        },
+        enemyIntentions: null
     }
 }; 

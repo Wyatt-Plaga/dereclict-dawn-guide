@@ -186,7 +186,7 @@ export class GameEngine {
         // Log once every 5 seconds to avoid flooding the console
         const now = Date.now();
         if (Math.floor(now / 5000) !== Math.floor(this.lastTick / 5000)) {
-            console.log("🔄 Game loop running - timestamp:", new Date().toLocaleTimeString());
+            Logger.debug(LogCategory.ENGINE, "🔄 Game loop running - timestamp: " + new Date().toLocaleTimeString(), LogContext.NONE);
         }
 
         // Calculate time since last update
@@ -271,8 +271,11 @@ export class GameEngine {
             context
         );
         
-        // Pass the action to game systems
-        this.systems.processAction(this.state, action);
+        // Pass the action to game systems and get updated state
+        const updatedState = this.systems.processAction(this.state, action);
+        
+        // Update the internal state
+        this.state = updatedState;
         
         // Log state after processing
         const afterEnergy = this.state.categories.reactor.resources.energy;
@@ -281,6 +284,9 @@ export class GameEngine {
             `State AFTER action: ${action.type} - Energy: ${afterEnergy} (Changed: ${afterEnergy !== beforeEnergy})`, 
             context
         );
+        
+        // Cache the state for in-app navigation
+        cacheState(this.state);
         
         // Notify that state has been updated
         Logger.debug(LogCategory.ENGINE, "Emitting stateUpdated event", context);

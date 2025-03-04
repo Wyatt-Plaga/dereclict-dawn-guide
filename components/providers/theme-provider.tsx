@@ -3,10 +3,9 @@
 import * as React from "react"
 import { ThemeProvider as NextThemesProvider } from "next-themes"
 
-// Use a simpler approach without trying to type the props
-export function ThemeProvider({ 
-  children,
-  ...props
-}: React.PropsWithChildren<Record<string, unknown>>) {
+// Use ComponentProps to extract the proper types from NextThemesProvider
+type ThemeProviderProps = React.ComponentProps<typeof NextThemesProvider>
+
+export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>
 } 
