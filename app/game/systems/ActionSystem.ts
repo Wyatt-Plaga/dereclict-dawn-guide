@@ -124,6 +124,8 @@ export class ActionSystem {
         return this.handleProcessorClick(newState);
       case 'manufacturing':
         return this.handleManufacturingClick(newState);
+      case 'crewQuarters':
+        return this.handleCrewQuartersClick(newState);
       default:
         Logger.warn(
           LogCategory.ACTIONS,
@@ -237,6 +239,56 @@ export class ActionSystem {
         LogContext.MANUFACTURING_LIFECYCLE
       );
     }
+    return state;
+  }
+  
+  /**
+   * Handle crew quarters click for awakening crew
+   */
+  private handleCrewQuartersClick(state: GameState): GameState {
+    const crewQuarters = state.categories.crewQuarters;
+    
+    Logger.debug(
+      LogCategory.RESOURCES, 
+      `Crew Quarters click - Before: ${crewQuarters.resources.crew}/${crewQuarters.stats.crewCapacity}`,
+      LogContext.CREW_LIFECYCLE
+    );
+    
+    // If we're already at capacity, don't do anything
+    if (crewQuarters.resources.crew >= crewQuarters.stats.crewCapacity) {
+      Logger.info(
+        LogCategory.RESOURCES, 
+        `Crew Quarters already at capacity (${crewQuarters.stats.crewCapacity})`,
+        LogContext.CREW_LIFECYCLE
+      );
+      return state;
+    }
+    
+    // Increment awakening progress
+    crewQuarters.stats.awakeningProgress += 1;
+    
+    // Check if we've reached the threshold to awaken a crew member
+    if (crewQuarters.stats.awakeningProgress >= 10) { // Using the AWAKENING_THRESHOLD from constants
+      // Reset progress and add crew
+      crewQuarters.stats.awakeningProgress = 0;
+      crewQuarters.resources.crew = Math.min(
+        crewQuarters.resources.crew + 1, // Add 1 crew member
+        crewQuarters.stats.crewCapacity
+      );
+      
+      Logger.debug(
+        LogCategory.RESOURCES, 
+        `Crew member awakened! New crew count: ${crewQuarters.resources.crew}`,
+        LogContext.CREW_LIFECYCLE
+      );
+    } else {
+      Logger.debug(
+        LogCategory.RESOURCES, 
+        `Awakening progress: ${crewQuarters.stats.awakeningProgress}/10`,
+        LogContext.CREW_LIFECYCLE
+      );
+    }
+    
     return state;
   }
   
