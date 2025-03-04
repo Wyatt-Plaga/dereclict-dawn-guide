@@ -23,7 +23,7 @@ interface EncounterDisplayProps {
 const getResourceIcon = (type: string) => {
   switch (type) {
     case 'energy':
-      return <ZapIcon className="h-5 w-5 text-yellow-400" />;
+      return <ZapIcon className="h-5 w-5 text-blue-400" />;
     case 'insight':
       return <FlaskConicalIcon className="h-5 w-5 text-blue-400" />;
     case 'crew':
@@ -128,16 +128,21 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
                 <AwardIcon className="h-5 w-5 text-chart-1" />
                 Discovered Resources
               </h2>
-              <div className="system-panel p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="system-panel p-6 grid grid-cols-1 gap-4">
                 {encounter.resources && encounter.resources.map((reward: ResourceReward, index: number) => (
-                  <div key={index} className="flex items-center gap-3 p-3 system-panel hover:bg-accent/10 transition-colors">
-                    <div className="p-2 rounded-full bg-accent/10">
-                      {getResourceIcon(reward.type)}
+                  <div key={index} className="flex flex-col gap-3">
+                    <div className="flex items-center gap-3 p-3 system-panel hover:bg-accent/10 transition-colors">
+                      <div className="p-2 rounded-full bg-accent/10">
+                        {getResourceIcon(reward.type)}
+                      </div>
+                      <div>
+                        <div className="text-lg font-medium">{formatResourceName(reward.type)}</div>
+                        <div className="text-muted-foreground">+{reward.amount} units</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-lg font-medium">{formatResourceName(reward.type)}</div>
-                      <div className="text-muted-foreground">+{reward.amount} units</div>
-                    </div>
+                    {reward.message && (
+                      <p className="text-sm italic pl-3">{reward.message}</p>
+                    )}
                   </div>
                 ))}
               </div>

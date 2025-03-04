@@ -149,46 +149,162 @@ export function getRandomEmptyEncounterMessage(region: RegionType): string {
 export function generateEmptyEncounterRewards(region: RegionType): ResourceReward[] {
     const rewards: ResourceReward[] = [];
     
+    // Define resource messages by type and region
+    const resourceMessages: Record<RegionType, Partial<Record<string, string[]>>> = {
+        void: {
+            energy: [
+                "Your sensors detected trace amounts of energy residue, allowing for a small collection.",
+                "The Dawn's energy collectors captured stray particles from the void.",
+                "A small energy fluctuation in the void provided a minor boost to ship systems."
+            ],
+        },
+        nebula: {
+            energy: [
+                "The nebula's ionized gases infused the Dawn's collectors with energy.",
+                "Energy discharge from the nebula's star formation yielded valuable power.",
+                "The ship's energy arrays harvested photonic radiation from the surrounding nebula."
+            ],
+            insight: [
+                "Analysis of the nebula's unique composition yielded valuable scientific data.",
+                "The Dawn's sensors cataloged previously unknown stellar phenomena.",
+                "Atmospheric scans of the nebula revealed patterns worthy of further study."
+            ]
+        },
+        asteroid: {
+            scrap: [
+                "Mineral-rich fragments were collected from nearby asteroids.",
+                "The Dawn's automated collectors harvested valuable ore deposits.",
+                "A successful mining operation yielded substantial material resources."
+            ],
+            energy: [
+                "Specialized collectors siphoned energy from highly charged asteroid fragments.",
+                "Radioactive elements in the asteroid field provided harvestable energy.",
+                "The ship's systems absorbed kinetic energy from microimpacts in the field."
+            ]
+        },
+        deepspace: {
+            insight: [
+                "Long-range scans captured data from distant celestial bodies.",
+                "The vast emptiness of deep space allowed for clear astronomical observations.",
+                "Cosmic background radiation analysis yielded valuable scientific insights."
+            ],
+            crew: [
+                "A derelict escape pod with a survivor was found drifting in the void.",
+                "Long-range communication established contact with a stranded crewmember.",
+                "A stasis pod with a hibernating crew member was recovered from debris."
+            ]
+        },
+        blackhole: {
+            insight: [
+                "Observations of the black hole's event horizon provided unprecedented data.",
+                "Gravitational analysis of the singularity granted revolutionary scientific understanding.",
+                "The Dawn's sensors captured exotic particle emissions from the black hole."
+            ],
+            energy: [
+                "The ship's collectors harvested hawking radiation from the black hole's periphery.",
+                "Gravitational slingshot around the black hole's mass generated substantial power.",
+                "Energy was extracted from the intense radiation surrounding the singularity."
+            ],
+            scrap: [
+                "Dense material clusters trapped in the black hole's orbit were salvaged.",
+                "Wreckage from unfortunate vessels was recovered from the gravity well.",
+                "Exotic metals compressed by gravitational forces were collected for use."
+            ]
+        }
+    };
+
+    // Get a random message for a given resource type and region
+    const getRandomMessage = (region: RegionType, type: string): string => {
+        const messagesForRegion = resourceMessages[region] || {};
+        const messagesForType = messagesForRegion[type] || [];
+        
+        if (messagesForType.length === 0) {
+            return `The Dawn collected ${type} resources from the ${region} region.`;
+        }
+        
+        return messagesForType[Math.floor(Math.random() * messagesForType.length)];
+    };
+    
     // Different regions provide different resources and amounts
     switch(region) {
         case 'void':
             if (Math.random() < 0.3) {
-                rewards.push({ type: 'energy', amount: Math.floor(Math.random() * 5) + 1 });
+                rewards.push({ 
+                    type: 'energy', 
+                    amount: Math.floor(Math.random() * 5) + 1,
+                    message: getRandomMessage('void', 'energy')
+                });
             }
             break;
         case 'nebula':
             if (Math.random() < 0.4) {
-                rewards.push({ type: 'energy', amount: Math.floor(Math.random() * 10) + 5 });
+                rewards.push({ 
+                    type: 'energy', 
+                    amount: Math.floor(Math.random() * 10) + 5,
+                    message: getRandomMessage('nebula', 'energy')
+                });
             }
             if (Math.random() < 0.2) {
-                rewards.push({ type: 'insight', amount: Math.floor(Math.random() * 3) + 1 });
+                rewards.push({ 
+                    type: 'insight', 
+                    amount: Math.floor(Math.random() * 3) + 1,
+                    message: getRandomMessage('nebula', 'insight')
+                });
             }
             break;
         case 'asteroid':
             if (Math.random() < 0.5) {
-                rewards.push({ type: 'scrap', amount: Math.floor(Math.random() * 15) + 5 });
+                rewards.push({ 
+                    type: 'scrap', 
+                    amount: Math.floor(Math.random() * 15) + 5,
+                    message: getRandomMessage('asteroid', 'scrap')
+                });
             }
             if (Math.random() < 0.3) {
-                rewards.push({ type: 'energy', amount: Math.floor(Math.random() * 8) + 3 });
+                rewards.push({ 
+                    type: 'energy', 
+                    amount: Math.floor(Math.random() * 8) + 3,
+                    message: getRandomMessage('asteroid', 'energy')
+                });
             }
             break;
         case 'deepspace':
             if (Math.random() < 0.6) {
-                rewards.push({ type: 'insight', amount: Math.floor(Math.random() * 5) + 3 });
+                rewards.push({ 
+                    type: 'insight', 
+                    amount: Math.floor(Math.random() * 5) + 3,
+                    message: getRandomMessage('deepspace', 'insight')
+                });
             }
             if (Math.random() < 0.4) {
-                rewards.push({ type: 'crew', amount: Math.random() < 0.2 ? 1 : 0 });
+                rewards.push({ 
+                    type: 'crew', 
+                    amount: Math.random() < 0.2 ? 1 : 0,
+                    message: Math.random() < 0.2 ? getRandomMessage('deepspace', 'crew') : undefined
+                });
             }
             break;
         case 'blackhole':
             if (Math.random() < 0.7) {
-                rewards.push({ type: 'insight', amount: Math.floor(Math.random() * 10) + 5 });
+                rewards.push({ 
+                    type: 'insight', 
+                    amount: Math.floor(Math.random() * 10) + 5,
+                    message: getRandomMessage('blackhole', 'insight')
+                });
             }
             if (Math.random() < 0.5) {
-                rewards.push({ type: 'energy', amount: Math.floor(Math.random() * 15) + 10 });
+                rewards.push({ 
+                    type: 'energy', 
+                    amount: Math.floor(Math.random() * 15) + 10,
+                    message: getRandomMessage('blackhole', 'energy')
+                });
             }
             if (Math.random() < 0.3) {
-                rewards.push({ type: 'scrap', amount: Math.floor(Math.random() * 10) + 5 });
+                rewards.push({ 
+                    type: 'scrap', 
+                    amount: Math.floor(Math.random() * 10) + 5,
+                    message: getRandomMessage('blackhole', 'scrap')
+                });
             }
             break;
     }

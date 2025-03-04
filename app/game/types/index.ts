@@ -157,6 +157,7 @@ export interface EmptyEncounter extends BaseEncounter {
 export interface ResourceReward {
     type: string;
     amount: number;
+    message?: string;
 }
 
 export interface EncounterHistory {
