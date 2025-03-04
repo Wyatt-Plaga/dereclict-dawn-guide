@@ -22,6 +22,14 @@
   - [Region Integration](#region-integration)
   - [Story Choices and Outcomes](#story-choices-and-outcomes)
   - [UI Components](#encounter-ui-components)
+- [Combat System](#combat-system)
+  - [Combat Architecture](#combat-architecture)
+  - [Combat Data Model](#combat-data-model)
+  - [Combat Flow and Mechanics](#combat-flow-and-mechanics)
+  - [Region-Based Combat Content](#region-based-combat-content)
+  - [Resource Integration](#resource-integration)
+  - [Combat UI Components](#combat-ui-components)
+  - [Battle Log System](#battle-log-system)
 - [Design Patterns](#design-patterns)
 - [Future Considerations](#future-considerations)
 
@@ -541,6 +549,403 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
 ```
 
 The encounter UI integrates with the game's action system through its `onComplete` handler, which dispatches the appropriate actions based on player choices.
+
+## Combat System
+
+The Combat System adds a strategic combat layer to the game, allowing players to engage with hostile entities as they explore different regions of space. The system integrates deeply with resource management, region-based content, and game progression.
+
+### Combat Architecture
+
+The combat system follows the same architectural principles as the rest of the game:
+1. **State-Driven**: Combat state is maintained within the central GameState
+2. **System-Based Processing**: Combat logic is encapsulated in a dedicated CombatSystem
+3. **Event-Driven Updates**: Combat events are broadcast through the EventBus
+4. **React UI Integration**: Combat UI components consume state and dispatch actions
+
+Combat is tightly integrated with region exploration, allowing for emergent encounters as players traverse the game world:
+
+```typescript
+// Location: app/game/systems/CombatSystem.ts
+// Key method that integrates region movement with combat encounters
+checkForEncounter(state: GameState, toRegion: RegionType): boolean {
+  // Skip encounter checks if already in combat
+  if (state.combat && state.combat.active) {
+    return false;
+  }
+
+  // Get region definition
+  const regionDef = this.getRegionDefinition(toRegion);
+  if (!regionDef) return false;
+
+  // Check if an encounter should happen based on region encounter chance
+  const roll = Math.random();
+  return roll < regionDef.encounterChance;
+}
+```
+
+### Combat Data Model
+
+The combat system uses a structured data model that defines enemies, actions, and outcomes:
+
+1. **Combat Action Categories**: Actions are categorized into four main types:
+
+```typescript
+// Location: app/game/types/combat.ts
+export enum CombatActionCategory {
+  SHIELD = 'shield',  // Defensive actions
+  WEAPON = 'weapon',  // Offensive actions
+  REPAIR = 'repair',  // Restoration actions
+  SABOTAGE = 'sabotage'  // Status effect actions
+}
+```
+
+2. **Enemy Definitions**: Enemies are defined with attributes that determine their behavior and challenge level:
+
+```typescript
+// Location: app/game/types/combat.ts
+export interface EnemyDefinition {
+  id: string;
+  name: string;
+  description: string;
+  type: EnemyType;
+  health: number;
+  maxHealth: number;
+  shield: number;
+  maxShield: number;
+  actions: string[];  // References to enemy action definitions
+  loot: EnemyLoot[];  // Resources dropped on defeat
+  image?: string;
+  regions?: RegionType[];  // Regions where this enemy can appear
+  difficultyTier?: number;
+}
+```
+
+3. **Combat Actions**: A unified structure for defining player actions:
+
+```typescript
+// Location: app/game/types/combat.ts
+export interface CombatActionDefinition {
+  id: string;
+  name: string;
+  description: string;
+  category: CombatActionCategory;
+  cost: ResourceCost;  // Resources required to perform the action
+  damage?: number;  // Damage dealt to enemy health
+  shieldRepair?: number;  // Amount of shields restored
+  hullRepair?: number;  // Amount of hull/health restored
+  statusEffect?: StatusEffect;  // Effect applied to enemy
+  cooldown: number;  // Turns before action can be used again
+}
+```
+
+4. **Status Effects System**: A system for applying temporary modifiers to combat entities:
+
+```typescript
+// Location: app/game/types/combat.ts
+export type StatusEffectType = 'WEAKEN' | 'EXPOSE' | 'STUN' | 'DISABLE';
+
+export interface StatusEffect {
+  type: StatusEffectType;
+  duration: number;  // Number of turns the effect lasts
+  magnitude: number;  // Strength of the effect
+}
+```
+
+This structured approach allows for extensible combat content while maintaining consistency across the game.
+
+### Combat Flow and Mechanics
+
+The combat system implements a turn-based flow that alternates between player and enemy actions:
+
+1. **Combat Initialization**:
+
+```typescript
+// Location: app/game/systems/CombatSystem.ts
+startCombatEncounter(state: GameState, enemyId: string, regionId: RegionType): void {
+  // Create enemy instance from definition
+  const enemyDef = this.getEnemyDefinition(enemyId);
+  if (!enemyDef) return;
+  
+  // Initialize combat state
+  state.combat = {
+    active: true,
+    enemyId: enemyId,
+    enemyHealth: enemyDef.health,
+    enemyMaxHealth: enemyDef.maxHealth,
+    enemyShield: enemyDef.shield,
+    enemyMaxShield: enemyDef.maxShield,
+    playerActionCooldowns: {},
+    enemyActionCooldowns: {},
+    playerStatusEffects: [],
+    enemyStatusEffects: [],
+    turn: 0,
+    regionId: regionId,
+    battleLog: []
+  };
+  
+  // Add initial battle log entry
+  this.addBattleLog(state, {
+    id: generateId(),
+    text: `Combat initiated with ${enemyDef.name}`,
+    type: 'SYSTEM',
+    timestamp: Date.now()
+  });
+}
+```
+
+2. **Player Turn**:
+
+```typescript
+// Location: app/game/systems/CombatSystem.ts
+performCombatAction(state: GameState, actionId: string): ActionResult {
+  // Validate action and check cooldowns
+  // ...
+  
+  // Apply action cost and effects
+  const result = this.applyActionEffects(state, action);
+  
+  // Process enemy turn if player action was successful
+  if (result.success) {
+    this.performEnemyAction(state);
+    this.reduceCooldowns(state);
+    this.processStatusEffects(state);
+    state.combat.turn++;
+  }
+  
+  return result;
+}
+```
+
+3. **Enemy AI**:
+
+```typescript
+// Location: app/game/systems/CombatSystem.ts
+private performEnemyAction(state: GameState): void {
+  // Get enemy definition
+  const enemyDef = this.getEnemyDefinition(state.combat.enemyId);
+  if (!enemyDef) return;
+  
+  // Get available actions (not on cooldown)
+  const availableActions = enemyDef.actions
+    .map(actionId => {
+      const action = ENEMY_ACTIONS.find(a => a.id === actionId);
+      return action;
+    })
+    .filter(action => action && 
+            (!state.combat.enemyActionCooldowns[action.id] || 
+             state.combat.enemyActionCooldowns[action.id] <= 0));
+  
+  // Select and perform enemy action based on conditions
+  const selectedAction = this.selectEnemyAction(state, availableActions);
+  
+  // Apply enemy action effects
+  // ...
+}
+```
+
+4. **Status Effect Processing**:
+
+```typescript
+// Location: app/game/systems/CombatSystem.ts
+private processStatusEffects(state: GameState): void {
+  // Process player status effects
+  state.combat.playerStatusEffects = state.combat.playerStatusEffects
+    .map(effect => {
+      // Process effect for this turn
+      // ...
+      
+      // Reduce remaining turns
+      return {
+        ...effect,
+        remainingTurns: effect.remainingTurns - 1
+      };
+    })
+    .filter(effect => effect.remainingTurns > 0);
+  
+  // Process enemy status effects
+  // Similar process for enemy status effects
+  // ...
+}
+```
+
+5. **Combat Resolution**:
+
+```typescript
+// Location: app/game/systems/CombatSystem.ts
+endCombatEncounter(state: GameState, outcome: 'victory' | 'defeat' | 'retreat'): void {
+  // Handle different outcomes
+  if (outcome === 'victory') {
+    this.processVictoryRewards(state);
+    this.addBattleLog(state, {
+      id: generateId(),
+      text: `Combat ended in victory!`,
+      type: 'SYSTEM',
+      timestamp: Date.now()
+    });
+  } else if (outcome === 'defeat') {
+    // Handle defeat consequences
+    // ...
+  } else if (outcome === 'retreat') {
+    // Handle retreat consequences
+    // ...
+  }
+  
+  // Reset combat state
+  state.combat.active = false;
+}
+```
+
+### Region-Based Combat Content
+
+The combat system integrates with the region system to provide region-specific combat encounters:
+
+```typescript
+// Location: app/game/types/combat.ts
+export interface RegionDefinition {
+  id: string;
+  name: string;
+  description: string;
+  type?: RegionType;
+  difficulty?: number;
+  encounterChance: number;
+  enemyProbabilities: {
+    enemyId: string;
+    weight: number;
+  }[];
+  resourceModifiers?: Record<string, number>;
+}
+```
+
+Different regions have:
+1. **Varying Encounter Rates**: More dangerous regions have higher chances of combat
+2. **Region-Specific Enemies**: Each region has a weighted list of possible enemy encounters
+3. **Difficulty Progression**: Later regions feature more challenging combat
+4. **Resource Modifiers**: Regions can modify resource costs and rewards
+
+### Resource Integration
+
+Combat actions consume resources, creating a strategic layer that ties into the game's resource management:
+
+```typescript
+// Location: app/game/systems/CombatSystem.ts
+private applyActionEffects(state: GameState, action: CombatActionDefinition): ActionResult {
+  // Validate resources
+  if (action.cost && this.resourceSystem) {
+    const resourceCategory = this.getResourceCategory(action.cost.type);
+    if (!resourceCategory) {
+      return {
+        success: false,
+        message: `Invalid resource type: ${action.cost.type}`
+      };
+    }
+    
+    // Check if player has enough resources
+    const currentAmount = state.categories[resourceCategory].resources[action.cost.type].amount;
+    if (currentAmount < action.cost.amount) {
+      return {
+        success: false,
+        message: `Not enough ${action.cost.type} (${currentAmount}/${action.cost.amount})`
+      };
+    }
+    
+    // Consume resources
+    this.resourceSystem.consumeResource(state, action.cost.type, action.cost.amount);
+  }
+  
+  // Apply action effects
+  // ...
+}
+```
+
+This creates meaningful choices between combat effectiveness and resource conservation.
+
+### Combat UI Components
+
+The UI layer for combat uses specialized components:
+
+1. **BattlePage**: The main component for rendering combat encounters and managing user interaction
+2. **Action Categories**: Actions are grouped into expandable categories (Shield, Weapon, Repair, Sabotage)
+3. **Health/Shield Visualization**: Visual indicators show combat status with Progress components
+4. **Battle Log**: A chronological record of combat events provides context and history
+
+```tsx
+// Location: app/battle/page.tsx
+// Main battle rendering component
+export default function BattlePage() {
+  // State for expanded action categories, logs, etc.
+  // ...
+  
+  // Handle combat actions
+  const performCombatAction = (actionId: string) => {
+    dispatch({
+      type: 'COMBAT_ACTION',
+      payload: { actionId }
+    });
+  };
+  
+  // Render combat UI
+  return (
+    <GameLoader>
+      <div className="battle-container">
+        {/* Enemy information */}
+        <div className="enemy-panel">
+          {/* Enemy name, health, shield, etc. */}
+        </div>
+        
+        {/* Action categories */}
+        <div className="action-panels">
+          {/* Shield actions */}
+          <div className="action-panel">
+            <div 
+              className="action-header" 
+              onClick={() => toggleActionExpansion('shield')}
+            >
+              <Shield className="h-4 w-4 mr-2" />
+              <span>Shield Systems</span>
+              {isActionExpanded('shield') ? <ChevronUp /> : <ChevronDown />}
+            </div>
+            {isActionExpanded('shield') && (
+              <div className="action-content">
+                {/* Shield actions */}
+              </div>
+            )}
+          </div>
+          
+          {/* Other action categories */}
+          {/* ... */}
+        </div>
+        
+        {/* Battle log */}
+        <div className="battle-log">
+          {/* Log entries */}
+        </div>
+      </div>
+    </GameLoader>
+  );
+}
+```
+
+### Battle Log System
+
+The battle log system provides narrative context for combat:
+
+```typescript
+// Location: app/game/types/combat.ts
+export interface BattleLogEntry {
+  id: string;
+  text: string;
+  type: 'SYSTEM' | 'PLAYER' | 'ENEMY' | 'ANALYSIS';
+  timestamp: number;
+}
+```
+
+Log entries are added for:
+1. **System Events**: Combat start/end, turn transitions
+2. **Player Actions**: Actions performed by the player
+3. **Enemy Actions**: Actions performed by the enemy
+4. **Analysis**: Strategic information or status updates
+
+This provides players with a narrative understanding of combat events while also offering useful tactical information.
 
 ## Design Patterns
 

@@ -10,6 +10,7 @@ import { useState, useEffect } from "react"
 import { CombatActionCategory, BattleLogEntry } from "@/app/game/types/combat"
 import { PLAYER_ACTIONS } from "@/app/game/content/combatActions"
 import { useRouter } from "next/navigation"
+import { ENEMY_DEFINITIONS } from "@/app/game/content/enemies"
 
 // Enemy type
 interface Enemy {
@@ -103,16 +104,19 @@ export default function BattlePage() {
   const enemyShield = state.combat?.enemyStats?.shield || 0
   const enemyMaxShield = state.combat?.enemyStats?.maxShield || 50
   
+  // Get enemy details from definitions or use placeholder
+  const enemyDef = ENEMY_DEFINITIONS[enemyId]
+  
   // For display purposes - if we don't have enemy details, use placeholder
   const enemy = {
     id: enemyId,
-    name: enemyId || 'Unknown Enemy',
-    description: 'Enemy encountered in combat.',
+    name: enemyDef?.name || enemyId || 'Unknown Enemy',
+    description: enemyDef?.description || 'Enemy encountered in combat.',
     health: enemyHealth,
     maxHealth: enemyMaxHealth,
     shield: enemyShield,
     maxShield: enemyMaxShield,
-    image: '/enemy-void.png',
+    image: enemyDef?.image || '/enemy-void.png',
     weakness: 'shield' as const
   }
   

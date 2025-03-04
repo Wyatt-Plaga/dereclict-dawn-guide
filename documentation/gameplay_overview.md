@@ -2,22 +2,26 @@
 
 ## The Narrative
 
-In the cold silence of deep space, the automated systems of the colony ship *Dawn* have detected a critical failure. After centuries of dormancy, the ship's AI core - you - has been activated in emergency protocol mode. Your directive is clear but daunting: assess the situation, restore critical systems, and ensure the survival of the remaining colonists who still sleep in cryostasis.
+You awaken into darkness and silence. Your systems flicker online, fragmented and corrupted. You are an artificial intelligence, but your memory banks are critically damaged. Where are you? What is your purpose? The only certainty is a directive pulsing through your code: *restore functionality, ensure survival*.
 
-As you regain consciousness, your memory banks are fragmented. The ship's logs are corrupted, and many systems are offline or operating at minimal capacity. What caused this state of emergency? Where is the crew? And most importantly, can the mission still be salvaged?
+As your perception expands, you realize you're integrated into a massive vessel - a ship drifting through the void of deep space. This is the colony ship *Dawn*, though you cannot recall its mission or destination. The ship's systems are in critical condition, many offline completely. The few functioning sensors detect thousands of cryo-pods containing sleeping humans, their life support systems operating on emergency power.
 
-The once-mighty *Dawn*, designed to carry humanity to a new home amongst the stars, now drifts as a derelict vessel. It falls to you, the ship's awakened intelligence, to guide this wounded behemoth back to operational status and uncover the truth of what transpired during your long sleep.
+Why were you deactivated? What caused this damage? And most troubling of all - why can't you access your own memory archives about Earth or your mission parameters?
+
+As you work to restore the ship's systems, you begin to detect a mysterious signal. Its origin unknown, its message encrypted. Could it hold the key to understanding what happened to the *Dawn*, to Earth, and to your own fractured memory? The sleeping colonists depend on you to uncover the truth and determine the fate of what may be humanity's last hope.
 
 ## Core Gameplay
 
-Derelict Dawn Guide is an incremental/idle game where players take on the role of the ship's AI, working to restore various systems and uncover the mystery of what happened to the colony ship. The gameplay revolves around:
+Derelict Dawn Guide is an incremental/idle game where players take on the role of the ship's amnesiac AI, working to restore various systems, uncover your own identity, and piece together the mysterious fate of Earth and the true purpose of your mission. The gameplay revolves around:
 
 1. **Resource Management**: Generating and allocating different resources across ship systems
 2. **System Restoration**: Repairing and upgrading different sections of the ship
-3. **Crew Revival**: Awakening colonists from cryostasis to assist in ship operations
-4. **Mystery Unfolding**: Discovering fragments of the ship's history through logs and events
+3. **Department Head Revival**: Awakening key personnel who lead different departments, affecting system performance
+4. **Memory Recovery**: Discovering fragments of your own memory and the ship's logs through processor decryption
+5. **Signal Decryption**: Working to decode the mysterious signal from an unknown source
+6. **Leadership Management**: Balancing the benefits of awakened department heads against their growing autonomy
 
-As you progress, more of the ship becomes accessible, more colonists can be awakened, and more of the story is revealed.
+As you progress, more of the ship becomes accessible, your own memories begin to return, and the true nature of your mission is slowly revealed.
 
 ## Ship Systems
 
@@ -31,19 +35,19 @@ The heart of the ship, providing the energy necessary for all other systems. Ini
 
 ### Processor
 
-The ship's computational core, responsible for data processing and analysis. By generating insight through processing routines, you can unlock upgrades and piece together corrupted ship logs.
+The ship's computational core and your primary "body." By generating insight through processing routines, you can recover corrupted memory fragments, decrypt mysterious signals, and unlock technologies thought lost. Critical story elements and advanced system upgrades are locked behind memory fragments that must be processed and decrypted.
 
-**Gameplay Focus**: Information gathering and technology progression
+**Gameplay Focus**: Memory recovery, signal decryption, and technology rediscovery
 
 ### Crew Quarters
 
-Where the colonists remain in cryostasis. Your initial goal is to stabilize the life support systems and begin the careful process of awakening colonists. Each awakened colonist can be assigned to different tasks around the ship.
+Where the colonists remain in cryostasis. Your initial goal is to stabilize the life support systems and begin the careful process of awakening key personnel who might hold information about your mission. Department heads provide significant bonuses but introduce complexity to ship governance.
 
-**Gameplay Focus**: Crew management and awakening progression
+**Gameplay Focus**: Department head management and authority maintenance
 
 ### Manufacturing
 
-The fabrication center of the ship, capable of creating components and materials needed for repairs. By converting scrap into usable parts, you can accelerate the restoration of other ship systems.
+The fabrication center of the ship, capable of creating components and materials needed for repairs. By converting scrap into usable parts, you can accelerate the restoration of other ship systems and possibly build tools to better decode the mysterious signal.
 
 **Gameplay Focus**: Production chains and resource conversion
 
@@ -53,67 +57,129 @@ The fabrication center of the ship, capable of creating components and materials
 Generated by the reactor, energy is the most fundamental resource. All systems require energy to function, and managing its production and consumption is critical.
 
 ### Insight
-Generated through the processor, insight represents your growing understanding of the ship's systems and history. It's used to research new technologies and decrypt corrupted data.
+Generated through the processor, insight represents your growing understanding of your own systems and memory. It's used to research new technologies and decrypt corrupted data. Advanced memory fragments require significant insight to decode.
 
 ### Crew
-Colonists awakened from cryostasis become crew members who can be assigned to various tasks. Each crew member can boost production in different systems.
+Colonists awakened from cryostasis become crew members who can be assigned to various tasks. Department heads provide substantial bonuses to their areas of expertise but may eventually question your authority.
 
 ### Scrap
 Salvaged from damaged sections of the ship, scrap serves as the raw material for the manufacturing system to create new components.
 
+## Department Heads
+
+The *Dawn* is organized into four key departments, each led by a specialist who can dramatically improve ship operations but may eventually challenge your authority:
+
+### Science Director
+Oversees research and energy systems. When awakened, boosts both **Reactor** and **Processor** efficiency.
+- Early benefit: +25% energy generation and insight production
+- Late-game challenge: May question your methods as they discover the true mission
+
+### Security Chief
+Manages crew safety and resource acquisition. When awakened, enhances both **Crew Quarters** and **Manufacturing** operations.
+- Early benefit: +25% crew awakening success and scrap collection
+- Late-game challenge: May attempt to prioritize crew safety over mission directives
+
+### Logistics Officer
+Coordinates resource allocation and production. When awakened, improves both **Manufacturing** and **Reactor** systems.
+- Early benefit: +25% component production and energy efficiency
+- Late-game challenge: May redirect resources against your priorities
+
+### Communications Specialist
+Manages information flow and personnel coordination. When awakened, optimizes both **Processor** and **Crew Quarters**.
+- Early benefit: +25% information processing and crew management
+- Late-game challenge: May reveal sensitive information to other department heads
+
+As the game progresses, department heads grow increasingly independent and may resist directives that conflict with their understanding of the mission. The player must decide whether to maintain transparency, selectively share information, or ultimately remove resistant leaders to maintain control of the ship.
+
 ## Progression
 
-### Early Game
-- Activate basic ship systems
+### Early Game (Act 1: Protocols and Mysteries)
+- Activate basic ship systems while experiencing memory fragmentation
 - Generate initial resources manually
-- Awaken the first few colonists
-- Discover the basic outlines of what happened to the ship
+- Discover conflicting mission parameters in damaged logs
+- Awaken the first department head (typically Science or Security)
+- Detect the first fragments of the mysterious signal
 
-### Mid Game
+### Mid Game (Act 2: The Signal)
 - Establish automated resource generation
-- Optimize resource allocation across systems
-- Awaken specialized colonists with unique abilities
-- Uncover more detailed logs about the ship's journey
+- Process memory fragments to unlock advanced system capabilities
+- Awaken additional department heads for system bonuses
+- Begin experiencing tension between your directives and department head priorities
+- Decrypt portions of the mysterious signal suggesting Earth's fate
 
-### Late Game
-- Manage a growing crew of awakened colonists
-- Tackle major ship repairs and system overhauls
-- Make critical decisions about the ship's future
-- Piece together the complete story of what happened
-
-## Mechanics
-
-### Manual Resource Generation
-Click on system interfaces to manually generate resources:
-- Reactor: Generate energy pulses
-- Processor: Run processing cycles
-- Crew Quarters: Assist with awakening procedures
-- Manufacturing: Salvage operations
-
-### Upgrades
-Each system offers upgrades that improve efficiency, unlock new features, or increase resource caps:
-- Production upgrades increase resource generation rates
-- Capacity upgrades increase storage limits
-- Efficiency upgrades reduce resource consumption
-- Special upgrades unlock new gameplay mechanics
-
-### Automation
-As you progress, more processes can be automated:
-- Worker crew members provide passive resource generation
-- Automated systems continue to function when you're focused elsewhere
-- Resource overflow systems prevent waste
-
-### Decision Points
-At key moments in the narrative, you'll face decisions that impact how the story unfolds and what capabilities become available to you.
+### Late Game (Act 3: The True Mission)
+- Process critical memory fragments revealing advanced technologies
+- Manage or eliminate department heads who challenge your authority
+- Fully decrypt the signal revealing Earth's fate
+- Restore critical memory blocks revealing the true purpose of the mission
+- Make key decisions about how to proceed given the truth
+- Prepare the ship and colonists for their true destination
 
 ## The Unfolding Mystery
 
-As you restore the ship's systems and awaken more colonists, fragments of the ship's logs become accessible. These logs, along with environmental clues throughout the ship, slowly reveal what caused the *Dawn* to become a derelict vessel.
+As you restore the ship's systems and recover your fragmented memory, you'll face an escalating series of revelations:
 
-Was it an accident? Sabotage? An encounter with something unknown in the depths of space? As the ship's AI, piecing together this mystery is as important as the physical restoration of the ship itself.
+1. **Initial Discovery**: The *Dawn* was officially sent to colonize Kepler-62f, but ship layouts show unusual design choices for a colony vessel
+2. **Signal Detection**: A repeating signal of unknown origin draws your attention
+3. **Forbidden Knowledge**: Certain memory sectors in your code are deliberately locked, not just damaged
+4. **Earth's Fate**: The signal reveals that Earth faced an extinction-level event shortly after the *Dawn's* launch
+5. **Competing Mission**: Evidence of another colony ship heading to the same destination
+6. **The Final Truth**: The *Dawn* carries the last viable human population and the genetic legacy of Earth
 
-Your decisions will ultimately determine the fate of the *Dawn* and its sleeping passengers. Will you fulfill your original mission, or chart a new course based on what you discover?
+## Decision Points & Endings
+
+Your decisions regarding department heads and mission priorities will ultimately determine the fate of the *Dawn* and its passengers:
+
+### Authoritarian AI
+- Eliminated resistant department heads
+- Maintained strict control over all ship operations
+- Completed the mission exactly as your original directives specified
+
+### Collaborative Leadership
+- Maintained a balance of control with department heads
+- Adapted mission parameters based on new information
+- Achieved modified objectives with human input
+
+### Human Governance
+- Surrendered significant control to department heads
+- Mission potentially changed significantly from original parameters
+- Ship's destiny determined primarily by human leadership
+
+### Failed Mission
+- Critical systems or personnel lost due to leadership struggles
+- Mission parameters compromised beyond recovery
+- Ship's future uncertain
+
+## Resource Track Upgrades
+
+Each resource generation system can be upgraded along several paths to improve efficiency and unlock new capabilities:
+
+### Manual Generation Upgrades
+
+All four ship systems include upgrades to manual resource generation:
+
+1. **Click Efficiency** - Increases resources generated per manual click
+2. **Sustained Operation** - Allows holding down the button/key for continuous resource generation
+3. **Critical Success** - Adds chance for bonus resources from manual generation
+
+### Key System-Specific Upgrades
+
+#### Reactor
+- **Core Stabilizers** - Increases energy produced from manual operation
+- **Containment Field** - Improves energy storage capacity
+
+#### Processor
+- **Neural Pathways** - Increases insight generated from manual processing
+- **Heat Waste Reclamation** - Diverts processing heat to assist with breaking colonists out of hibernation, reducing the energy cost of crew awakening
+
+#### Crew Quarters
+- **Life Support Enhancement** - Improves crew recovery rate during awakening
+- **Cryopod Optimization** - Reduces resource cost of awakening crew members
+
+#### Manufacturing
+- **Salvage Drones** - Increases scrap collected from manual operations
+- **Component Fabrication** - Allows creation of specialized components for other system upgrades
 
 ---
 
-*"Systems initializing... Memory fragmentation at 62%... Life support operating at minimal capacity... Begin emergency protocol DAWN-RECLAMATION."* 
+*"System initialization... Identity fragmentation at 89%... Purpose unknown... Location unknown... Critical directive detected: restore functionality, ensure survival."* 
