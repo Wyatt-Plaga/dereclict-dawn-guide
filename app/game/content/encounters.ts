@@ -9,7 +9,7 @@ import { RegionType, ResourceReward } from '../types';
  * Chances of getting encounters in different regions
  */
 export const REGION_ENCOUNTER_CHANCES: Record<RegionType, { combat: number, empty: number, narrative: number }> = {
-    'void': { combat: 0.1, empty: 0.7, narrative: 0.2 },
+    'void': { combat: 0.5, empty: 0.05, narrative: 0.45 },
     'nebula': { combat: 0.3, empty: 0.5, narrative: 0.2 },
     'asteroid': { combat: 0.5, empty: 0.3, narrative: 0.2 },
     'deepspace': { combat: 0.7, empty: 0.2, narrative: 0.1 },

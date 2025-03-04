@@ -421,38 +421,57 @@ export class EncounterSystem {
             }
         } else if (encounter.type === 'combat') {
             // Combat encounters will be handled by the CombatSystem
-            // Just mark it as completed in the encounter system
-            // The actual combat will be initiated when the encounter is displayed to the user
             
-            // In the future, this will use a CombatSystem to process the encounter
-            console.log('Combat encounter detected - will initiate combat sequence');
+            // Log that we're starting combat
+            Logger.info(
+                LogCategory.COMBAT,
+                'Combat encounter detected - initiating combat sequence',
+                LogContext.COMBAT
+            );
             
-            // If we have a CombatSystem in the manager, we could use it here
-            if (this.manager && this.manager.combat) {
-                Logger.info(
-                    LogCategory.COMBAT,
-                    'Combat encounter detected - initiating combat sequence',
-                    LogContext.COMBAT
-                );
+            // Get the combat encounter details
+            const combatEncounter = encounter as BaseEncounter;
+            
+            // Extract region from the encounter
+            const regionId = combatEncounter.region;
+            
+            // Generate a random enemy from the region
+            const enemyId = this.generateRandomEnemyForRegion(regionId);
+            
+            if (enemyId && this.manager && this.manager.combat) {
+                // Start the combat encounter using the CombatSystem
+                this.manager.combat.startCombatEncounter(newState, enemyId, regionId);
                 
-                const combatEncounter = encounter as BaseEncounter;
+                // Mark the encounter as completed, but combat as active
+                // This will clear the encounter and allow the combat to be handled by the battle page
+                newState.encounters.active = false;
+                newState.encounters.encounter = undefined;
+                newState.combat.active = true;
                 
-                // Extract region from the encounter
-                const regionId = combatEncounter.region;
+                // Add to encounter history
+                newState.encounters.history = Array.isArray(newState.encounters.history) 
+                    ? [
+                        ...newState.encounters.history,
+                        {
+                            id: encounter.id,
+                            type: encounter.type,
+                            result: 'initiated',
+                            date: Date.now(),
+                            region: encounter.region
+                        }
+                    ]
+                    : [
+                        {
+                            id: encounter.id,
+                            type: encounter.type,
+                            result: 'initiated',
+                            date: Date.now(),
+                            region: encounter.region
+                        }
+                    ];
                 
-                // Generate a random enemy from the region if not already specified
-                const enemyId = this.generateRandomEnemyForRegion(regionId);
-                
-                if (enemyId) {
-                    // This is a placeholder for future CombatSystem integration
-                    // Once CombatSystem is implemented, we'll pass the encounter to it
-                    // and let it handle the combat logic
-                    console.log('Combat will be handled by future CombatSystem');
-                    
-                    // For now, we'll just mark the encounter as completed
-                    // In the real implementation, the combat would be initiated and
-                    // the encounter would stay active until combat is resolved
-                }
+                // Return the updated state with combat active
+                return newState;
             }
         }
         
@@ -487,12 +506,44 @@ export class EncounterSystem {
 
     // Add a new method for generating combat encounters
     private generateCombatEncounter(region: string): BaseEncounter {
+        const regionType = region as RegionType;
+        
+        // Region-specific encounter titles and descriptions
+        const encounterDetails = {
+            'void': {
+                title: "Unknown Vessel Approaching",
+                description: "Long-range sensors have detected an unidentified vessel approaching on an intercept course. The vessel is not responding to hails and appears to be powering weapons systems. The emptiness of the void offers little cover for evasive maneuvers."
+            },
+            'nebula': {
+                title: "Ambush in the Nebula",
+                description: "The dense nebula clouds suddenly part to reveal a hostile vessel lying in wait. The electromagnetic interference from the nebula masked their presence until now. Their weapons are charged and targeting systems locked onto the Dawn."
+            },
+            'asteroid': {
+                title: "Mining Claim Dispute",
+                description: "A rugged mining vessel emerges from behind a large asteroid, broadcasting territorial warnings. They claim this asteroid field as their exclusive mining territory and demand immediate departure or payment. Weapons systems are online and tracking the Dawn."
+            },
+            'deepspace': {
+                title: "Deep Space Hunter",
+                description: "A sleek combat vessel appears on sensors, accelerating toward the Dawn at high velocity. Its design suggests advanced technology and dedicated combat capabilities. No communication attempts have been made - their intentions appear hostile."
+            },
+            'blackhole': {
+                title: "Guardians of the Singularity",
+                description: "A strange vessel of unknown origin materializes near the event horizon. Its design defies conventional physics, suggesting either incredibly advanced technology or origins from beyond known space. They appear to be positioning to prevent the Dawn from approaching the black hole further."
+            }
+        };
+        
+        // Get region-specific details or use defaults
+        const details = encounterDetails[regionType] || {
+            title: "Hostile Encounter",
+            description: "Sensors have detected a hostile entity approaching. Weapon signatures detected. Combat seems inevitable."
+        };
+        
         // Create a basic encounter structure that will be handled by the combat system
         return {
             id: `combat-${region}-${Date.now()}`,
-            title: "Hostile Encounter",
-            description: "Sensors have detected a hostile entity approaching.",
-            region: region as RegionType,
+            title: details.title,
+            description: details.description,
+            region: regionType,
             type: "combat"
         };
     }

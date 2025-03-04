@@ -9,11 +9,14 @@ import {
   Package,
   ShieldIcon,
   MapIcon,
-  ActivityIcon 
+  ActivityIcon,
+  Sword
 } from 'lucide-react';
 import { EmptyEncounter, StoryEncounter, ResourceReward, RegionType, BaseEncounter, EncounterChoice } from '../game/types';
 import { useSystemStatus } from "@/components/providers/system-status-provider";
 import { useGame } from '../game/hooks/useGame';
+import { useRouter } from 'next/navigation';
+import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 
 interface EncounterDisplayProps {
   encounter: BaseEncounter;
@@ -80,6 +83,7 @@ const getRegionIcon = (region: RegionType) => {
 const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComplete }) => {
   const { shouldFlicker } = useSystemStatus();
   const { dispatch } = useGame();
+  const router = useRouter();
   const regionIcon = getRegionIcon(encounter.region);
   const regionClass = getRegionBackgroundClass(encounter.region);
   const [showRewards, setShowRewards] = useState(false);
@@ -91,6 +95,7 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
   // Determine the encounter type
   const isEmptyEncounter = encounter.type === 'empty';
   const isStoryEncounter = encounter.type === 'story';
+  const isCombatEncounter = encounter.type === 'combat';
   
   // For empty encounters only
   const emptyEncounter = isEmptyEncounter ? encounter as EmptyEncounter : null;
@@ -132,7 +137,24 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
     // For story encounters, we need a choice ID
     if (isStoryEncounter && selectedChoice) {
       onComplete(selectedChoice);
+    } else if (isCombatEncounter) {
+      // For combat encounters, we'll complete the encounter
+      // which will initiate combat, then redirect to battle
+      Logger.info(
+        LogCategory.COMBAT,
+        'Combat encounter initiated - redirecting to battle page',
+        LogContext.COMBAT
+      );
+      
+      // Complete the encounter first (this starts the combat)
+      onComplete();
+      
+      // Give a small delay to ensure the state is updated before navigating
+      setTimeout(() => {
+        router.push('/battle');
+      }, 100);
     } else {
+      // For empty encounters, just complete
       onComplete();
     }
   };
@@ -174,14 +196,36 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
             </h1>
             <div className="flex items-center text-sm text-muted-foreground">
               <span>Region: {encounter.region.charAt(0).toUpperCase() + encounter.region.slice(1)}</span>
+              
+              {/* Display combat badge for combat encounters */}
+              {isCombatEncounter && (
+                <div className="ml-3 flex items-center text-red-500">
+                  <Sword className="h-4 w-4 mr-1" />
+                  <span>Combat</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
         
         <div className="mb-8 system-panel p-6">
           <p className="text-xl mb-4 leading-relaxed">{encounter.description}</p>
+          
           {isEmptyEncounter && emptyEncounter && (
             <p className="italic text-lg">{emptyEncounter.message}</p>
+          )}
+          
+          {/* Special message for combat encounters */}
+          {isCombatEncounter && (
+            <div className="mt-6 border-t border-accent/30 pt-4">
+              <p className="text-lg text-red-400 flex items-center gap-2">
+                <Sword className="h-5 w-5" />
+                <span>Hostile entity detected - prepare for combat!</span>
+              </p>
+              <p className="mt-2 text-muted-foreground">
+                Initializing combat systems... Transferring to battle interface...
+              </p>
+            </div>
           )}
         </div>
         
@@ -314,7 +358,9 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
             disabled={isStoryEncounter && !selectedChoice}
             className={`w-full flex items-center justify-center gap-2 system-panel py-3 px-6 hover:bg-accent/10 transition-colors ${shouldFlicker('navigation') ? 'flickering-text' : ''} ${isStoryEncounter && !selectedChoice ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <span className="text-lg">Continue Journey</span>
+            <span className="text-lg">
+              {isCombatEncounter ? 'All Hands to Battle Stations!' : 'Continue Journey'}
+            </span>
             <ChevronRightIcon className="h-5 w-5" />
           </button>
         </div>

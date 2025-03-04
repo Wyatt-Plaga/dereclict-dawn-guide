@@ -25,7 +25,19 @@ export default function EncounterPage() {
     if (!state.encounters.active) {
       router.push('/navigation');
     }
-  }, [state.encounters.active, router]);
+
+    // If combat is active, redirect to battle page
+    // But only if there's no active encounter - this ensures we don't
+    // redirect during the initial combat encounter display
+    if (state.combat?.active && !state.encounters.active) {
+      Logger.info(
+        LogCategory.COMBAT,
+        'Active combat detected - redirecting to battle page',
+        LogContext.COMBAT
+      );
+      router.push('/battle');
+    }
+  }, [state.encounters.active, state.combat?.active, router]);
   
   // Handle completing the encounter
   const handleCompleteEncounter = (choiceId?: string) => {

@@ -1,12 +1,10 @@
 "use client"
 
-import { NavBar } from "@/components/ui/navbar"
 import { Shield, Zap, Wrench, Cpu, AlertTriangle, ChevronDown, ChevronUp, Scan, ZapOff, Search, Compass } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/app/game/hooks/useGame"
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
-import Link from "next/link"
 import { Progress } from "@/components/ui/progress"
 import { useState, useEffect } from "react"
 import { CombatActionCategory, BattleLogEntry } from "@/app/game/types/combat"
@@ -31,6 +29,35 @@ export default function BattlePage() {
   const { shouldFlicker } = useSystemStatus()
   const router = useRouter()
   
+  // Prevent navigation away from battle during active combat
+  useEffect(() => {
+    // If combat is not active but we're on the battle page, redirect to navigation
+    if (!state.combat?.active) {
+      Logger.info(
+        LogCategory.ACTIONS, 
+        'No active combat, redirecting to navigation', 
+        LogContext.NONE
+      )
+      router.push('/navigation')
+    }
+    
+    // Block navigation attempts during combat through the browser back button
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (state.combat?.active) {
+        const message = "You are in the middle of combat! Use the 'Retreat' button to safely exit.";
+        e.preventDefault();
+        e.returnValue = message;
+        return message;
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [state.combat?.active, router]);
+  
   // Get resources from game state
   const reactor = state.categories.reactor
   const processor = state.categories.processor
@@ -53,18 +80,6 @@ export default function BattlePage() {
   const isActionExpanded = (actionType: string) => {
     return expandedActions.includes(actionType)
   }
-  
-  // Redirect if no active combat
-  useEffect(() => {
-    if (!state.combat?.active) {
-      Logger.info(
-        LogCategory.ACTIONS, 
-        'No active combat, redirecting to navigation', 
-        LogContext.NONE
-      )
-      router.push('/navigation')
-    }
-  }, [state.combat?.active, router])
   
   // Log component render
   Logger.debug(
@@ -152,11 +167,17 @@ export default function BattlePage() {
   return (
     <GameLoader>
       <main className="flex min-h-screen flex-col">
-        <NavBar />
-        
-        <div className="flex flex-col p-4 md:p-8 md:ml-64">
+        <div className="flex flex-col p-4 md:p-8">
           <div className="system-panel p-6 mb-6">
             <h1 className={`text-2xl font-bold text-primary mb-4 ${shouldFlicker('battle') ? 'flickering-text' : ''}`}>Combat Encounter</h1>
+            
+            {/* Battle mode notice */}
+            <div className="mb-4 p-3 system-panel border border-yellow-700/50 bg-yellow-900/10">
+              <p className="text-yellow-400 flex items-center text-sm">
+                <AlertTriangle className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span>ALERT: Ship engaged in combat. All other systems are locked. You must either defeat the enemy or retreat to continue your journey.</span>
+              </p>
+            </div>
             
             {/* Display action error if any */}
             {actionError && (

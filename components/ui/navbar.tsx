@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Zap, CpuIcon, Users, Package, BookOpen, Settings, Rocket, Swords } from "lucide-react"
+import { Zap, CpuIcon, Users, Package, BookOpen, Settings, Rocket } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/app/game/hooks/useGame"
 
@@ -12,7 +12,6 @@ const navigation = [
   { name: "Crew Quarters", href: "/crew-quarters", icon: Users },
   { name: "Manufacturing", href: "/manufacturing", icon: Package },
   { name: "Navigation", href: "/navigation", icon: Rocket },
-  { name: "Battle", href: "/battle", icon: Swords },
   { name: "Logs", href: "/logs", icon: BookOpen },
 ]
 
@@ -20,6 +19,19 @@ export function NavBar() {
   const pathname = usePathname()
   const { status, statusText, shouldFlicker } = useSystemStatus()
   const { state } = useGame()
+  
+  // Check if there's an active combat - if so, don't render the navbar
+  const isInCombat = state?.combat?.active === true
+  
+  // If in active combat and not on the battle page, we shouldn't show navbar
+  if (isInCombat && pathname !== '/battle') {
+    return null
+  }
+
+  // If on battle page, don't show navbar
+  if (pathname === '/battle') {
+    return null
+  }
   
   // Count unread logs
   const unreadLogsCount = state?.logs?.unread?.length || 0
