@@ -42,12 +42,22 @@ export class EncounterSystem {
         const region = state.navigation.currentRegion;
         console.log(`Generating encounter for region: ${region}`);
         
-        // Determine if it's an empty encounter or a story encounter
-        // For now, 70% empty encounters, 30% story encounters
+        // Get encounter chances for the current region
+        const encounterChances = REGION_ENCOUNTER_CHANCES[region] || 
+            { combat: 0.3, empty: 0.5, narrative: 0.2 }; // Fallback values if region not found
+        
+        // Generate a random value to determine encounter type
         const randomValue = Math.random();
-        if (randomValue < 0.7) {
+        
+        // Determine the type of encounter based on region probabilities
+        if (randomValue < encounterChances.combat) {
+            // Combat encounter - delegate to the combat system
+            return this.generateCombatEncounter(region);
+        } else if (randomValue < encounterChances.combat + encounterChances.empty) {
+            // Empty encounter
             return this.generateEmptyEncounter(region);
         } else {
+            // Narrative/story encounter
             return this.generateStoryEncounter(region);
         }
     }
@@ -400,6 +410,25 @@ export class EncounterSystem {
             if (selectedChoice.outcome.resources && selectedChoice.outcome.resources.length > 0) {
                 newState = this.applyRewards(newState, selectedChoice.outcome.resources);
             }
+        } else if (encounter.type === 'combat') {
+            // Combat encounters will be handled by the CombatSystem
+            // Just mark it as completed in the encounter system
+            // The actual combat will be initiated when the encounter is displayed to the user
+            
+            // In the future, this will use a CombatSystem to process the encounter
+            console.log('Combat encounter detected - will initiate combat sequence');
+            
+            // If we have a CombatSystem in the manager, we could use it here
+            if (this.manager) {
+                // This is a placeholder for future CombatSystem integration
+                // Once CombatSystem is implemented, we'll pass the encounter to it
+                // and let it handle the combat logic
+                console.log('Combat will be handled by future CombatSystem');
+                
+                // For now, we'll just mark the encounter as completed
+                // In the real implementation, the combat would be initiated and
+                // the encounter would stay active until combat is resolved
+            }
         }
         
         // Add to encounter history
@@ -429,5 +458,17 @@ export class EncounterSystem {
         newState.encounters.encounter = undefined;
         
         return newState;
+    }
+
+    // Add a new method for generating combat encounters
+    private generateCombatEncounter(region: string): BaseEncounter {
+        // Create a basic encounter structure that will be handled by the combat system
+        return {
+            id: `combat-${region}-${Date.now()}`,
+            title: "Hostile Encounter",
+            description: "Sensors have detected a hostile entity approaching.",
+            region: region as RegionType,
+            type: "combat"
+        };
     }
 } 

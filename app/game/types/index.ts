@@ -185,6 +185,74 @@ export interface EncounterHistory {
 }
 
 /**
+ * Combat Related Types
+ */
+
+/**
+ * Enemy Action interface
+ */
+export interface EnemyAction {
+  name: string;
+  description: string;
+  damage: number;
+  target: 'health' | 'shield';
+  probability: number;
+}
+
+/**
+ * Enemy interface
+ */
+export interface Enemy {
+  id: string;
+  name: string;
+  description: string;
+  health: number;
+  maxHealth: number;
+  shield: number;
+  maxShield: number;
+  image: string;
+  attackDelay: number; // Time in ms between enemy attacks
+  lastAttackTime: number; // Last time the enemy attacked
+  actions: EnemyAction[];
+  region: RegionType;
+}
+
+/**
+ * Battle Log Entry interface
+ */
+export interface BattleLogEntry {
+  text: string;
+  type: 'system' | 'player' | 'enemy' | 'analysis';
+  timestamp: number;
+}
+
+/**
+ * Combat State interface
+ */
+export interface CombatState {
+  inCombat: boolean;
+  currentEnemy?: Enemy;
+  shipHealth: number;
+  maxShipHealth: number;
+  shipShield: number;
+  maxShipShield: number;
+  battleLog: BattleLogEntry[];
+  combatTurn: number;
+  lastPlayerActionTime: number;
+  cooldowns: Record<string, number>; // Action name -> timestamp when available
+}
+
+/**
+ * Combat Encounter interface
+ */
+export interface CombatEncounter extends BaseEncounter {
+  type: 'combat';
+  enemy: Enemy;
+  rewards?: ResourceReward[];
+  escapePenalty?: ResourceReward[];
+}
+
+/**
  * Main game state that holds all game data
  */
 export interface GameState {
@@ -232,6 +300,11 @@ export interface GameState {
         encounter?: BaseEncounter;
         history: EncounterHistory[];
     };
+
+    /**
+     * Combat state
+     */
+    combat: CombatState;
 }
 
 /**
@@ -307,5 +380,16 @@ export const initialGameState: GameState = {
     encounters: {
         active: false,
         history: []
+    },
+    combat: {
+        inCombat: false,
+        shipHealth: 100,
+        maxShipHealth: 100,
+        shipShield: 50,
+        maxShipShield: 50,
+        battleLog: [],
+        combatTurn: 0,
+        lastPlayerActionTime: 0,
+        cooldowns: {}
     }
 }; 
