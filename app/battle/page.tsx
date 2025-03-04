@@ -25,7 +25,7 @@ interface Enemy {
 }
 
 export default function BattlePage() {
-  const { state } = useGame()
+  const { state, dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
   const router = useRouter()
   
