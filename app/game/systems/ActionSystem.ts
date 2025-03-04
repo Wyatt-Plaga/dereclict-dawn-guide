@@ -42,7 +42,7 @@ export class ActionSystem {
     
     // Process the action based on its type
     switch (action.type) {
-      case 'RESOURCE_CLICK':
+      case 'CLICK_RESOURCE':
         newState = this.handleResourceClick(newState, action);
         break;
 
