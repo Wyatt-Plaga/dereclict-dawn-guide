@@ -4,6 +4,7 @@ import { ResourceSystem } from './ResourceSystem';
 import { ActionSystem } from './ActionSystem';
 import { UpgradeSystem } from './UpgradeSystem';
 import { LogSystem } from './LogSystem';
+import { EncounterSystem } from './EncounterSystem';
 
 /**
  * GameSystemManager
@@ -33,13 +34,21 @@ export class GameSystemManager {
   public log: LogSystem;
 
   /**
+   * Encounter management system
+   */
+  public encounter: EncounterSystem;
+
+  /**
    * Initialize all game systems
    */
   constructor() {
     this.resource = new ResourceSystem();
-    this.action = new ActionSystem();
     this.upgrade = new UpgradeSystem();
     this.log = new LogSystem();
+    this.encounter = new EncounterSystem();
+    
+    // Initialize the action system last since it depends on other systems
+    this.action = new ActionSystem();
     
     // Set the manager reference in the ActionSystem
     this.action.setManager(this);
@@ -68,12 +77,13 @@ export class GameSystemManager {
   }
   
   /**
-   * Process a game action
+   * Process an action through the action system
    * 
-   * @param state - Current game state
-   * @param action - Action to process
+   * @param state Current game state
+   * @param action Action to process
+   * @returns Updated game state
    */
-  processAction(state: GameState, action: GameAction) {
-    this.action.processAction(state, action);
+  processAction(state: GameState, action: GameAction): GameState {
+    return this.action.processAction(state, action);
   }
 } 

@@ -62,10 +62,40 @@ export interface MarkAllLogsReadAction extends GameAction {
 }
 
 /**
+ * Initiate Jump Action
+ * Triggered when a player initiates a jump to start an encounter
+ */
+export interface InitiateJumpAction extends GameAction {
+  type: 'INITIATE_JUMP';
+}
+
+/**
+ * Complete Encounter Action
+ * Triggered when a player completes an encounter
+ */
+export interface CompleteEncounterAction extends GameAction {
+  type: 'COMPLETE_ENCOUNTER';
+}
+
+/**
+ * Select Region Action
+ * Triggered when a player selects a region to navigate to
+ */
+export interface SelectRegionAction extends GameAction {
+  type: 'SELECT_REGION';
+  payload: {
+    region: string;
+  };
+}
+
+/**
  * Union type of all possible game actions
  */
 export type GameActions = 
   | ClickResourceAction
   | PurchaseUpgradeAction
   | MarkLogReadAction
-  | MarkAllLogsReadAction; 
+  | MarkAllLogsReadAction
+  | InitiateJumpAction
+  | CompleteEncounterAction
+  | SelectRegionAction; 

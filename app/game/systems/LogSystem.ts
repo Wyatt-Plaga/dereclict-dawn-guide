@@ -33,32 +33,51 @@ export class LogSystem {
      * 
      * @param state - Current game state
      * @param logId - ID of the log to mark as read
+     * @returns Updated game state
      */
-    markLogRead(state: GameState, logId: string) {
-        if (state.logs.discovered[logId]) {
-            state.logs.discovered[logId].isRead = true;
+    markLogRead(state: GameState, logId: string): GameState {
+        // Create a copy of the state to modify
+        const newState = { ...state };
+        
+        if (newState.logs.discovered[logId]) {
+            newState.logs.discovered[logId].isRead = true;
             
             // Remove from unread list
-            const index = state.logs.unread.indexOf(logId);
+            const index = newState.logs.unread.indexOf(logId);
             if (index !== -1) {
-                state.logs.unread.splice(index, 1);
+                newState.logs.unread = [
+                    ...newState.logs.unread.slice(0, index),
+                    ...newState.logs.unread.slice(index + 1)
+                ];
             }
         }
+        
+        return newState;
     }
 
     /**
      * Mark all logs as read
      * 
      * @param state - Current game state
+     * @returns Updated game state
      */
-    markAllLogsRead(state: GameState) {
-        // Mark all logs as read
-        Object.keys(state.logs.discovered).forEach(logId => {
-            state.logs.discovered[logId].isRead = true;
-        });
+    markAllLogsRead(state: GameState): GameState {
+        // Create a copy of the state to modify
+        const newState = { ...state };
+        
+        // Create a new discovered logs object with all logs marked as read
+        newState.logs.discovered = Object.entries(newState.logs.discovered).reduce(
+            (acc, [logId, log]) => {
+                acc[logId] = { ...log, isRead: true };
+                return acc;
+            },
+            {} as typeof newState.logs.discovered
+        );
         
         // Clear the unread list
-        state.logs.unread = [];
+        newState.logs.unread = [];
+        
+        return newState;
     }
 
     /**

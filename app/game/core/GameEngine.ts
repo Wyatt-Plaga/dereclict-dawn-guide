@@ -269,8 +269,11 @@ export class GameEngine {
             context
         );
         
-        // Pass the action to game systems
-        this.systems.processAction(this.state, action);
+        // Pass the action to game systems and get updated state
+        const updatedState = this.systems.processAction(this.state, action);
+        
+        // Update the internal state
+        this.state = updatedState;
         
         // Log state after processing
         const afterEnergy = this.state.categories.reactor.resources.energy;
@@ -279,6 +282,9 @@ export class GameEngine {
             `State AFTER action: ${action.type} - Energy: ${afterEnergy} (Changed: ${afterEnergy !== beforeEnergy})`, 
             context
         );
+        
+        // Cache the state for in-app navigation
+        cacheState(this.state);
         
         // Notify that state has been updated
         Logger.debug(LogCategory.ENGINE, "Emitting stateUpdated event", context);

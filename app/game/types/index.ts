@@ -3,6 +3,11 @@
  */
 
 /**
+ * Region Types
+ */
+export type RegionType = 'void' | 'nebula' | 'asteroid' | 'deepspace' | 'blackhole';
+
+/**
  * Log Categories
  */
 export enum LogCategory {
@@ -133,6 +138,36 @@ export interface ManufacturingCategory {
 }
 
 /**
+ * Encounter Types
+ */
+export interface BaseEncounter {
+    id: string;
+    type: 'combat' | 'story' | 'empty';
+    title: string;
+    description: string;
+    region: RegionType;
+}
+
+export interface EmptyEncounter extends BaseEncounter {
+    type: 'empty';
+    resources?: ResourceReward[];
+    message: string;
+}
+
+export interface ResourceReward {
+    type: string;
+    amount: number;
+}
+
+export interface EncounterHistory {
+    type: 'combat' | 'story' | 'empty';
+    id: string;
+    result: string;
+    date: number;
+    region: RegionType;
+}
+
+/**
  * Main game state that holds all game data
  */
 export interface GameState {
@@ -162,6 +197,23 @@ export interface GameState {
     logs: {
         discovered: Record<string, LogEntry>;
         unread: string[]; // IDs of unread logs
+    };
+
+    /**
+     * Navigation state
+     */
+    navigation: {
+        currentRegion: RegionType;
+        completedRegions: RegionType[];
+    };
+
+    /**
+     * Encounter state
+     */
+    encounters: {
+        active: boolean;
+        encounter?: BaseEncounter;
+        history: EncounterHistory[];
     };
 }
 
@@ -230,5 +282,13 @@ export const initialGameState: GameState = {
     logs: {
         discovered: {},
         unread: []
+    },
+    navigation: {
+        currentRegion: 'void',
+        completedRegions: []
+    },
+    encounters: {
+        active: false,
+        history: []
     }
 }; 

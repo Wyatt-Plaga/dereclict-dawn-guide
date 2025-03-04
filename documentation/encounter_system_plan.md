@@ -24,18 +24,14 @@ interface GameState {
   // Navigation state
   navigation: {
     currentRegion: string;
-    unlockedRegions: string[];
+    completedRegions: string[];
     regionsData: Record<string, RegionData>;
   };
   
   // Encounter state
   encounters: {
     active: boolean;
-    encounter?: CombatEncounter | StoryEncounter;
-    emptyJumpResult?: {
-      message: string;
-      resources?: ResourceReward[];
-    };
+    encounter?: CombatEncounter | StoryEncounter | EmptyEncounter;
     history: EncounterHistory[];
   };
   
@@ -55,7 +51,7 @@ interface GameState {
 ```typescript
 interface BaseEncounter {
   id: string;
-  type: 'combat' | 'story';
+  type: 'combat' | 'story' | 'empty';
   title: string;
   description: string;
   region: string; // 'void', 'nebula', etc.
@@ -72,6 +68,12 @@ interface StoryEncounter extends BaseEncounter {
   choices: EncounterChoice[];
 }
 
+interface EmptyEncounter extends BaseEncounter {
+  type: 'empty';
+  resources?: ResourceReward[];
+  message: string;
+}
+
 interface EncounterChoice {
   id: string;
   text: string;
@@ -79,7 +81,7 @@ interface EncounterChoice {
     resources?: ResourceReward[];
     upgrades?: UpgradeReward[];
     text: string;
-    unlocksRegion?: string;
+    completesRegion?: boolean;
   };
 }
 
@@ -117,8 +119,23 @@ This new system will be responsible for generating and managing encounters:
 ```typescript
 class EncounterSystem {
   // Generate encounters based on region
-  generateEncounter(region: string): CombatEncounter | StoryEncounter {
-    // Implementation details
+  generateEncounter(region: string): CombatEncounter | StoryEncounter | EmptyEncounter {
+    const { encounterChance, combatRatio } = REGION_ENCOUNTER_CHANCES[region];
+    
+    // First determine if an interesting encounter happens at all
+    if (Math.random() >= encounterChance) {
+      // Generate empty encounter
+      return this.generateEmptyEncounter(region);
+    }
+    
+    // Then determine if it's combat or story
+    const isCombat = Math.random() < combatRatio;
+    
+    if (isCombat) {
+      return this.generateCombatEncounter(region);
+    } else {
+      return this.generateStoryEncounter(region);
+    }
   }
   
   // Generate a combat encounter
@@ -128,6 +145,11 @@ class EncounterSystem {
   
   // Generate a story encounter
   generateStoryEncounter(region: string): StoryEncounter {
+    // Implementation details
+  }
+  
+  // Generate an empty encounter
+  generateEmptyEncounter(region: string): EmptyEncounter {
     // Implementation details
   }
   
@@ -141,6 +163,11 @@ class EncounterSystem {
     // Implementation details
   }
   
+  // Process empty encounter completion
+  processEmptyEncounterCompletion(state: GameState): void {
+    // Implementation details
+  }
+  
   // Check if combat has ended
   checkCombatEnd(state: GameState): boolean {
     // Implementation details
@@ -149,6 +176,24 @@ class EncounterSystem {
   // Apply rewards from encounters
   applyRewards(state: GameState, rewards: ResourceReward[]): void {
     // Implementation details
+  }
+  
+  // Handle region completion
+  completeRegion(state: GameState, region: string): void {
+    // If not already completed, add to completed regions
+    if (!state.navigation.completedRegions.includes(region)) {
+      state.navigation.completedRegions.push(region);
+      
+      // Check if all main regions are complete to unlock anomaly
+      const mainRegions = ['void', 'nebula', 'blackhole', 'supernova', 'habitable'];
+      const completedMainRegions = mainRegions.filter(r => 
+        state.navigation.completedRegions.includes(r)
+      );
+      
+      if (completedMainRegions.length === mainRegions.length) {
+        // Unlock anomaly region logic
+      }
+    }
   }
 }
 ```
@@ -174,8 +219,11 @@ class ActionSystem {
       case 'STORY_CHOICE':
         this.handleStoryChoice(state, action.payload);
         break;
-      case 'DISMISS_EMPTY_JUMP':
-        this.handleDismissEmptyJump(state);
+      case 'COMPLETE_ENCOUNTER':
+        this.handleCompleteEncounter(state);
+        break;
+      case 'SELECT_REGION':
+        this.handleSelectRegion(state, action.payload);
         break;
       // Existing action handlers
     }
@@ -184,62 +232,58 @@ class ActionSystem {
   // Handle jump initiation
   private handleJumpAction(state: GameState): void {
     const region = state.navigation.currentRegion;
-    const { encounterChance, combatRatio } = REGION_ENCOUNTER_CHANCES[region];
     
-    // Determine if encounter occurs
-    if (Math.random() < encounterChance) {
-      // Determine encounter type
-      const isCombat = Math.random() < combatRatio;
+    // Generate encounter
+    const encounter = this.encounterSystem.generateEncounter(region);
+    
+    // Update state
+    state.encounters.active = true;
+    state.encounters.encounter = encounter;
+    
+    // Log the encounter
+    Logger.info(
+      LogCategory.ACTIONS, 
+      `Encounter triggered: ${encounter.title}`, 
+      LogContext.NONE
+    );
+  }
+  
+  // Handle region selection
+  private handleSelectRegion(state: GameState, payload: { region: string }): void {
+    const { region } = payload;
+    
+    // Ensure only available regions can be selected
+    const availableRegions = this.getAvailableRegions(state);
+    if (availableRegions.includes(region)) {
+      state.navigation.currentRegion = region;
       
-      let encounter;
-      if (isCombat) {
-        encounter = this.encounterSystem.generateCombatEncounter(region);
-      } else {
-        encounter = this.encounterSystem.generateStoryEncounter(region);
-      }
-      
-      // Update state
-      state.encounters.active = true;
-      state.encounters.encounter = encounter;
-      state.encounters.emptyJumpResult = undefined;
-      
-      // Log the encounter
       Logger.info(
-        LogCategory.ACTIONS, 
-        `Encounter triggered: ${encounter.title}`, 
+        LogCategory.ACTIONS,
+        `Selected region: ${region}`,
         LogContext.NONE
       );
-    } else {
-      // No encounter - generate "empty jump" result
-      state.encounters.active = false;
-      state.encounters.encounter = undefined;
-      
-      // Generate a minor resource reward
-      const resources: ResourceReward[] = [
-        { type: 'energy', amount: 5 + Math.random() * 10 },
-        { type: 'scrap', amount: 2 + Math.random() * 5 }
-      ];
-      
-      // Apply the rewards
-      this.encounterSystem.applyRewards(state, resources);
-      
-      // Create empty jump result
-      state.encounters.emptyJumpResult = {
-        message: getRandomEmptyJumpMessage(region),
-        resources
-      };
-      
-      // Record in history
-      state.encounters.history.push({
-        type: 'empty',
-        id: 'empty_jump',
-        result: 'resources',
-        date: Date.now(),
-        region
-      });
-      
-      Logger.info(LogCategory.ACTIONS, 'Jump completed without incident', LogContext.NONE);
     }
+  }
+  
+  // Get regions available for selection
+  private getAvailableRegions(state: GameState): string[] {
+    const { currentRegion, completedRegions } = state.navigation;
+    
+    // If in void and it's not completed, only void is available
+    if (currentRegion === 'void' && !completedRegions.includes('void')) {
+      return ['void'];
+    }
+    
+    // If void is completed, all main regions except completed ones are available
+    const mainRegions = ['nebula', 'blackhole', 'supernova', 'habitable'];
+    const availableRegions = mainRegions.filter(r => !completedRegions.includes(r));
+    
+    // If all main regions completed, anomaly is available
+    if (availableRegions.length === 0 && !completedRegions.includes('anomaly')) {
+      return ['anomaly'];
+    }
+    
+    return availableRegions;
   }
   
   // Other action handlers (combat, story choice, etc.)
@@ -258,7 +302,6 @@ export default function NavigationPage() {
   // Extract state
   const { encounters, navigation } = state;
   const inEncounter = encounters.active;
-  const hasEmptyJumpResult = !!encounters.emptyJumpResult;
   
   // Handle jump initiation
   const initiateJump = () => {
@@ -266,10 +309,13 @@ export default function NavigationPage() {
     dispatch({ type: 'INITIATE_JUMP' });
   };
   
-  // Handle returning to navigation after empty jump
-  const dismissEmptyJump = () => {
-    dispatch({ type: 'DISMISS_EMPTY_JUMP' });
+  // Handle region selection
+  const selectRegion = (region) => {
+    dispatch({ type: 'SELECT_REGION', payload: { region } });
   };
+  
+  // Get available regions for selection
+  const availableRegions = getAvailableRegions(navigation);
   
   return (
     <GameLoader>
@@ -278,29 +324,34 @@ export default function NavigationPage() {
         <div className="flex flex-col p-4 md:p-8 md:ml-64">
           {inEncounter ? (
             // Show encounter UI based on type
-            encounters.encounter?.type === 'combat' ? (
-              <CombatPanel encounter={encounters.encounter} dispatch={dispatch} />
-            ) : (
-              <StoryPanel encounter={encounters.encounter} dispatch={dispatch} />
-            )
-          ) : hasEmptyJumpResult ? (
-            // Show empty jump result
-            <EmptyJumpPanel 
-              result={encounters.emptyJumpResult} 
-              onDismiss={dismissEmptyJump} 
-            />
+            getEncounterPanel(encounters.encounter, dispatch)
           ) : (
             // Show navigation panel
             <NavigationPanel 
               currentRegion={navigation.currentRegion}
-              unlockedRegions={navigation.unlockedRegions}
+              availableRegions={availableRegions}
               onJump={initiateJump}
+              onSelectRegion={selectRegion}
             />
           )}
         </div>
       </main>
     </GameLoader>
   );
+}
+
+// Helper function to get appropriate encounter panel
+function getEncounterPanel(encounter, dispatch) {
+  switch(encounter?.type) {
+    case 'combat':
+      return <CombatPanel encounter={encounter} dispatch={dispatch} />;
+    case 'story':
+      return <StoryPanel encounter={encounter} dispatch={dispatch} />;
+    case 'empty':
+      return <EmptyPanel encounter={encounter} dispatch={dispatch} />;
+    default:
+      return null;
+  }
 }
 ```
 
@@ -378,14 +429,19 @@ function StoryPanel({ encounter, dispatch }) {
 }
 ```
 
-**Empty Jump Panel Component**
+**Empty Panel Component**
 ```jsx
-function EmptyJumpPanel({ result, onDismiss }) {
-  const { message, resources } = result;
+function EmptyPanel({ encounter, dispatch }) {
+  const { title, description, message, resources } = encounter;
+  
+  const completeEncounter = () => {
+    dispatch({ type: 'COMPLETE_ENCOUNTER' });
+  };
   
   return (
     <div className="system-panel p-6">
-      <h1 className="text-2xl font-bold text-primary mb-4">Jump Complete</h1>
+      <h1 className="text-2xl font-bold text-primary mb-4">{title}</h1>
+      <p className="mb-6">{description}</p>
       <p className="mb-6">{message}</p>
       
       {resources && resources.length > 0 && (
@@ -404,7 +460,7 @@ function EmptyJumpPanel({ result, onDismiss }) {
       
       <button 
         className="system-panel p-4 w-full hover:bg-accent/10"
-        onClick={onDismiss}
+        onClick={completeEncounter}
       >
         Return to Navigation
       </button>
@@ -426,6 +482,7 @@ const REGION_ENCOUNTER_CHANCES = {
   blackhole: { encounterChance: 0.85, combatRatio: 0.9 },
   supernova: { encounterChance: 0.8, combatRatio: 0.85 },
   habitable: { encounterChance: 0.7, combatRatio: 0.6 },
+  anomaly: { encounterChance: 1.0, combatRatio: 0.5 },
 };
 
 const REGION_ENEMIES = {
@@ -473,7 +530,7 @@ const REGION_STORIES = {
   // Other regions
 };
 
-const EMPTY_JUMP_MESSAGES = {
+const EMPTY_ENCOUNTER_MESSAGES = {
   void: [
     "You navigate through the emptiness of space, finding nothing of note.",
     "The sensors detect only distant stars and cosmic background radiation.",
@@ -489,32 +546,34 @@ const EMPTY_JUMP_MESSAGES = {
 - Extend GameState with encounter fields
 - Define encounter interfaces
 - Create skeleton of EncounterSystem
+- **Start with Empty encounters only**
 
-### Phase 2: Basic Encounter Generation (Week 1-2)
-- Implement encounter generation logic
-- Create initial content for void region
+### Phase 2: Basic Region & Encounter Management (Week 1-2)
+- Implement region selection logic
+- Create initial empty encounter content for all regions
 - Integrate with ActionSystem
 
 ### Phase 3: UI Components (Week 2)
 - Modify Navigation page to handle encounters
-- Create CombatPanel component
+- Create EmptyPanel component
+- Enhance navigation to display region selection
+
+### Phase 4: Story Encounters (Week 3)
+- Implement story encounter generation
 - Create StoryPanel component
-- Create EmptyJumpPanel component
-
-### Phase 4: Combat Mechanics (Week 3)
-- Implement combat actions
-- Add combat resolution logic
-- Create combat rewards system
-
-### Phase 5: Story Mechanics (Week 3)
-- Implement story choice handling
-- Create outcome application logic
+- Add story choice handling
 - Link stories to region progression
 
+### Phase 5: Combat System (Week 3-4)
+- Implement combat encounter generation
+- Create CombatPanel component
+- Add combat mechanics
+- Create combat rewards system
+
 ### Phase 6: Region Content Development (Week 4)
-- Develop content for other regions
+- Develop content for all regions
 - Balance encounters based on region difficulty
-- Add region unlocking mechanics
+- Implement the anomaly region
 
 ### Phase 7: Testing & Balance (Week 4-5)
 - Playtest encounter frequency
@@ -534,7 +593,7 @@ const EMPTY_JUMP_MESSAGES = {
 
 3. **UI Design:**
    - Use consistent styling with the rest of the game
-   - Add animations for combat actions
+   - Add animations for transitions between encounters
    - Provide clear feedback for player actions
 
 4. **Metrics & Analytics:**

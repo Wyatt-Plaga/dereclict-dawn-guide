@@ -6,7 +6,7 @@ import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/app/game/hooks/useGame"
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 // Region types
 interface Region {
@@ -18,6 +18,7 @@ interface Region {
 export default function NavigationPage() {
   const { state, dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
+  const router = useRouter()
   
   // Log component render
   Logger.debug(
@@ -33,11 +34,21 @@ export default function NavigationPage() {
     description: 'The empty vacuum of space surrounds the Dawn. Long-range sensors detect potential areas of interest.'
   }
   
-  // For a complete implementation, we would dispatch a proper action
+  // Dispatch INITIATE_JUMP action and navigate to encounter page
   const initiateJump = () => {
-    Logger.info(LogCategory.ACTIONS, 'Initiating jump sequence', LogContext.NONE);
-    // In a full implementation, we would:
-    // dispatch({ type: 'INITIATE_JUMP' })
+    Logger.info(
+      LogCategory.ACTIONS, 
+      'Initiating jump sequence', 
+      LogContext.NONE
+    );
+    
+    // Dispatch the action to generate an encounter
+    dispatch({ type: 'INITIATE_JUMP' });
+    
+    // Give a small delay to ensure the state is updated before navigating
+    setTimeout(() => {
+      router.push('/encounter');
+    }, 100);
   }
   
   return (
@@ -64,18 +75,16 @@ export default function NavigationPage() {
             <div className="mb-8">
               <h2 className="text-lg font-semibold mb-4 terminal-text">Ship Controls</h2>
               
-              <Link href="/battle" className="block">
-                <button 
-                  onClick={initiateJump}
-                  className="system-panel w-full py-8 flex items-center justify-center hover:bg-accent/10 transition-colors"
-                >
-                  <div className="flex flex-col items-center">
-                    <Rocket className={`h-12 w-12 text-chart-1 mb-2 ${shouldFlicker('navigation') ? 'flickering-text' : ''}`} />
-                    <span className="terminal-text">Initiate Jump</span>
-                    <span className="text-xs text-muted-foreground mt-1">Engage engines and prepare for potential encounters</span>
-                  </div>
-                </button>
-              </Link>
+              <button 
+                onClick={initiateJump}
+                className="system-panel w-full py-8 flex items-center justify-center hover:bg-accent/10 transition-colors"
+              >
+                <div className="flex flex-col items-center">
+                  <Rocket className={`h-12 w-12 text-chart-1 mb-2 ${shouldFlicker('navigation') ? 'flickering-text' : ''}`} />
+                  <span className="terminal-text">Initiate Jump</span>
+                  <span className="text-xs text-muted-foreground mt-1">Engage engines and prepare for potential encounters</span>
+                </div>
+              </button>
             </div>
             
             {/* Ship status */}
