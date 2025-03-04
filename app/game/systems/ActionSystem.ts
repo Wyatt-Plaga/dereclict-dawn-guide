@@ -50,7 +50,7 @@ export class ActionSystem {
         newState = this.handleUpgradePurchase(
           newState, 
           action.payload.category, 
-          action.payload.type
+          action.payload.upgradeType
         );
         break;
 
