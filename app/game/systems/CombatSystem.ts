@@ -1,8 +1,7 @@
-import { GameState } from '../types';
+import { GameState, RegionType, BattleLogEntry } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   ActionResult, 
-  BattleLogEntry, 
   CombatActionDefinition,
   EnemyActionCondition,
   EnemyActionDefinition,
@@ -39,7 +38,7 @@ export class CombatSystem {
   /**
    * Check if an encounter should be generated when jumping
    */
-  checkForEncounter(state: GameState, toRegion: string): boolean {
+  checkForEncounter(state: GameState, toRegion: RegionType): boolean {
     Logger.debug(
       LogCategory.COMBAT,
       `Checking for encounter in region: ${toRegion}`,
@@ -56,8 +55,7 @@ export class CombatSystem {
       
       state.navigation = {
         currentRegion: toRegion,
-        exploredRegions: [toRegion],
-        availableRegions: [toRegion, 'nebula']
+        completedRegions: []
       };
     }
     
@@ -93,7 +91,7 @@ export class CombatSystem {
   /**
    * Start a combat encounter
    */
-  startCombatEncounter(state: GameState, enemyId: string, regionId: string): void {
+  startCombatEncounter(state: GameState, enemyId: string, regionId: RegionType): void {
     Logger.info(
       LogCategory.COMBAT,
       `Starting combat with enemy ${enemyId} in region ${regionId}`,
@@ -259,19 +257,23 @@ export class CombatSystem {
       }
       
       // Add reward to resources
-      switch (reward.type) {
-        case 'energy':
-          state.categories.reactor.resources.energy += reward.amount;
-          break;
-        case 'insight':
-          state.categories.processor.resources.insight += reward.amount;
-          break;
-        case 'crew':
-          state.categories.crewQuarters.resources.crew += reward.amount;
-          break;
-        case 'scrap':
-          state.categories.manufacturing.resources.scrap += reward.amount;
-          break;
+      const resourceCategory = this.getResourceCategory(reward.type);
+      if (resourceCategory) {
+        // Handle each resource type explicitly
+        switch (reward.type) {
+          case 'energy':
+            state.categories.reactor.resources.energy += reward.amount;
+            break;
+          case 'insight':
+            state.categories.processor.resources.insight += reward.amount;
+            break;
+          case 'crew':
+            state.categories.crewQuarters.resources.crew += reward.amount;
+            break;
+          case 'scrap':
+            state.categories.manufacturing.resources.scrap += reward.amount;
+            break;
+        }
       }
       
       // Add log entry
@@ -282,6 +284,29 @@ export class CombatSystem {
         type: 'SYSTEM'
       });
     });
+  }
+
+  /**
+   * Helper method to get the category for a resource type
+   */
+  private getResourceCategory(resourceType: string): keyof GameState['categories'] | null {
+    switch (resourceType) {
+      case 'energy':
+        return 'reactor';
+      case 'insight':
+        return 'processor';
+      case 'crew':
+        return 'crewQuarters';
+      case 'scrap':
+        return 'manufacturing';
+      default:
+        Logger.warn(
+          LogCategory.COMBAT,
+          `Unknown resource type: ${resourceType}`,
+          LogContext.COMBAT
+        );
+        return null;
+    }
   }
 
   /**
@@ -799,5 +824,144 @@ export class CombatSystem {
       LogContext.COMBAT
     );
     return selectedEnemyId;
+  }
+
+  /**
+   * Process a player's decision to retreat from combat
+   * Applies resource penalty and ends combat
+   */
+  retreatFromCombat(state: GameState): GameState {
+    // Check if combat state exists
+    if (!state.combat) {
+      Logger.error(
+        LogCategory.COMBAT,
+        `Combat state is undefined in retreatFromCombat`,
+        LogContext.COMBAT
+      );
+      return state;
+    }
+    
+    if (!state.combat.active) {
+      Logger.warn(
+        LogCategory.COMBAT,
+        `Attempted to retreat from inactive combat`,
+        LogContext.COMBAT
+      );
+      return state;
+    }
+    
+    Logger.info(
+      LogCategory.COMBAT,
+      `Player retreating from combat with ${state.combat.currentEnemy}`,
+      LogContext.COMBAT
+    );
+    
+    // Create a copy of the state to modify
+    const newState = { ...state };
+    
+    // Apply a resource penalty for retreating (e.g., lose 25% of resources)
+    // This makes retreat a viable but costly option
+    const retreatPenalty = 0.25; // 25% resource loss
+    
+    // Apply the penalty to all resource categories
+    // Reactor - Energy
+    if (newState.categories.reactor && newState.categories.reactor.resources) {
+      const currentEnergy = newState.categories.reactor.resources.energy;
+      const penaltyAmount = Math.floor(currentEnergy * retreatPenalty);
+      newState.categories.reactor.resources.energy = Math.max(0, currentEnergy - penaltyAmount);
+      
+      Logger.debug(
+        LogCategory.COMBAT,
+        `Applied retreat penalty to energy: -${penaltyAmount}`,
+        LogContext.COMBAT
+      );
+    }
+
+    // Processor - Insight
+    if (newState.categories.processor && newState.categories.processor.resources) {
+      const currentInsight = newState.categories.processor.resources.insight;
+      const penaltyAmount = Math.floor(currentInsight * retreatPenalty);
+      newState.categories.processor.resources.insight = Math.max(0, currentInsight - penaltyAmount);
+      
+      Logger.debug(
+        LogCategory.COMBAT,
+        `Applied retreat penalty to insight: -${penaltyAmount}`,
+        LogContext.COMBAT
+      );
+    }
+
+    // Crew Quarters - Crew
+    if (newState.categories.crewQuarters && newState.categories.crewQuarters.resources) {
+      const currentCrew = newState.categories.crewQuarters.resources.crew;
+      const penaltyAmount = Math.floor(currentCrew * retreatPenalty);
+      newState.categories.crewQuarters.resources.crew = Math.max(0, currentCrew - penaltyAmount);
+      
+      Logger.debug(
+        LogCategory.COMBAT,
+        `Applied retreat penalty to crew: -${penaltyAmount}`,
+        LogContext.COMBAT
+      );
+    }
+
+    // Manufacturing - Scrap
+    if (newState.categories.manufacturing && newState.categories.manufacturing.resources) {
+      const currentScrap = newState.categories.manufacturing.resources.scrap;
+      const penaltyAmount = Math.floor(currentScrap * retreatPenalty);
+      newState.categories.manufacturing.resources.scrap = Math.max(0, currentScrap - penaltyAmount);
+      
+      Logger.debug(
+        LogCategory.COMBAT,
+        `Applied retreat penalty to scrap: -${penaltyAmount}`,
+        LogContext.COMBAT
+      );
+    }
+    
+    // Update the combat state to reflect the retreat
+    newState.combat = {
+      ...newState.combat,
+      active: false,
+      encounterCompleted: true,
+      outcome: 'retreat',
+      battleLog: [
+        ...newState.combat.battleLog,
+        {
+          id: uuidv4(),
+          text: 'You retreated from combat, losing 25% of your resources in the hasty escape.',
+          type: 'SYSTEM',
+          timestamp: Date.now()
+        }
+      ]
+    };
+    
+    // If there's an active encounter, mark it as completed
+    if (newState.encounters.active && newState.encounters.encounter) {
+      // Add to encounter history
+      newState.encounters.history = Array.isArray(newState.encounters.history) 
+        ? [
+            ...newState.encounters.history,
+            {
+              id: newState.encounters.encounter.id,
+              type: newState.encounters.encounter.type,
+              result: 'retreat',
+              date: Date.now(),
+              region: newState.encounters.encounter.region
+            }
+          ]
+        : [
+            {
+              id: newState.encounters.encounter.id,
+              type: newState.encounters.encounter.type,
+              result: 'retreat',
+              date: Date.now(),
+              region: newState.encounters.encounter.region
+            }
+          ];
+      
+      // Clear the active encounter
+      newState.encounters.active = false;
+      newState.encounters.encounter = undefined;
+    }
+    
+    return newState;
   }
 } 

@@ -4,6 +4,7 @@ import { GameSystemManager } from './index';
 import { UpgradeSystem } from './UpgradeSystem';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { EncounterSystem } from './EncounterSystem';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * ActionSystem
@@ -27,92 +28,110 @@ export class ActionSystem {
   }
 
   /**
-   * Process a game action and update the state accordingly
+   * Process an action and update the game state
    */
   processAction(state: GameState, action: GameAction): GameState {
-    Logger.debug(
-      LogCategory.ACTIONS,
+    Logger.trace(
+      LogCategory.ACTIONS, 
       `Processing action: ${action.type}`,
       LogContext.NONE
     );
-
-    // Determine the context based on the action type
+    
+    // Create a copy of the state to update
+    let newState = { ...state };
+    
+    // Process the action based on its type
     switch (action.type) {
-      case 'CLICK_RESOURCE':
-        return this.handleResourceClick(state, action.payload.category);
-        
+      case 'RESOURCE_CLICK':
+        newState = this.handleResourceClick(newState, action);
+        break;
+
       case 'PURCHASE_UPGRADE':
-        return this.handleUpgradePurchase(
-          state,
-          action.payload.category,
-          action.payload.upgradeType
+        newState = this.handleUpgradePurchase(
+          newState, 
+          action.payload.category, 
+          action.payload.type
         );
-        
+        break;
+
       case 'MARK_LOG_READ':
-        return this.handleMarkLogRead(state, action.payload.logId);
-        
-      case 'MARK_ALL_LOGS_READ':
-        return this.handleMarkAllLogsRead(state);
+        newState = this.handleMarkLogRead(newState, action.payload.logId);
+        break;
+
+      case 'SELECT_REGION': 
+        newState = this.handleSelectRegion(newState, action.payload.regionId);
+        break;
         
       case 'INITIATE_JUMP':
-        return this.handleInitiateJump(state);
+        newState = this.handleInitiateJump(newState);
+        break;
         
       case 'COMPLETE_ENCOUNTER':
-        return this.handleCompleteEncounter(state, action);
+        newState = this.handleCompleteEncounter(newState, action);
+        break;
         
-      case 'SELECT_REGION':
-        return this.handleSelectRegion(state, action.payload.region);
+      case 'STORY_CHOICE':
+        newState = this.handleStoryChoice(newState, action);
+        break;
         
-      case 'MAKE_STORY_CHOICE':
-        return this.handleStoryChoice(state, action);
+      case 'COMBAT_ACTION':
+        newState = this.handleCombatAction(newState, action);
+        break;
+        
+      case 'RETREAT_FROM_BATTLE':
+        newState = this.handleRetreatFromBattle(newState);
+        break;
         
       default:
         Logger.warn(
-          LogCategory.ACTIONS,
+          LogCategory.ACTIONS, 
           `Unknown action type: ${action.type}`,
           LogContext.NONE
         );
-        return state;
     }
+    
+    return newState;
   }
   
   /**
    * Handle resource click actions
    */
-  private handleResourceClick(state: GameState, category: GameCategory): GameState {
-    // Determine context based on category
-    let context = LogContext.NONE;
-    switch (category) {
-      case 'reactor':
-        context = LogContext.REACTOR_LIFECYCLE;
-        break;
-      case 'processor':
-        context = LogContext.PROCESSOR_LIFECYCLE;
-        break;
-      case 'crewQuarters':
-        context = LogContext.CREW_LIFECYCLE;
-        break;
-      case 'manufacturing':
-        context = LogContext.MANUFACTURING_LIFECYCLE;
-        break;
+  private handleResourceClick(state: GameState, action: GameAction): GameState {
+    const category = action.payload?.category;
+    
+    if (!category) {
+      Logger.warn(
+        LogCategory.ACTIONS,
+        'No category specified for resource click',
+        LogContext.NONE
+      );
+      return state;
     }
     
-    Logger.debug(LogCategory.ACTIONS, `Handling ${category} resource click`, context);
+    Logger.debug(
+      LogCategory.ACTIONS,
+      `Processing resource click for ${category}`,
+      LogContext.NONE
+    );
+    
+    // Create a shallow copy of the state to modify
+    const newState = { ...state };
     
     switch (category) {
       case 'reactor':
-        return this.handleReactorClick(state);
-        
+        return this.handleReactorClick(newState);
       case 'processor':
-        return this.handleProcessorClick(state);
-        
-      case 'crewQuarters':
-        return this.handleCrewClick(state);
-        
+        return this.handleProcessorClick(newState);
       case 'manufacturing':
-        return this.handleManufacturingClick(state);
+        return this.handleManufacturingClick(newState);
+      default:
+        Logger.warn(
+          LogCategory.ACTIONS,
+          `Unknown resource category: ${category}`,
+          LogContext.NONE
+        );
+        return state;
     }
-    return state;
   }
   
   /**
@@ -182,64 +201,6 @@ export class ActionSystem {
         LogCategory.RESOURCES, 
         `Processor already at capacity (${processor.stats.insightCapacity})`,
         LogContext.PROCESSOR_LIFECYCLE
-      );
-    }
-    return state;
-  }
-  
-  /**
-   * Handle crew awakening click
-   */
-  private handleCrewClick(state: GameState): GameState {
-    const crewQuarters = state.categories.crewQuarters;
-    
-    Logger.debug(
-      LogCategory.RESOURCES, 
-      `Crew click - Progress: ${crewQuarters.stats.awakeningProgress}/10, Crew: ${crewQuarters.resources.crew}/${crewQuarters.stats.crewCapacity}`,
-      LogContext.CREW_LIFECYCLE
-    );
-    
-    // Don't proceed if already at capacity
-    if (crewQuarters.resources.crew >= crewQuarters.stats.crewCapacity) {
-      Logger.info(
-        LogCategory.RESOURCES, 
-        `Cannot awaken more crew - at capacity (${crewQuarters.stats.crewCapacity})`,
-        LogContext.CREW_LIFECYCLE
-      );
-      return state;
-    }
-    
-    // Increment awakening progress
-    crewQuarters.stats.awakeningProgress += 1;
-    
-    // If reached 10 clicks, add 1 crew member (up to capacity)
-    if (crewQuarters.stats.awakeningProgress >= 10) {
-      crewQuarters.resources.crew = Math.min(
-        crewQuarters.resources.crew + 1,
-        crewQuarters.stats.crewCapacity
-      );
-      
-      Logger.info(
-        LogCategory.RESOURCES, 
-        `Crew member awakened! Current crew: ${crewQuarters.resources.crew}`,
-        LogContext.CREW_LIFECYCLE
-      );
-      
-      // Reset progress
-      crewQuarters.stats.awakeningProgress = 0;
-      Logger.debug(
-        LogCategory.RESOURCES, 
-        "Awakening progress reset to 0",
-        LogContext.CREW_LIFECYCLE
-      );
-    } else {
-      // Cap awakening progress at 10
-      crewQuarters.stats.awakeningProgress = Math.min(crewQuarters.stats.awakeningProgress, 10);
-      
-      Logger.debug(
-        LogCategory.RESOURCES, 
-        `Awakening progress increased to ${crewQuarters.stats.awakeningProgress}/10`,
-        LogContext.CREW_LIFECYCLE
       );
     }
     return state;
@@ -469,5 +430,89 @@ export class ActionSystem {
     // Use the encounter system to process the choice
     const encounterSystem = this.manager.encounter;
     return encounterSystem.completeEncounter(state, action.payload.choiceId);
+  }
+
+  /**
+   * Handle combat actions
+   */
+  private handleCombatAction(state: GameState, action: any): GameState {
+    if (!this.manager) {
+      Logger.error(
+        LogCategory.ACTIONS,
+        'Game system manager not set',
+        LogContext.COMBAT_ACTION
+      );
+      return state;
+    }
+
+    Logger.info(
+      LogCategory.COMBAT,
+      `Processing combat action: ${action.payload?.actionId}`,
+      LogContext.COMBAT_ACTION
+    );
+    
+    // Use the combat system to process the action
+    const actionId = action.payload?.actionId;
+    if (!actionId) {
+      Logger.error(
+        LogCategory.COMBAT,
+        'No action ID provided for combat action',
+        LogContext.COMBAT_ACTION
+      );
+      return state;
+    }
+    
+    // Create a copy of the state to update
+    const newState = { ...state };
+    
+    // Perform the combat action
+    const result = this.manager.combat.performCombatAction(newState, actionId);
+    
+    // Update the combat state with the result
+    if (result.success) {
+      // Record the action result in the combat state
+      newState.combat.lastActionResult = result;
+      
+      // Add a log entry if provided
+      if (result.message) {
+        newState.combat.battleLog.push({
+          id: uuidv4(),
+          text: result.message,
+          type: 'PLAYER',
+          timestamp: Date.now()
+        });
+      }
+    } else {
+      // Log the failure
+      Logger.warn(
+        LogCategory.COMBAT,
+        `Combat action failed: ${result.message}`,
+        LogContext.COMBAT_ACTION
+      );
+    }
+    
+    return newState;
+  }
+
+  /**
+   * Handle retreat from battle
+   */
+  private handleRetreatFromBattle(state: GameState): GameState {
+    if (!this.manager) {
+      Logger.error(
+        LogCategory.ACTIONS,
+        'Game system manager not set',
+        LogContext.COMBAT
+      );
+      return state;
+    }
+
+    Logger.info(
+      LogCategory.COMBAT,
+      'Retreating from battle',
+      LogContext.COMBAT
+    );
+    
+    return this.manager.combat.retreatFromCombat(state);
   }
 } 

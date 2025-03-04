@@ -17,6 +17,7 @@ import {
 } from '../content/encounters';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { GameSystemManager } from './index';
+import { REGION_DEFINITIONS } from '../content/regions';
 
 /**
  * System responsible for generating and managing encounters
@@ -371,10 +372,18 @@ export class EncounterSystem {
      * Complete the current encounter
      */
     completeEncounter(state: GameState, choiceId?: string): GameState {
-        console.log('Completing encounter');
+        Logger.info(
+            LogCategory.ACTIONS,
+            'Completing encounter',
+            LogContext.NONE
+        );
         
         if (!state.encounters.active || !state.encounters.encounter) {
-            console.warn('No active encounter to complete');
+            Logger.warn(
+                LogCategory.ACTIONS,
+                'No active encounter to complete',
+                LogContext.NONE
+            );
             return state;
         }
         
@@ -419,15 +428,31 @@ export class EncounterSystem {
             console.log('Combat encounter detected - will initiate combat sequence');
             
             // If we have a CombatSystem in the manager, we could use it here
-            if (this.manager) {
-                // This is a placeholder for future CombatSystem integration
-                // Once CombatSystem is implemented, we'll pass the encounter to it
-                // and let it handle the combat logic
-                console.log('Combat will be handled by future CombatSystem');
+            if (this.manager && this.manager.combat) {
+                Logger.info(
+                    LogCategory.COMBAT,
+                    'Combat encounter detected - initiating combat sequence',
+                    LogContext.COMBAT
+                );
                 
-                // For now, we'll just mark the encounter as completed
-                // In the real implementation, the combat would be initiated and
-                // the encounter would stay active until combat is resolved
+                const combatEncounter = encounter as BaseEncounter;
+                
+                // Extract region from the encounter
+                const regionId = combatEncounter.region;
+                
+                // Generate a random enemy from the region if not already specified
+                const enemyId = this.generateRandomEnemyForRegion(regionId);
+                
+                if (enemyId) {
+                    // This is a placeholder for future CombatSystem integration
+                    // Once CombatSystem is implemented, we'll pass the encounter to it
+                    // and let it handle the combat logic
+                    console.log('Combat will be handled by future CombatSystem');
+                    
+                    // For now, we'll just mark the encounter as completed
+                    // In the real implementation, the combat would be initiated and
+                    // the encounter would stay active until combat is resolved
+                }
             }
         }
         
@@ -470,5 +495,42 @@ export class EncounterSystem {
             region: region as RegionType,
             type: "combat"
         };
+    }
+
+    /**
+     * Generate a random enemy for the given region
+     */
+    private generateRandomEnemyForRegion(regionId: RegionType): string | null {
+        // Find the region definition - REGION_DEFINITIONS is a Record<string, RegionDefinition>
+        // not an array, so we can't use find directly
+        const region = REGION_DEFINITIONS[regionId as string];
+        
+        if (!region || !region.enemyProbabilities || region.enemyProbabilities.length === 0) {
+            Logger.warn(
+                LogCategory.COMBAT,
+                `No enemies defined for region ${regionId}`,
+                LogContext.COMBAT
+            );
+            return null;
+        }
+        
+        // Calculate total weight
+        let totalWeight = 0;
+        region.enemyProbabilities.forEach((enemy: { weight: number; enemyId: string }) => {
+            totalWeight += enemy.weight;
+        });
+        
+        // Select an enemy based on weights
+        let randomValue = Math.random() * totalWeight;
+        
+        for (const enemy of region.enemyProbabilities) {
+            randomValue -= enemy.weight;
+            if (randomValue <= 0) {
+                return enemy.enemyId;
+            }
+        }
+        
+        // Fallback to first enemy
+        return region.enemyProbabilities[0].enemyId;
     }
 } 

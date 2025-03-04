@@ -221,8 +221,9 @@ export interface Enemy {
  * Battle Log Entry interface
  */
 export interface BattleLogEntry {
+  id: string;
   text: string;
-  type: 'system' | 'player' | 'enemy' | 'analysis';
+  type: 'SYSTEM' | 'PLAYER' | 'ENEMY' | 'ANALYSIS';
   timestamp: number;
 }
 
@@ -230,16 +231,37 @@ export interface BattleLogEntry {
  * Combat State interface
  */
 export interface CombatState {
-  inCombat: boolean;
-  currentEnemy?: Enemy;
-  shipHealth: number;
-  maxShipHealth: number;
-  shipShield: number;
-  maxShipShield: number;
+  active: boolean;
+  currentEnemy: string | null;
+  currentRegion: string | null;
+  turn: number;
+  encounterCompleted: boolean;
+  outcome?: 'victory' | 'defeat' | 'retreat';
+  playerStats: {
+    health: number;
+    maxHealth: number;
+    shield: number;
+    maxShield: number;
+    statusEffects: any[];
+  };
+  enemyStats: {
+    health: number;
+    maxHealth: number;
+    shield: number;
+    maxShield: number;
+    statusEffects: any[];
+  };
   battleLog: BattleLogEntry[];
-  combatTurn: number;
-  lastPlayerActionTime: number;
-  cooldowns: Record<string, number>; // Action name -> timestamp when available
+  availableActions: string[];
+  cooldowns: Record<string, number>;
+  lastActionResult?: any;
+  rewards?: {
+    energy: number;
+    insight: number;
+    crew: number;
+    scrap: number;
+  };
+  enemyIntentions: any | null;
 }
 
 /**
@@ -382,14 +404,35 @@ export const initialGameState: GameState = {
         history: []
     },
     combat: {
-        inCombat: false,
-        shipHealth: 100,
-        maxShipHealth: 100,
-        shipShield: 50,
-        maxShipShield: 50,
+        active: false,
+        currentEnemy: null,
+        currentRegion: null,
+        turn: 0,
+        encounterCompleted: false,
+        playerStats: {
+            health: 100,
+            maxHealth: 100,
+            shield: 50,
+            maxShield: 50,
+            statusEffects: []
+        },
+        enemyStats: {
+            health: 100,
+            maxHealth: 100,
+            shield: 50,
+            maxShield: 50,
+            statusEffects: []
+        },
         battleLog: [],
-        combatTurn: 0,
-        lastPlayerActionTime: 0,
-        cooldowns: {}
+        availableActions: [],
+        cooldowns: {},
+        lastActionResult: null,
+        rewards: {
+            energy: 0,
+            insight: 0,
+            crew: 0,
+            scrap: 0
+        },
+        enemyIntentions: null
     }
 }; 

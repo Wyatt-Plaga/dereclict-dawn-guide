@@ -22,7 +22,8 @@ export enum LogCategory {
   UPGRADES = 'upgrades',     // Upgrade system
   UI = 'ui',                 // UI interactions
   LIFECYCLE = 'lifecycle',   // Component/system lifecycle
-  PERFORMANCE = 'performance' // Performance measurements
+  PERFORMANCE = 'performance', // Performance measurements
+  COMBAT = 'combat'          // Combat system
 }
 
 // Common context tags for cross-category workflows
@@ -36,7 +37,9 @@ export enum LogContext {
   STARTUP = 'startup',               // Game initialization
   SAVE_LOAD = 'saveload',            // Save/load operations
   UI_RENDER = 'render',              // UI rendering workflow
-  LOG_INTERACTION = 'logs'           // Log reading/interaction
+  LOG_INTERACTION = 'logs',          // Log reading/interaction
+  COMBAT = 'combat',                 // Combat interactions
+  COMBAT_ACTION = 'combat-action'    // Combat action processing
 }
 
 // Type for context parameter - can be a single context or an array of contexts
@@ -73,7 +76,8 @@ export class LoggerConfig {
     [LogCategory.UPGRADES]: 'brown',
     [LogCategory.UI]: 'magenta',
     [LogCategory.LIFECYCLE]: 'gray',
-    [LogCategory.PERFORMANCE]: 'red'
+    [LogCategory.PERFORMANCE]: 'red',
+    [LogCategory.COMBAT]: 'crimson'
   };
   
   // Background colors for context tags
@@ -87,7 +91,9 @@ export class LoggerConfig {
     [LogContext.STARTUP]: '#ffffcc',
     [LogContext.SAVE_LOAD]: '#e6e6e6',
     [LogContext.UI_RENDER]: '#f9f9f9',
-    [LogContext.LOG_INTERACTION]: '#e6fffa'
+    [LogContext.LOG_INTERACTION]: '#e6fffa',
+    [LogContext.COMBAT]: '#ffcccc',
+    [LogContext.COMBAT_ACTION]: '#ffe6cc'
   };
   
   // Enable/disable a category

@@ -8,7 +8,10 @@ import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
 import Link from "next/link"
 import { Progress } from "@/components/ui/progress"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { CombatActionCategory, BattleLogEntry } from "@/app/game/types/combat"
+import { PLAYER_ACTIONS } from "@/app/game/content/combatActions"
+import { useRouter } from "next/navigation"
 
 // Enemy type
 interface Enemy {
@@ -26,6 +29,7 @@ interface Enemy {
 export default function BattlePage() {
   const { state, dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
+  const router = useRouter()
   
   // Get resources from game state
   const reactor = state.categories.reactor
@@ -50,6 +54,18 @@ export default function BattlePage() {
     return expandedActions.includes(actionType)
   }
   
+  // Redirect if no active combat
+  useEffect(() => {
+    if (!state.combat?.active) {
+      Logger.info(
+        LogCategory.ACTIONS, 
+        'No active combat, redirecting to navigation', 
+        LogContext.NONE
+      )
+      router.push('/navigation')
+    }
+  }, [state.combat?.active, router])
+  
   // Log component render
   Logger.debug(
     LogCategory.UI,
@@ -57,51 +73,81 @@ export default function BattlePage() {
     LogContext.UI_RENDER
   )
   
-  // Mock battle state - in a full implementation this would be part of the game state
-  const shipHealth = 80;
-  const maxShipHealth = 100;
-  const shipShield = 35;
-  const maxShipShield = 50;
+  // Use actual combat state instead of mock data
+  const shipHealth = state.combat?.playerStats?.health || 0
+  const maxShipHealth = state.combat?.playerStats?.maxHealth || 100
+  const shipShield = state.combat?.playerStats?.shield || 0
+  const maxShipShield = state.combat?.playerStats?.maxShield || 50
   
-  // Example enemy with shield weakness
-  const enemy: Enemy = {
-    id: 'void-stalker',
-    name: 'Void Stalker',
-    description: 'A mysterious entity that lurks in the void between stars. It appears to feed on energy and is drawn to functioning ships.',
-    health: 70,
-    maxHealth: 100,
-    shield: 20,
-    maxShield: 40,
+  // Get current enemy information
+  const enemyId = state.combat?.currentEnemy || 'unknown'
+  
+  // Get enemy stats from combat state
+  const enemyHealth = state.combat?.enemyStats?.health || 0
+  const enemyMaxHealth = state.combat?.enemyStats?.maxHealth || 100
+  const enemyShield = state.combat?.enemyStats?.shield || 0
+  const enemyMaxShield = state.combat?.enemyStats?.maxShield || 50
+  
+  // For display purposes - if we don't have enemy details, use placeholder
+  const enemy = {
+    id: enemyId,
+    name: enemyId || 'Unknown Enemy',
+    description: 'Enemy encountered in combat.',
+    health: enemyHealth,
+    maxHealth: enemyMaxHealth,
+    shield: enemyShield,
+    maxShield: enemyMaxShield,
     image: '/enemy-void.png',
-    weakness: 'shield'
-  };
+    weakness: 'shield' as const
+  }
   
-  // For a complete implementation, we would dispatch proper actions
+  // Convert battle log entries for display
+  const battleLog = state.combat?.battleLog || [] 
+  
+  // Dispatch combat actions
+  const performCombatAction = (actionId: string) => {
+    Logger.info(
+      LogCategory.COMBAT, 
+      `Performing combat action: ${actionId}`, 
+      LogContext.COMBAT_ACTION
+    )
+    dispatch({ type: 'COMBAT_ACTION', payload: { actionId } })
+  }
+  
+  // Shield actions
   const useShield = () => {
-    Logger.info(LogCategory.ACTIONS, 'Using shield', LogContext.NONE);
-    // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'shield' } })
+    performCombatAction('raise-shields')
   }
   
-  const useWeapon = () => {
-    Logger.info(LogCategory.ACTIONS, 'Using weapon', LogContext.NONE);
-    // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'weapon' } })
+  // Weapon actions
+  const useWeapon = (actionId: string) => {
+    performCombatAction(actionId)
   }
   
-  const useRepair = () => {
-    Logger.info(LogCategory.ACTIONS, 'Using repair', LogContext.NONE);
-    // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'repair' } })
+  // Repair actions
+  const useRepair = (actionId: string) => {
+    performCombatAction(actionId)
   }
   
-  const useSabotage = () => {
-    Logger.info(LogCategory.ACTIONS, 'Using sabotage', LogContext.NONE);
-    // dispatch({ type: 'COMBAT_ACTION', payload: { actionType: 'sabotage' } })
+  // Sabotage actions
+  const useSabotage = (actionId: string) => {
+    performCombatAction(actionId)
   }
   
+  // Retreat from battle
   const retreat = () => {
-    Logger.info(LogCategory.ACTIONS, 'Retreating from battle', LogContext.NONE);
-    // In a full implementation, we would:
-    // dispatch({ type: 'RETREAT_FROM_BATTLE' })
+    Logger.info(
+      LogCategory.COMBAT, 
+      'Retreating from battle', 
+      LogContext.COMBAT
+    )
+    dispatch({ type: 'RETREAT_FROM_BATTLE' })
+    router.push('/navigation')
   }
+  
+  // Check if we have any error message to display
+  const actionError = state.combat?.lastActionResult?.success === false ? 
+    state.combat.lastActionResult.message : null
   
   return (
     <GameLoader>
@@ -111,6 +157,16 @@ export default function BattlePage() {
         <div className="flex flex-col p-4 md:p-8 md:ml-64">
           <div className="system-panel p-6 mb-6">
             <h1 className={`text-2xl font-bold text-primary mb-4 ${shouldFlicker('battle') ? 'flickering-text' : ''}`}>Combat Encounter</h1>
+            
+            {/* Display action error if any */}
+            {actionError && (
+              <div className="mb-4 p-2 system-panel bg-red-900/20 border border-red-900/50">
+                <p className="text-red-400 flex items-center">
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  {actionError}
+                </p>
+              </div>
+            )}
             
             {/* Battle status */}
             <div className="grid md:grid-cols-2 gap-6 mb-8">
@@ -192,146 +248,135 @@ export default function BattlePage() {
             <h2 className="text-lg font-semibold mb-4 terminal-text">Combat Actions</h2>
             
             <div className="grid grid-cols-2 gap-4 mb-4">
-              {/* Energy Shields section - 1 action */}
+              {/* Energy Shields section */}
               <div className="system-panel p-4 flex flex-col">
                 <h3 className="text-sm font-semibold mb-3 flex items-center">
                   <Shield className="h-5 w-5 mr-2 text-chart-1" />
                   Energy Shields <span className="text-xs text-muted-foreground ml-2">(Reactor)</span>
                 </h3>
                 <div className="grid grid-cols-1 gap-2 flex-grow">
-                  <button 
-                    onClick={useShield}
-                    className="system-panel p-3 flex items-center justify-between hover:bg-accent/10 transition-colors h-full"
-                  >
-                    <div className="flex items-center">
-                      <Shield className="h-4 w-4 mr-2 text-chart-1" />
-                      <span>Raise Shields</span>
-                    </div>
-                    <span className="text-xs px-1.5 py-0.5 bg-chart-1/20 text-chart-1 rounded">10 Energy</span>
-                  </button>
+                  {Object.values(PLAYER_ACTIONS)
+                    .filter(action => action.category === CombatActionCategory.SHIELD)
+                    .map(action => (
+                      <button 
+                        key={action.id}
+                        onClick={() => performCombatAction(action.id)}
+                        className="system-panel p-3 flex items-center justify-between hover:bg-accent/10 transition-colors h-full"
+                        disabled={state.combat?.cooldowns?.[action.id] > 0}
+                      >
+                        <div className="flex items-center">
+                          <Shield className="h-4 w-4 mr-2 text-chart-1" />
+                          <span>{action.name}</span>
+                          {state.combat?.cooldowns?.[action.id] > 0 && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              (CD: {state.combat.cooldowns[action.id]})
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs px-1.5 py-0.5 bg-chart-1/20 text-chart-1 rounded">
+                          {action.cost.amount} {action.cost.type}
+                        </span>
+                      </button>
+                    ))}
                 </div>
               </div>
               
-              {/* Weapons Systems section - 2 actions */}
+              {/* Weapons Systems section */}
               <div className="system-panel p-4 flex flex-col">
                 <h3 className="text-sm font-semibold mb-3 flex items-center">
                   <Zap className="h-5 w-5 mr-2 text-chart-2" />
                   Weapons Systems <span className="text-xs text-muted-foreground ml-2">(Manufacturing)</span>
                 </h3>
                 <div className="grid grid-cols-2 gap-2 flex-grow">
-                  <button 
-                    onClick={useWeapon}
-                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
-                  >
-                    <div className="flex items-center mb-1">
-                      <Zap className="h-4 w-4 mr-2 text-chart-2" />
-                      <span>Plasma Cannon</span>
-                    </div>
-                    <span className="text-xs self-start bg-chart-2/20 text-chart-2 px-1.5 py-0.5 rounded mt-auto">15 Scrap</span>
-                  </button>
-                  
-                  <button 
-                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
-                  >
-                    <div className="flex items-center mb-1">
-                      <Zap className="h-4 w-4 mr-2 text-chart-2" />
-                      <span>Missile Barrage</span>
-                    </div>
-                    <span className="text-xs self-start bg-chart-2/20 text-chart-2 px-1.5 py-0.5 rounded mt-auto">25 Scrap</span>
-                  </button>
+                  {Object.values(PLAYER_ACTIONS)
+                    .filter(action => action.category === CombatActionCategory.WEAPON)
+                    .map(action => (
+                      <button 
+                        key={action.id}
+                        onClick={() => performCombatAction(action.id)}
+                        className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
+                        disabled={state.combat?.cooldowns?.[action.id] > 0}
+                      >
+                        <div className="flex items-center mb-1">
+                          <Zap className="h-4 w-4 mr-2 text-chart-2" />
+                          <span>{action.name}</span>
+                        </div>
+                        {state.combat?.cooldowns?.[action.id] > 0 && (
+                          <span className="text-xs text-muted-foreground mb-1">
+                            Cooldown: {state.combat.cooldowns[action.id]}
+                          </span>
+                        )}
+                        <span className="text-xs self-start bg-chart-2/20 text-chart-2 px-1.5 py-0.5 rounded mt-auto">
+                          {action.cost.amount} {action.cost.type}
+                        </span>
+                      </button>
+                    ))}
                 </div>
               </div>
               
-              {/* Repair Drones section - 3 actions */}
+              {/* Repair Drones section */}
               <div className="system-panel p-4 flex flex-col">
                 <h3 className="text-sm font-semibold mb-3 flex items-center">
                   <Wrench className="h-5 w-5 mr-2 text-chart-3" />
                   Repair Drones <span className="text-xs text-muted-foreground ml-2">(Crew)</span>
                 </h3>
                 <div className="grid grid-cols-2 gap-2 flex-grow">
-                  <button 
-                    onClick={useRepair}
-                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
-                  >
-                    <div className="flex items-center mb-1">
-                      <Wrench className="h-4 w-4 mr-2 text-chart-3" />
-                      <span>Hull Repair</span>
-                    </div>
-                    <span className="text-xs self-start bg-chart-3/20 text-chart-3 px-1.5 py-0.5 rounded mt-auto">2 Crew</span>
-                  </button>
-                  
-                  <button 
-                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
-                  >
-                    <div className="flex items-center mb-1">
-                      <Shield className="h-4 w-4 mr-2 text-chart-3" />
-                      <span>Shield Recharge</span>
-                    </div>
-                    <span className="text-xs self-start bg-chart-3/20 text-chart-3 px-1.5 py-0.5 rounded mt-auto">3 Crew</span>
-                  </button>
-                  
-                  <button 
-                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
-                  >
-                    <div className="flex items-center mb-1">
-                      <Wrench className="h-4 w-4 mr-2 text-chart-3" />
-                      <span>System Bypass</span>
-                    </div>
-                    <span className="text-xs self-start bg-chart-3/20 text-chart-3 px-1.5 py-0.5 rounded mt-auto">4 Crew</span>
-                  </button>
-                  
-                  {/* Fourth cell is intentionally left empty for layout consistency */}
-                  <div className="hidden"></div>
+                  {Object.values(PLAYER_ACTIONS)
+                    .filter(action => action.category === CombatActionCategory.REPAIR)
+                    .map(action => (
+                      <button 
+                        key={action.id}
+                        onClick={() => performCombatAction(action.id)}
+                        className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
+                        disabled={state.combat?.cooldowns?.[action.id] > 0}
+                      >
+                        <div className="flex items-center mb-1">
+                          <Wrench className="h-4 w-4 mr-2 text-chart-3" />
+                          <span>{action.name}</span>
+                        </div>
+                        {state.combat?.cooldowns?.[action.id] > 0 && (
+                          <span className="text-xs text-muted-foreground mb-1">
+                            Cooldown: {state.combat.cooldowns[action.id]}
+                          </span>
+                        )}
+                        <span className="text-xs self-start bg-chart-3/20 text-chart-3 px-1.5 py-0.5 rounded mt-auto">
+                          {action.cost.amount} {action.cost.type}
+                        </span>
+                      </button>
+                    ))}
                 </div>
               </div>
               
-              {/* Electronic Countermeasures section - 4 actions */}
+              {/* Electronic Countermeasures section */}
               <div className="system-panel p-4 flex flex-col">
                 <h3 className="text-sm font-semibold mb-3 flex items-center">
                   <Cpu className="h-5 w-5 mr-2 text-chart-4" />
                   Electronic CM <span className="text-xs text-muted-foreground ml-2">(Processor)</span>
                 </h3>
                 <div className="grid grid-cols-2 gap-2 flex-grow">
-                  <button 
-                    onClick={useSabotage}
-                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
-                  >
-                    <div className="flex items-center mb-1">
-                      <ZapOff className="h-4 w-4 mr-2 text-chart-4" />
-                      <span>Sabotage</span>
-                    </div>
-                    <span className="text-xs self-start bg-chart-4/20 text-chart-4 px-1.5 py-0.5 rounded mt-auto">8 Insight</span>
-                  </button>
-                  
-                  <button 
-                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
-                  >
-                    <div className="flex items-center mb-1">
-                      <Scan className="h-4 w-4 mr-2 text-chart-4" />
-                      <span>Scan</span>
-                    </div>
-                    <span className="text-xs self-start bg-chart-4/20 text-chart-4 px-1.5 py-0.5 rounded mt-auto">5 Insight</span>
-                  </button>
-                  
-                  <button 
-                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
-                  >
-                    <div className="flex items-center mb-1">
-                      <Search className="h-4 w-4 mr-2 text-chart-4" />
-                      <span>Find Weakness</span>
-                    </div>
-                    <span className="text-xs self-start bg-chart-4/20 text-chart-4 px-1.5 py-0.5 rounded mt-auto">12 Insight</span>
-                  </button>
-                  
-                  <button 
-                    className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
-                  >
-                    <div className="flex items-center mb-1">
-                      <Compass className="h-4 w-4 mr-2 text-chart-4" />
-                      <span>Sensor Overload</span>
-                    </div>
-                    <span className="text-xs self-start bg-chart-4/20 text-chart-4 px-1.5 py-0.5 rounded mt-auto">10 Insight</span>
-                  </button>
+                  {Object.values(PLAYER_ACTIONS)
+                    .filter(action => action.category === CombatActionCategory.SABOTAGE)
+                    .map(action => (
+                      <button 
+                        key={action.id}
+                        onClick={() => performCombatAction(action.id)}
+                        className="system-panel p-3 flex flex-col hover:bg-accent/10 transition-colors"
+                        disabled={state.combat?.cooldowns?.[action.id] > 0}
+                      >
+                        <div className="flex items-center mb-1">
+                          <ZapOff className="h-4 w-4 mr-2 text-chart-4" />
+                          <span>{action.name}</span>
+                        </div>
+                        {state.combat?.cooldowns?.[action.id] > 0 && (
+                          <span className="text-xs text-muted-foreground mb-1">
+                            Cooldown: {state.combat.cooldowns[action.id]}
+                          </span>
+                        )}
+                        <span className="text-xs self-start bg-chart-4/20 text-chart-4 px-1.5 py-0.5 rounded mt-auto">
+                          {action.cost.amount} {action.cost.type}
+                        </span>
+                      </button>
+                    ))}
                 </div>
               </div>
             </div>
@@ -340,22 +385,36 @@ export default function BattlePage() {
             <div className="mb-4">
               <h2 className="text-lg font-semibold mb-2 terminal-text">Battle Log</h2>
               <div className="system-panel p-3 h-28 overflow-y-auto font-mono text-xs">
-                <p className="text-green-400">► System: Unknown vessel detected.</p>
-                <p className="text-blue-400">► Dawn: Shields activated.</p>
-                <p className="text-red-400">► {enemy.name}: Approaching on intercept course.</p>
-                <p className="text-yellow-400">► Analysis: Scanning for vulnerabilities...</p>
+                {battleLog.length > 0 ? (
+                  battleLog.map((entry: BattleLogEntry, index) => {
+                    // Determine log entry style based on type
+                    const logStyle = entry.type === 'PLAYER' 
+                      ? 'text-blue-400' 
+                      : entry.type === 'ENEMY' 
+                        ? 'text-red-400' 
+                        : entry.type === 'ANALYSIS' 
+                          ? 'text-yellow-400' 
+                          : 'text-green-400';
+                    
+                    return (
+                      <p key={entry.id || index} className={logStyle}>
+                        ► {entry.text}
+                      </p>
+                    );
+                  })
+                ) : (
+                  <p className="text-green-400">► System: Combat initiated.</p>
+                )}
               </div>
             </div>
             
             {/* Retreat button */}
-            <Link href="/navigation">
-              <button 
-                onClick={retreat}
-                className="system-panel w-full p-3 flex items-center justify-center hover:bg-accent/10 transition-colors"
-              >
-                <span className="terminal-text">Retreat from Battle</span>
-              </button>
-            </Link>
+            <button 
+              onClick={retreat}
+              className="system-panel w-full p-3 flex items-center justify-center hover:bg-accent/10 transition-colors"
+            >
+              <span className="terminal-text">Retreat from Battle</span>
+            </button>
           </div>
         </div>
       </main>
