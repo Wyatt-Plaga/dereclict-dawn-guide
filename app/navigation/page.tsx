@@ -71,8 +71,18 @@ export default function NavigationPage() {
               </p>
             </div>
             
-            {/* Jump button */}
+            {/* Ship status - moved above ship controls */}
             <div className="mb-8">
+              <h2 className="text-lg font-semibold mb-4 terminal-text">Ship Status</h2>
+              <div className="system-panel p-4">
+                <p className="text-muted-foreground">
+                  All systems nominal. Jump drive charged and ready.
+                </p>
+              </div>
+            </div>
+            
+            {/* Jump button */}
+            <div>
               <h2 className="text-lg font-semibold mb-4 terminal-text">Ship Controls</h2>
               
               <button 
@@ -85,16 +95,6 @@ export default function NavigationPage() {
                   <span className="text-xs text-muted-foreground mt-1">Engage engines and prepare for potential encounters</span>
                 </div>
               </button>
-            </div>
-            
-            {/* Ship status */}
-            <div>
-              <h2 className="text-lg font-semibold mb-4 terminal-text">Ship Status</h2>
-              <div className="system-panel p-4">
-                <p className="text-muted-foreground">
-                  All systems nominal. Jump drive charged and ready.
-                </p>
-              </div>
             </div>
           </div>
         </div>
