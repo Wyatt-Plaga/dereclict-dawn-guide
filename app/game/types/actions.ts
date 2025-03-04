@@ -75,6 +75,9 @@ export interface InitiateJumpAction extends GameAction {
  */
 export interface CompleteEncounterAction extends GameAction {
   type: 'COMPLETE_ENCOUNTER';
+  payload?: {
+    choiceId?: string;
+  };
 }
 
 /**
@@ -89,6 +92,17 @@ export interface SelectRegionAction extends GameAction {
 }
 
 /**
+ * Make Story Choice Action
+ * Triggered when a player makes a story choice
+ */
+export interface MakeStoryChoiceAction extends GameAction {
+  type: 'MAKE_STORY_CHOICE';
+  payload: {
+    choiceId: string;
+  };
+}
+
+/**
  * Union type of all possible game actions
  */
 export type GameActions = 
@@ -98,4 +112,5 @@ export type GameActions =
   | MarkAllLogsReadAction
   | InitiateJumpAction
   | CompleteEncounterAction
-  | SelectRegionAction; 
+  | SelectRegionAction
+  | MakeStoryChoiceAction; 

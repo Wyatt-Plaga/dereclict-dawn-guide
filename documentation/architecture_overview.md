@@ -16,6 +16,12 @@
   - [Memory Caching](#memory-caching)
   - [Loading States](#loading-states)
 - [Logging System](#logging-system)
+- [Encounter System](#encounter-system)
+  - [Encounter Types](#encounter-types)
+  - [Encounter Generation](#encounter-generation)
+  - [Region Integration](#region-integration)
+  - [Story Choices and Outcomes](#story-choices-and-outcomes)
+  - [UI Components](#encounter-ui-components)
 - [Design Patterns](#design-patterns)
 - [Future Considerations](#future-considerations)
 
@@ -379,6 +385,162 @@ Logger.debug(
   LogContext.REACTOR_LIFECYCLE
 );
 ```
+
+## Encounter System
+
+The Encounter System adds a narrative and exploratory layer to the game, allowing players to discover resources and make decisions as they travel through different regions of space. This system integrates with the existing game architecture to provide dynamic gameplay events.
+
+### Encounter Types
+
+The game features multiple types of encounters, each with different gameplay mechanics:
+
+1. **EmptyEncounter**: Simple encounters that may provide resource rewards but don't require player choices.
+2. **StoryEncounter**: Narrative-driven encounters that present players with choices, leading to different outcomes and rewards.
+
+All encounters derive from a base interface that ensures consistent structure:
+
+```typescript
+// Location: app/game/types/index.ts
+export interface BaseEncounter {
+  type: 'empty' | 'story';
+  title: string;
+  description: string;
+  region: RegionType;
+}
+
+export interface EmptyEncounter extends BaseEncounter {
+  type: 'empty';
+  message?: string;
+  resources?: ResourceReward[];
+}
+
+export interface StoryEncounter extends BaseEncounter {
+  type: 'story';
+  choices: EncounterChoice[];
+}
+
+export interface EncounterChoice {
+  id: string;
+  text: string;
+  outcome: {
+    text: string;
+    resources?: ResourceReward[];
+  };
+}
+```
+
+### Encounter Generation
+
+The `EncounterSystem` is responsible for generating and managing encounters:
+
+1. **Region-Based Generation**: Encounters are generated based on the player's current region.
+2. **Probability Distribution**: Different encounter types have different probabilities of occurring.
+3. **Resource Integration**: Encounters can reward players with various resources (energy, insight, crew, scrap).
+
+```typescript
+// Location: app/game/systems/EncounterSystem.ts
+// Example encounter generation method
+generateEncounter(state: GameState): BaseEncounter {
+  // Determine the current region
+  const region = state.navigation.currentRegion;
+  
+  // Weighted chance of encounter types (70% empty, 30% story)
+  const randomValue = Math.random();
+  
+  if (randomValue < 0.7) {
+    return this.generateEmptyEncounter(region);
+  } else {
+    return this.generateStoryEncounter(region);
+  }
+}
+```
+
+### Region Integration
+
+The encounter system is tightly integrated with the region system, providing region-specific content:
+
+1. **Region-Specific Encounters**: Each region (void, nebula, asteroid, deepspace, blackhole) has unique encounters.
+2. **Visual Differentiation**: Encounters use region-specific visual effects and color schemes.
+3. **Progressive Difficulty**: Encounters in later regions may offer greater rewards but with higher risks.
+
+```typescript
+// Location: app/game/systems/EncounterSystem.ts
+// Example of region-specific encounter generation
+generateStoryEncounter(region: RegionType): StoryEncounter {
+  switch (region) {
+    case 'void':
+      return {
+        type: 'story',
+        title: 'Mysterious Signal',
+        description: 'Your sensors detect an unusual signal...',
+        region: 'void',
+        choices: [
+          // Region-specific choices
+        ]
+      };
+    // Other regions...
+  }
+}
+```
+
+### Story Choices and Outcomes
+
+The story encounter system provides narrative choices with meaningful consequences:
+
+1. **Decision Points**: Players make choices that impact the outcome of the encounter.
+2. **Outcome Variety**: Choices lead to different narrative outcomes and resource rewards.
+3. **Risk-Reward Mechanics**: Some choices offer higher potential rewards but with greater risk.
+
+The ActionSystem processes these choices through a specific action type:
+
+```typescript
+// Location: app/game/systems/ActionSystem.ts
+// Example of handling story choices
+private handleStoryChoice(state: GameState, action: MakeStoryChoiceAction) {
+  const { choiceId } = action.payload;
+  
+  // Validate the choice ID and complete the encounter
+  if (this.manager && choiceId) {
+    this.manager.encounter.completeEncounter(state, choiceId);
+  }
+}
+```
+
+### Encounter UI Components
+
+The UI layer for encounters uses specialized components:
+
+1. **EncounterDisplay**: The main component for rendering encounters and managing user interaction.
+2. **Resource Visualization**: Resources are displayed with type-specific icons and colors.
+3. **Region Effects**: Visual effects based on the current region enhance immersion.
+
+```tsx
+// Location: app/components/EncounterDisplay.tsx
+// Main encounter rendering component
+const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComplete }) => {
+  // Component manages state for:
+  // - Selected choices
+  // - Outcome text and resources
+  // - Animation states
+  
+  // Renders different UIs based on encounter type
+  return (
+    <div className="relative w-full">
+      {/* Region-specific effects */}
+      <div className="absolute inset-0 -m-4 md:-m-8 z-0 overflow-hidden opacity-20">
+        <div className={`${getRegionEffectClass(encounter.region)}`}></div>
+      </div>
+      
+      {/* Encounter content */}
+      <div className="system-panel p-6 mb-6 relative z-10">
+        {/* Title, description, choices, and outcomes */}
+      </div>
+    </div>
+  );
+};
+```
+
+The encounter UI integrates with the game's action system through its `onComplete` handler, which dispatches the appropriate actions based on player choices.
 
 ## Design Patterns
 

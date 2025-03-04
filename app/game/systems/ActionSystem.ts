@@ -3,6 +3,7 @@ import { GameAction, GameActions, GameCategory } from '../types/actions';
 import { GameSystemManager } from './index';
 import { UpgradeSystem } from './UpgradeSystem';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
+import { EncounterSystem } from './EncounterSystem';
 
 /**
  * ActionSystem
@@ -57,10 +58,13 @@ export class ActionSystem {
         return this.handleInitiateJump(state);
         
       case 'COMPLETE_ENCOUNTER':
-        return this.handleCompleteEncounter(state);
+        return this.handleCompleteEncounter(state, action);
         
       case 'SELECT_REGION':
         return this.handleSelectRegion(state, action.payload.region);
+        
+      case 'MAKE_STORY_CHOICE':
+        return this.handleStoryChoice(state, action);
         
       default:
         Logger.warn(
@@ -394,11 +398,11 @@ export class ActionSystem {
   /**
    * Handle completing an encounter
    */
-  private handleCompleteEncounter(state: GameState): GameState {
+  private handleCompleteEncounter(state: GameState, action: any): GameState {
     if (!this.manager) {
       Logger.error(
         LogCategory.ACTIONS,
-        "Cannot complete encounter: ActionSystem manager not set",
+        'Game system manager not set',
         LogContext.NONE
       );
       return state;
@@ -410,8 +414,9 @@ export class ActionSystem {
       LogContext.NONE
     );
     
-    // Delegate to the encounter system
-    return this.manager.encounter.completeEncounter(state);
+    // Use the encounter system to process the encounter
+    const encounterSystem = this.manager.encounter;
+    return encounterSystem.completeEncounter(state, action.payload?.choiceId);
   }
   
   /**
@@ -431,5 +436,38 @@ export class ActionSystem {
         currentRegion: region
       }
     };
+  }
+
+  /**
+   * Handle a player's choice in a story encounter
+   */
+  private handleStoryChoice(state: GameState, action: any): GameState {
+    Logger.debug(
+      LogCategory.ACTIONS,
+      `Making story choice: ${action.payload?.choiceId}`,
+      LogContext.NONE
+    );
+    
+    if (!action.payload?.choiceId) {
+      Logger.error(
+        LogCategory.ACTIONS,
+        'No choice ID provided for story choice action',
+        LogContext.NONE
+      );
+      return state;
+    }
+    
+    if (!this.manager) {
+      Logger.error(
+        LogCategory.ACTIONS,
+        'Game system manager not set',
+        LogContext.NONE
+      );
+      return state;
+    }
+    
+    // Use the encounter system to process the choice
+    const encounterSystem = this.manager.encounter;
+    return encounterSystem.completeEncounter(state, action.payload.choiceId);
   }
 } 

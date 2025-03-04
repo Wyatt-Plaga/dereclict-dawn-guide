@@ -154,6 +154,22 @@ export interface EmptyEncounter extends BaseEncounter {
     message: string;
 }
 
+export interface StoryEncounter extends BaseEncounter {
+    type: 'story';
+    choices: EncounterChoice[];
+    message?: string;
+}
+
+export interface EncounterChoice {
+    id: string;
+    text: string;
+    outcome: {
+        resources?: ResourceReward[];
+        text: string;
+        continuesToNextEncounter?: boolean;
+    };
+}
+
 export interface ResourceReward {
     type: string;
     amount: number;

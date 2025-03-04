@@ -24,6 +24,11 @@ export function NavBar() {
   // Count unread logs
   const unreadLogsCount = state?.logs?.unread?.length || 0
 
+  // Format number to show with one decimal place when needed, but as an integer when possible
+  const formatNumber = (num: number) => {
+    return num % 1 === 0 ? num.toString() : num.toFixed(1);
+  }
+
   return (
     <nav className="system-panel p-2 md:p-4 fixed bottom-0 left-0 right-0 md:left-4 md:top-4 md:bottom-4 md:w-64 flex md:flex-col gap-1 z-10">
       <div className="hidden md:flex items-center justify-center p-2 mb-6">
@@ -59,7 +64,42 @@ export function NavBar() {
         })}
       </div>
       
-      <div className="hidden md:block mt-auto pt-4 border-t border-border">
+      {/* Resource summary section - moved just above the system status */}
+      <div className="hidden md:flex flex-col mt-auto mb-4">
+        <div className="text-base text-primary font-semibold mb-2">RESOURCES</div>
+        <div className="flex flex-col gap-3 text-base">
+          <div className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-chart-1" />
+            <span className="text-muted-foreground">Energy:</span>
+            <span className="ml-auto text-primary">
+              {state?.categories?.reactor ? formatNumber(state.categories.reactor.resources.energy) : '0'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CpuIcon className="h-5 w-5 text-chart-2" />
+            <span className="text-muted-foreground">Insight:</span>
+            <span className="ml-auto text-primary">
+              {state?.categories?.processor ? formatNumber(state.categories.processor.resources.insight) : '0'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-chart-3" />
+            <span className="text-muted-foreground">Crew:</span>
+            <span className="ml-auto text-primary">
+              {state?.categories?.crewQuarters ? formatNumber(state.categories.crewQuarters.resources.crew) : '0'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Package className="h-5 w-5 text-chart-4" />
+            <span className="text-muted-foreground">Scrap:</span>
+            <span className="ml-auto text-primary">
+              {state?.categories?.manufacturing ? formatNumber(state.categories.manufacturing.resources.scrap) : '0'}
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      <div className="hidden md:block pt-4 border-t border-border">
         <div className="text-xs text-muted-foreground w-full">
           <p className={`terminal-text ${shouldFlicker('status') ? 'flickering-text' : ''} w-full text-center`}>{statusText}</p>
         </div>

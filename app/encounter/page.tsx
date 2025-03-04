@@ -28,16 +28,25 @@ export default function EncounterPage() {
   }, [state.encounters.active, router]);
   
   // Handle completing the encounter
-  const handleCompleteEncounter = () => {
+  const handleCompleteEncounter = (choiceId?: string) => {
     Logger.info(
       LogCategory.ACTIONS,
-      'Completing encounter',
+      `Completing encounter${choiceId ? ` with choice: ${choiceId}` : ''}`,
       LogContext.NONE
     );
     
-    dispatch({
-      type: 'COMPLETE_ENCOUNTER'
-    });
+    if (choiceId) {
+      dispatch({
+        type: 'MAKE_STORY_CHOICE',
+        payload: {
+          choiceId
+        }
+      });
+    } else {
+      dispatch({
+        type: 'COMPLETE_ENCOUNTER'
+      });
+    }
     
     // Give a small delay to ensure the state is updated before navigating
     setTimeout(() => {
@@ -74,7 +83,7 @@ export default function EncounterPage() {
         <NavBar />
         <div className="flex flex-col p-4 md:p-8 md:ml-64">
           <EncounterDisplay 
-            encounter={state.encounters.encounter as EmptyEncounter}
+            encounter={state.encounters.encounter!}
             onComplete={handleCompleteEncounter}
           />
         </div>

@@ -3,33 +3,34 @@ import {
   AwardIcon, 
   ChevronRightIcon, 
   CompassIcon, 
-  FlaskConicalIcon,
-  ZapIcon, 
-  UsersIcon, 
-  WrenchIcon,
+  Brain,
+  Zap, 
+  Users, 
+  Package,
   ShieldIcon,
   MapIcon,
   ActivityIcon 
 } from 'lucide-react';
-import { EmptyEncounter, ResourceReward, RegionType } from '../game/types';
+import { EmptyEncounter, StoryEncounter, ResourceReward, RegionType, BaseEncounter, EncounterChoice } from '../game/types';
 import { useSystemStatus } from "@/components/providers/system-status-provider";
+import { useGame } from '../game/hooks/useGame';
 
 interface EncounterDisplayProps {
-  encounter: EmptyEncounter;
-  onComplete: () => void;
+  encounter: BaseEncounter;
+  onComplete: (choiceId?: string) => void;
 }
 
 // Helper function to get the appropriate icon for resource types
 const getResourceIcon = (type: string) => {
   switch (type) {
     case 'energy':
-      return <ZapIcon className="h-5 w-5 text-blue-400" />;
+      return <Zap className="h-5 w-5 text-chart-1" />;
     case 'insight':
-      return <FlaskConicalIcon className="h-5 w-5 text-blue-400" />;
+      return <Brain className="h-5 w-5 text-chart-2" />;
     case 'crew':
-      return <UsersIcon className="h-5 w-5 text-green-400" />;
+      return <Users className="h-5 w-5 text-chart-3" />;
     case 'scrap':
-      return <WrenchIcon className="h-5 w-5 text-orange-400" />;
+      return <Package className="h-5 w-5 text-chart-4" />;
     default:
       return <AwardIcon className="h-5 w-5 text-primary" />;
   }
@@ -78,13 +79,25 @@ const getRegionIcon = (region: RegionType) => {
 
 const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComplete }) => {
   const { shouldFlicker } = useSystemStatus();
+  const { dispatch } = useGame();
   const regionIcon = getRegionIcon(encounter.region);
   const regionClass = getRegionBackgroundClass(encounter.region);
   const [showRewards, setShowRewards] = useState(false);
   const [emptyQuote, setEmptyQuote] = useState<string>("");
+  const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
+  const [outcomeText, setOutcomeText] = useState<string | null>(null);
+  const [outcomeResources, setOutcomeResources] = useState<ResourceReward[] | null>(null);
   
-  // Check if there are any rewards
-  const hasRewards = encounter.resources && encounter.resources.length > 0;
+  // Determine the encounter type
+  const isEmptyEncounter = encounter.type === 'empty';
+  const isStoryEncounter = encounter.type === 'story';
+  
+  // For empty encounters only
+  const emptyEncounter = isEmptyEncounter ? encounter as EmptyEncounter : null;
+  const hasRewards = emptyEncounter?.resources && emptyEncounter.resources.length > 0;
+  
+  // For story encounters only
+  const storyEncounter = isStoryEncounter ? encounter as StoryEncounter : null;
   
   // Mystery quotes when no resources are found
   const emptyResourceQuotes = [
@@ -104,18 +117,41 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
     return emptyResourceQuotes[Math.floor(Math.random() * emptyResourceQuotes.length)];
   };
   
-  // Set up the quote only once when component mounts
+  // Handle selecting a choice in a story encounter
+  const handleChoiceSelect = (choice: EncounterChoice) => {
+    setSelectedChoice(choice.id);
+    setOutcomeText(choice.outcome.text);
+    setOutcomeResources(choice.outcome.resources || null);
+    
+    // Show rewards with a delay
+    setTimeout(() => setShowRewards(true), 375);
+  };
+  
+  // Handle completing the encounter
+  const handleComplete = () => {
+    // For story encounters, we need a choice ID
+    if (isStoryEncounter && selectedChoice) {
+      onComplete(selectedChoice);
+    } else {
+      onComplete();
+    }
+  };
+  
+  // Set up the quote only once when component mounts for empty encounters
   useEffect(() => {
-    if (!hasRewards) {
+    if (isEmptyEncounter && !hasRewards) {
       setEmptyQuote(getRandomEmptyQuote());
     }
-  }, [hasRewards]);
+  }, [isEmptyEncounter, hasRewards]);
   
+  // For empty encounters, show rewards after delay
   useEffect(() => {
-    // Always trigger the animation, whether there are rewards or not
-    const timer = setTimeout(() => setShowRewards(true), 0);
-    return () => clearTimeout(timer);
-  }, [hasRewards]);
+    if (isEmptyEncounter) {
+      // Always trigger the animation, whether there are rewards or not
+      const timer = setTimeout(() => setShowRewards(true), 375);
+      return () => clearTimeout(timer);
+    }
+  }, [isEmptyEncounter, hasRewards]);
   
   return (
     <div className="relative w-full">
@@ -144,48 +180,139 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
         
         <div className="mb-8 system-panel p-6">
           <p className="text-xl mb-4 leading-relaxed">{encounter.description}</p>
-          <p className="italic text-lg">{encounter.message}</p>
+          {isEmptyEncounter && emptyEncounter && (
+            <p className="italic text-lg">{emptyEncounter.message}</p>
+          )}
         </div>
         
-        {/* Always show resources section with animation */}
-        <div className={`transition-all duration-700 mb-8 ${showRewards ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-          <h2 className="text-xl font-medium mb-4 terminal-text flex items-center gap-2">
-            <AwardIcon className="h-5 w-5 text-chart-1" />
-            Discovered Resources
-          </h2>
-          <div className="system-panel p-6">
-            {hasRewards ? (
-              <div className="grid grid-cols-1 gap-4">
-                {encounter.resources!.map((reward: ResourceReward, index: number) => (
-                  <div key={index} className="flex flex-col gap-3">
-                    <div className="flex items-center gap-3 p-3 system-panel hover:bg-accent/10 transition-colors">
-                      <div className="p-2 rounded-full bg-accent/10">
-                        {getResourceIcon(reward.type)}
-                      </div>
-                      <div>
-                        <div className="text-lg font-medium">{formatResourceName(reward.type)}</div>
-                        <div className="text-muted-foreground">+{reward.amount} units</div>
-                      </div>
-                    </div>
-                    {reward.message && (
-                      <p className="text-sm italic pl-3">{reward.message}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-6">
-                <div className="text-lg text-muted-foreground mb-2">No resources acquired</div>
-                <p className="text-center italic text-sm max-w-lg">{emptyQuote}</p>
-              </div>
-            )}
+        {/* Story Encounter Choices */}
+        {isStoryEncounter && storyEncounter && !selectedChoice && (
+          <div className="mb-8">
+            <h2 className="text-xl font-medium mb-4 terminal-text flex items-center gap-2">
+              <Brain className="h-5 w-5 text-chart-2" />
+              Available Actions
+            </h2>
+            <div className="grid grid-cols-1 gap-4">
+              {storyEncounter.choices.map((choice) => (
+                <button
+                  key={choice.id}
+                  className="text-left system-panel p-4 hover:bg-accent/10 transition-all border-l-4 border-transparent hover:border-accent"
+                  onClick={() => handleChoiceSelect(choice)}
+                >
+                  <p className="text-lg font-medium">{choice.text}</p>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+        
+        {/* Story Encounter Outcome */}
+        {isStoryEncounter && selectedChoice && (
+          <div className={`transition-all duration-700 mb-8 ${outcomeText ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            <h2 className="text-xl font-medium mb-4 terminal-text flex items-center gap-2">
+              <ActivityIcon className="h-5 w-5 text-chart-3" />
+              Outcome
+            </h2>
+            <div className="system-panel p-6">
+              <p className="text-lg mb-6 leading-relaxed">{outcomeText}</p>
+              
+              {/* Resources gained from choice */}
+              {outcomeResources && outcomeResources.length > 0 && (
+                <div className={`transition-all duration-700 mt-6 ${showRewards ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+                  <h3 className="text-lg font-medium mb-4 terminal-text flex items-center gap-2">
+                    <AwardIcon className="h-5 w-5 text-chart-1" />
+                    Acquired Resources
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    {outcomeResources.map((reward: ResourceReward, index: number) => (
+                      <div key={index} className="flex flex-col gap-3">
+                        <div className="flex items-center gap-3 p-3 system-panel hover:bg-accent/10 transition-colors">
+                          <div className={`p-2 rounded-full ${
+                            reward.type === 'energy' ? 'bg-chart-1/10' : 
+                            reward.type === 'insight' ? 'bg-chart-2/10' : 
+                            reward.type === 'crew' ? 'bg-chart-3/10' : 
+                            reward.type === 'scrap' ? 'bg-chart-4/10' : 
+                            'bg-accent/10'
+                          }`}>
+                            {getResourceIcon(reward.type)}
+                          </div>
+                          <div>
+                            <div className={`text-lg font-medium ${
+                              reward.type === 'energy' ? 'text-chart-1' : 
+                              reward.type === 'insight' ? 'text-chart-2' : 
+                              reward.type === 'crew' ? 'text-chart-3' : 
+                              reward.type === 'scrap' ? 'text-chart-4' : 
+                              'text-primary'
+                            }`}>{formatResourceName(reward.type)}</div>
+                            <div className="text-muted-foreground">{reward.amount > 0 ? `+${reward.amount}` : reward.amount} units</div>
+                          </div>
+                        </div>
+                        {reward.message && (
+                          <p className="text-sm italic pl-3">{reward.message}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Empty Encounter Resources */}
+        {isEmptyEncounter && (
+          <div className={`transition-all duration-700 mb-8 ${showRewards ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            <h2 className="text-xl font-medium mb-4 terminal-text flex items-center gap-2">
+              <AwardIcon className="h-5 w-5 text-chart-1" />
+              Discovered Resources
+            </h2>
+            <div className="system-panel p-6">
+              {hasRewards ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {emptyEncounter!.resources!.map((reward: ResourceReward, index: number) => (
+                    <div key={index} className="flex flex-col gap-3">
+                      <div className="flex items-center gap-3 p-3 system-panel hover:bg-accent/10 transition-colors">
+                        <div className={`p-2 rounded-full ${
+                          reward.type === 'energy' ? 'bg-chart-1/10' : 
+                          reward.type === 'insight' ? 'bg-chart-2/10' : 
+                          reward.type === 'crew' ? 'bg-chart-3/10' : 
+                          reward.type === 'scrap' ? 'bg-chart-4/10' : 
+                          'bg-accent/10'
+                        }`}>
+                          {getResourceIcon(reward.type)}
+                        </div>
+                        <div>
+                          <div className={`text-lg font-medium ${
+                            reward.type === 'energy' ? 'text-chart-1' : 
+                            reward.type === 'insight' ? 'text-chart-2' : 
+                            reward.type === 'crew' ? 'text-chart-3' : 
+                            reward.type === 'scrap' ? 'text-chart-4' : 
+                            'text-primary'
+                          }`}>{formatResourceName(reward.type)}</div>
+                          <div className="text-muted-foreground">+{reward.amount} units</div>
+                        </div>
+                      </div>
+                      {reward.message && (
+                        <p className="text-sm italic pl-3">{reward.message}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-6">
+                  <div className="text-lg text-muted-foreground mb-2">No resources acquired</div>
+                  <p className="text-center italic text-sm max-w-lg">{emptyQuote}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         
         <div className="mt-10">
           <button 
-            onClick={onComplete}
-            className={`w-full flex items-center justify-center gap-2 system-panel py-3 px-6 hover:bg-accent/10 transition-colors ${shouldFlicker('navigation') ? 'flickering-text' : ''}`}
+            onClick={handleComplete}
+            disabled={isStoryEncounter && !selectedChoice}
+            className={`w-full flex items-center justify-center gap-2 system-panel py-3 px-6 hover:bg-accent/10 transition-colors ${shouldFlicker('navigation') ? 'flickering-text' : ''} ${isStoryEncounter && !selectedChoice ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <span className="text-lg">Continue Journey</span>
             <ChevronRightIcon className="h-5 w-5" />
