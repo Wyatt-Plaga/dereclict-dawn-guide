@@ -58,6 +58,10 @@ export class ActionSystem {
         newState = this.handleMarkLogRead(newState, action.payload.logId);
         break;
 
+      case 'MARK_ALL_LOGS_READ':
+        newState = this.handleMarkAllLogsRead(newState);
+        break;
+
       case 'SELECT_REGION': 
         newState = this.handleSelectRegion(newState, action.payload.regionId);
         break;
