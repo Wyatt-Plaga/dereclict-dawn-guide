@@ -1,5 +1,5 @@
 import { GameState, RegionType } from '../types';
-import { GameAction, GameActions, GameCategory } from '../types/actions';
+import { GameAction, GameActions, GameCategory, MakeStoryChoiceAction } from '../types/actions';
 import { GameSystemManager } from './index';
 import { UpgradeSystem } from './UpgradeSystem';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
@@ -74,8 +74,8 @@ export class ActionSystem {
         newState = this.handleCompleteEncounter(newState, action);
         break;
         
-      case 'STORY_CHOICE':
-        newState = this.handleStoryChoice(newState, action);
+      case 'MAKE_STORY_CHOICE':
+        newState = this.handleStoryChoice(newState, action as MakeStoryChoiceAction);
         break;
         
       case 'COMBAT_ACTION':
@@ -456,9 +456,9 @@ export class ActionSystem {
   }
 
   /**
-   * Handle a player's choice in a story encounter
+   * Handle a story choice action
    */
-  private handleStoryChoice(state: GameState, action: any): GameState {
+  private handleStoryChoice(state: GameState, action: MakeStoryChoiceAction): GameState {
     Logger.debug(
       LogCategory.ACTIONS,
       `Making story choice: ${action.payload?.choiceId}`,

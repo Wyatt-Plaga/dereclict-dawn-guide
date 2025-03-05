@@ -14,7 +14,7 @@ import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { ENEMY_ACTIONS, PLAYER_ACTIONS } from '@/app/game/content/combatActions';
 import { ENEMY_DEFINITIONS } from '@/app/game/content/enemies';
 import { REGION_DEFINITIONS } from '@/app/game/content/regions';
-import { ResourceSystem } from './ResourceSystem';
+import { EventBus } from '../core/EventBus';
 
 /**
  * Combat System
@@ -26,13 +26,30 @@ import { ResourceSystem } from './ResourceSystem';
  * - Combat rewards
  */
 export class CombatSystem {
-  private resourceSystem: ResourceSystem | null = null;
+  private eventBus: EventBus;
 
   /**
-   * Set the resource system reference for resource checks
+   * Constructor now takes EventBus instead of using setResourceSystem
    */
-  setResourceSystem(resourceSystem: ResourceSystem) {
-    this.resourceSystem = resourceSystem;
+  constructor(eventBus: EventBus) {
+    this.eventBus = eventBus;
+    this.setupEventListeners();
+  }
+
+  /**
+   * Set up event listeners for combat-related events
+   */
+  private setupEventListeners() {
+    // Listen for combatEncounterTriggered events from EncounterSystem
+    this.eventBus.on('combatEncounterTriggered', (data: { 
+      state: GameState, 
+      enemyId: string, 
+      regionId: RegionType 
+    }) => {
+      this.startCombatEncounter(data.state, data.enemyId, data.regionId);
+    });
+
+    // Add more event listeners as needed
   }
 
   /**
@@ -355,15 +372,40 @@ export class CombatSystem {
     }
 
     // Check resource costs
-    if (!this.resourceSystem?.hasResources(state, [action.cost])) {
-      return {
-        success: false,
-        message: `Insufficient resources: ${action.cost.amount} ${action.cost.type}.`
-      };
+    if (action.cost) {
+      // Check resources directly from state using the correct structure
+      if (action.cost.type === 'energy' && state.categories.reactor.resources.energy < action.cost.amount) {
+        return {
+          success: false,
+          message: `Insufficient resources: ${action.cost.amount} ${action.cost.type}.`
+        };
+      } else if (action.cost.type === 'insight' && state.categories.processor.resources.insight < action.cost.amount) {
+        return {
+          success: false,
+          message: `Insufficient resources: ${action.cost.amount} ${action.cost.type}.`
+        };
+      } else if (action.cost.type === 'crew' && state.categories.crewQuarters.resources.crew < action.cost.amount) {
+        return {
+          success: false,
+          message: `Insufficient resources: ${action.cost.amount} ${action.cost.type}.`
+        };
+      } else if (action.cost.type === 'scrap' && state.categories.manufacturing.resources.scrap < action.cost.amount) {
+        return {
+          success: false,
+          message: `Insufficient resources: ${action.cost.amount} ${action.cost.type}.`
+        };
+      }
     }
 
-    // Apply resource costs
-    this.resourceSystem?.consumeResources(state, [action.cost]);
+    // Apply resource costs by emitting an event
+    if (action.cost) {
+      this.eventBus.emit('resourceChange', {
+        state,
+        resourceType: action.cost.type,
+        amount: -action.cost.amount,
+        source: 'combat-action'
+      });
+    }
 
     // Set cooldown if applicable
     if (action.cooldown) {

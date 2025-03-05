@@ -13,27 +13,23 @@ import {
   getRandomEmptyEncounterTitle,
   getRandomEmptyEncounterDescription, 
   generateEmptyEncounterRewards, 
-  REGION_ENCOUNTER_CHANCES 
+  REGION_ENCOUNTER_CHANCES,
+  STORY_ENCOUNTERS,
+  getGenericStoryEncounter
 } from '../content/encounters';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
-import { GameSystemManager } from './index';
+import { EventBus } from '../core/EventBus';
 import { REGION_DEFINITIONS } from '../content/regions';
 
 /**
  * System responsible for generating and managing encounters
  */
 export class EncounterSystem {
-    private manager: GameSystemManager | null = null;
+    private eventBus: EventBus;
 
-    constructor() {
+    constructor(eventBus: EventBus) {
+        this.eventBus = eventBus;
         Logger.info(LogCategory.LIFECYCLE, 'EncounterSystem initialized', LogContext.STARTUP);
-    }
-    
-    /**
-     * Set the game system manager reference
-     */
-    setManager(manager: GameSystemManager) {
-        this.manager = manager;
     }
     
     /**
@@ -85,237 +81,27 @@ export class EncounterSystem {
      * Generate a story encounter with choices
      */
     private generateStoryEncounter(region: RegionType): StoryEncounter {
-        // Generate a story encounter based on the region
-        let title = '';
-        let description = '';
-        let choices: EncounterChoice[] = [];
+        // Get the array of story encounters for this region
+        const regionEncounters = STORY_ENCOUNTERS[region];
         
-        switch(region) {
-            case 'void':
-                title = 'Mysterious Signal';
-                description = 'Your sensors detect a faint distress signal coming from a nearby debris field. The signal appears to be automated, repeating on an old frequency not commonly used anymore.';
-                choices = [
-                    {
-                        id: uuidv4(),
-                        text: 'Investigate the signal',
-                        outcome: {
-                            resources: [{ type: 'scrap', amount: 15, message: 'You salvaged valuable components from the wreckage.' }],
-                            text: 'You navigate through the debris field and discover the remnants of an old scout ship. While the crew is long gone, you manage to salvage some valuable components before departing.',
-                            continuesToNextEncounter: true
-                        }
-                    },
-                    {
-                        id: uuidv4(),
-                        text: 'Ignore it and continue on your course',
-                        outcome: {
-                            text: 'You decide the risk isn\'t worth it and continue on your original course. The signal gradually fades as you move away from the debris field.',
-                            continuesToNextEncounter: true
-                        }
-                    },
-                    {
-                        id: uuidv4(),
-                        text: 'Scan the area thoroughly before approaching',
-                        outcome: {
-                            resources: [{ type: 'insight', amount: 10, message: 'The detailed analysis yielded valuable data.' }],
-                            text: 'Your thorough scan reveals that the signal is emanating from an old emergency beacon. While there doesn\'t appear to be anything of physical value, the data you extract from the beacon provides useful insights about this region of space.',
-                            continuesToNextEncounter: true
-                        }
-                    }
-                ];
-                break;
-                
-            case 'nebula':
-                title = 'Luminous Anomaly';
-                description = 'As you traverse the nebula, you encounter a pulsating area of unusual luminosity. Your sensors indicate high energy readings, but also potential radiation hazards.';
-                choices = [
-                    {
-                        id: uuidv4(),
-                        text: 'Collect energy samples',
-                        outcome: {
-                            resources: [{ type: 'energy', amount: 25, message: 'The energy collection was successful despite the risks.' }],
-                            text: 'You carefully navigate to the edge of the luminous area and extend your collection arrays. Despite some minor radiation exposure to your outer hull, you successfully harvest a significant amount of energy.',
-                            continuesToNextEncounter: true
-                        }
-                    },
-                    {
-                        id: uuidv4(),
-                        text: 'Study from a safe distance',
-                        outcome: {
-                            resources: [{ type: 'insight', amount: 15, message: 'The phenomenon yielded valuable scientific data.' }],
-                            text: 'You maintain a safe distance while conducting detailed scans of the phenomenon. The data collected will be valuable for understanding nebula dynamics and potentially identifying similar energy-rich regions in the future.',
-                            continuesToNextEncounter: true
-                        }
-                    },
-                    {
-                        id: uuidv4(),
-                        text: 'Plot a course around the anomaly',
-                        outcome: {
-                            text: 'You decide that the potential risks outweigh any benefits and carefully navigate around the luminous area. While you gain no immediate resources, your cautious approach ensures the safety of your crew and vessel.',
-                            continuesToNextEncounter: true
-                        }
-                    }
-                ];
-                break;
-                
-            case 'asteroid':
-                title = 'Mining Operation Remnants';
-                description = 'You come across what appears to be an abandoned mining operation on a medium-sized asteroid. Equipment has been left behind, though it\'s unclear how long ago the site was abandoned.';
-                choices = [
-                    {
-                        id: uuidv4(),
-                        text: 'Salvage the mining equipment',
-                        outcome: {
-                            resources: [{ type: 'scrap', amount: 30, message: 'The abandoned equipment provided significant salvage materials.' }],
-                            text: 'You dock with the asteroid and send a team to dismantle and retrieve the abandoned mining equipment. It\'s old but still valuable as scrap material that can be repurposed for your ship\'s needs.',
-                            continuesToNextEncounter: true
-                        }
-                    },
-                    {
-                        id: uuidv4(),
-                        text: 'Look for any remaining mineral deposits',
-                        outcome: {
-                            resources: [
-                                { type: 'energy', amount: 10, message: 'You found some energy crystals in the deeper tunnels.' },
-                                { type: 'scrap', amount: 5, message: 'You also collected some loose metal fragments.' }
-                            ],
-                            text: 'You explore the mining tunnels and discover that while most valuable deposits were extracted, the miners missed some smaller veins deeper in the asteroid. You spend some time extracting what remains before continuing your journey.',
-                            continuesToNextEncounter: true
-                        }
-                    },
-                    {
-                        id: uuidv4(),
-                        text: 'Search for clues about what happened to the miners',
-                        outcome: {
-                            resources: [{ type: 'insight', amount: 20, message: 'The logs contained valuable information about this sector.' }],
-                            text: 'You find the operations center and manage to recover some of the site logs. It appears the operation was abandoned due to corporate bankruptcy rather than any danger. The navigation and survey data you recover provides valuable insights about this asteroid field.',
-                            continuesToNextEncounter: true
-                        }
-                    }
-                ];
-                break;
-                
-            case 'deepspace':
-                title = 'Derelict Research Vessel';
-                description = 'Your long-range sensors detect a drifting vessel in the void of deep space. Initial scans indicate it\'s a research vessel that lost power several years ago. There are no life signs aboard.';
-                choices = [
-                    {
-                        id: uuidv4(),
-                        text: 'Board the vessel to search for valuable technology',
-                        outcome: {
-                            resources: [
-                                { type: 'scrap', amount: 20, message: 'You salvaged useful components from the ship systems.' },
-                                { type: 'insight', amount: 15, message: 'The research data was partially recoverable.' }
-                            ],
-                            text: 'Your boarding party explores the derelict vessel, finding it in surprisingly good condition despite years of abandonment. You manage to salvage some advanced components and partial research data before returning to your ship and continuing your journey.',
-                            continuesToNextEncounter: true
-                        }
-                    },
-                    {
-                        id: uuidv4(),
-                        text: 'Attempt to remotely access their computer systems',
-                        outcome: {
-                            resources: [{ type: 'insight', amount: 30, message: 'You successfully extracted the complete research database.' }],
-                            text: 'Rather than risking a boarding operation, you establish a remote connection to the vessel\'s systems. After bypassing several security measures, you manage to download their complete research database, which contains valuable scientific insights.',
-                            continuesToNextEncounter: true
-                        }
-                    },
-                    {
-                        id: uuidv4(),
-                        text: 'Tow the vessel to the nearest station for a salvage bounty',
-                        outcome: {
-                            resources: [{ type: 'energy', amount: -10, message: 'The towing operation consumed some energy reserves.' }],
-                            text: 'You decide to attach tow cables and bring the vessel to the nearest station for a proper salvage operation. Unfortunately, the nearest station is farther than expected, and the towing operation consumes some of your energy reserves without immediate compensation.',
-                            continuesToNextEncounter: true
-                        }
-                    }
-                ];
-                break;
-                
-            case 'blackhole':
-                title = 'Gravitational Lens Observatory';
-                description = 'You discover the remains of a scientific outpost positioned to use the black hole as a gravitational lens for deep space observation. The facility appears to have been hastily evacuated.';
-                choices = [
-                    {
-                        id: uuidv4(),
-                        text: 'Recover the observational data',
-                        outcome: {
-                            resources: [{ type: 'insight', amount: 40, message: 'The astronomical data is extremely valuable.' }],
-                            text: 'You manage to extract the storage drives containing years of observational data. This information provides exceptional insights into distant cosmic phenomena that would be impossible to observe without the black hole\'s gravitational lensing effect.',
-                            continuesToNextEncounter: true
-                        }
-                    },
-                    {
-                        id: uuidv4(),
-                        text: 'Salvage the advanced scientific equipment',
-                        outcome: {
-                            resources: [
-                                { type: 'scrap', amount: 25, message: 'The specialized equipment contained valuable materials.' },
-                                { type: 'energy', amount: 15, message: 'You salvaged some power cells that were still charged.' }
-                            ],
-                            text: 'You carefully dismantle and retrieve the specialized observation equipment. The advanced materials and components will be valuable for upgrades to your own systems, and you even find some auxiliary power cells that still hold a charge.',
-                            continuesToNextEncounter: true
-                        }
-                    },
-                    {
-                        id: uuidv4(),
-                        text: 'Use the observatory\'s position for your own observations',
-                        outcome: {
-                            resources: [{ type: 'insight', amount: 20, message: 'Your brief observations yielded interesting data.' }],
-                            text: 'Rather than salvaging, you temporarily power up the observatory\'s systems and conduct your own observations through the gravitational lens. The brief session provides some valuable insights before you move on.',
-                            continuesToNextEncounter: true
-                        }
-                    }
-                ];
-                break;
-                
-            default:
-                // Fallback story for any other regions
-                title = 'Strange Encounter';
-                description = 'As you navigate through this region, you encounter something unusual that catches your attention.';
-                choices = [
-                    {
-                        id: uuidv4(),
-                        text: 'Investigate closely',
-                        outcome: {
-                            resources: [{ type: 'insight', amount: 10, message: 'Your curiosity was rewarded with new knowledge.' }],
-                            text: 'Your curiosity leads you to investigate more closely, yielding some interesting insights before you continue on your journey.',
-                            continuesToNextEncounter: true
-                        }
-                    },
-                    {
-                        id: uuidv4(),
-                        text: 'Observe from a distance',
-                        outcome: {
-                            text: 'You decide to observe from a safe distance, gathering what information you can before resuming your course.',
-                            continuesToNextEncounter: true
-                        }
-                    },
-                    {
-                        id: uuidv4(),
-                        text: 'Ignore and continue on your path',
-                        outcome: {
-                            text: 'You decide that whatever it is doesn\'t warrant further attention and continue on your planned route without delay.',
-                            continuesToNextEncounter: true
-                        }
-                    }
-                ];
+        // If there are no encounters defined for this region, use the generic encounter
+        if (!regionEncounters || regionEncounters.length === 0) {
+            return getGenericStoryEncounter(region);
         }
         
-        return {
-            id: uuidv4(),
-            type: 'story',
-            title,
-            description,
-            region,
-            choices
-        };
+        // Select a random encounter from the available ones for this region
+        const randomIndex = Math.floor(Math.random() * regionEncounters.length);
+        
+        // Deep clone the encounter to avoid mutating the original data
+        // This ensures that we don't reuse the same ID if this encounter is selected again
+        return JSON.parse(JSON.stringify(regionEncounters[randomIndex]));
     }
     
     /**
      * Apply rewards from an encounter to the game state
      */
     applyRewards(state: GameState, rewards: ResourceReward[]): GameState {
-        console.log('Applying rewards:', rewards);
+        Logger.info(LogCategory.RESOURCES, 'Applying encounter rewards', LogContext.NONE);
         
         // Create a copy of the state to modify
         const newState = { ...state };
@@ -324,44 +110,36 @@ export class EncounterSystem {
         rewards.forEach(reward => {
             const { type, amount } = reward;
             
-            // Handle different resource types
+            // Emit an event for resource changes instead of directly modifying the state
+            this.eventBus.emit('resourceChange', {
+                state: newState,
+                resourceType: type,
+                amount: amount,
+                source: 'encounter'
+            });
+            
+            // Log the resource changes
             switch (type) {
                 case 'energy':
-                    newState.categories.reactor.resources.energy = Math.min(
-                        newState.categories.reactor.resources.energy + amount,
-                        newState.categories.reactor.stats.energyCapacity
-                    );
-                    console.log(`Added ${amount} energy`);
+                    Logger.debug(LogCategory.RESOURCES, `Added ${amount} energy from encounter`, LogContext.NONE);
                     break;
                     
                 case 'insight':
-                    newState.categories.processor.resources.insight = Math.min(
-                        newState.categories.processor.resources.insight + amount,
-                        newState.categories.processor.stats.insightCapacity
-                    );
-                    console.log(`Added ${amount} insight`);
+                    Logger.debug(LogCategory.RESOURCES, `Added ${amount} insight from encounter`, LogContext.NONE);
                     break;
                     
                 case 'crew':
                     if (amount >= 1) {
-                        newState.categories.crewQuarters.resources.crew = Math.min(
-                            newState.categories.crewQuarters.resources.crew + Math.floor(amount),
-                            newState.categories.crewQuarters.stats.crewCapacity
-                        );
-                        console.log(`Added ${Math.floor(amount)} crew`);
+                        Logger.debug(LogCategory.RESOURCES, `Added ${Math.floor(amount)} crew from encounter`, LogContext.NONE);
                     }
                     break;
                     
                 case 'scrap':
-                    newState.categories.manufacturing.resources.scrap = Math.min(
-                        newState.categories.manufacturing.resources.scrap + amount,
-                        newState.categories.manufacturing.stats.scrapCapacity
-                    );
-                    console.log(`Added ${amount} scrap`);
+                    Logger.debug(LogCategory.RESOURCES, `Added ${amount} scrap from encounter`, LogContext.NONE);
                     break;
                     
                 default:
-                    console.warn(`Unknown reward type: ${type}`);
+                    Logger.warn(LogCategory.RESOURCES, `Unknown resource type: ${type}`, LogContext.NONE);
             }
         });
         
@@ -438,9 +216,13 @@ export class EncounterSystem {
             // Generate a random enemy from the region
             const enemyId = this.generateRandomEnemyForRegion(regionId);
             
-            if (enemyId && this.manager && this.manager.combat) {
-                // Start the combat encounter using the CombatSystem
-                this.manager.combat.startCombatEncounter(newState, enemyId, regionId);
+            if (enemyId) {
+                // Instead of directly calling CombatSystem, emit an event
+                this.eventBus.emit('combatEncounterTriggered', {
+                    state: newState,
+                    enemyId: enemyId,
+                    regionId: regionId
+                });
                 
                 // Mark the encounter as completed, but combat as active
                 // This will clear the encounter and allow the combat to be handled by the battle page
@@ -470,8 +252,17 @@ export class EncounterSystem {
                         }
                     ];
                 
-                // Return the updated state with combat active
-                return newState;
+                Logger.info(
+                    LogCategory.COMBAT,
+                    `Combat initiated with enemy: ${enemyId} in region: ${regionId}`,
+                    LogContext.COMBAT
+                );
+            } else {
+                Logger.error(
+                    LogCategory.COMBAT,
+                    `Failed to generate enemy for region: ${regionId}`,
+                    LogContext.COMBAT
+                );
             }
         }
         

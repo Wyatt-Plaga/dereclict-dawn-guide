@@ -63,7 +63,7 @@ export class GameEngine {
         this.eventBus = new EventBus();
         
         // Initialize game systems
-        this.systems = new GameSystemManager();
+        this.systems = new GameSystemManager(this.eventBus);
         
         // Initialize save system
         this.saveSystem = new SaveSystem();
