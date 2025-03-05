@@ -14,13 +14,16 @@
 - [Data Flow](#data-flow)
 - [State Persistence](#state-persistence)
   - [Memory Caching](#memory-caching)
+  - [URL-Based State Persistence](#url-based-state-persistence)
   - [Loading States](#loading-states)
 - [Logging System](#logging-system)
+- [Action Type System](#action-type-system)
 - [Encounter System](#encounter-system)
   - [Encounter Types](#encounter-types)
   - [Encounter Generation](#encounter-generation)
   - [Region Integration](#region-integration)
   - [Story Choices and Outcomes](#story-choices-and-outcomes)
+  - [Encounter State Persistence](#encounter-state-persistence)
   - [UI Components](#encounter-ui-components)
 - [Combat System](#combat-system)
   - [Combat Architecture](#combat-architecture)
@@ -218,6 +221,7 @@ The React integration centers around the `GameProvider` component and `useGame` 
    - Provides game state and dispatch function to React components
    - Handles loading states during initialization
    - Manages the memory cache for persistent state during navigation
+   - Triggers state persistence when critical state changes occur
 
 2. **useGame Hook**:
    - Custom hook for accessing game state and actions
@@ -253,6 +257,13 @@ useEffect(() => {
         unsubscribe();
     };
 }, []);
+
+// Automatic state persistence for critical state changes
+useEffect(() => {
+  if (state.encounters && (state.encounters.active || state.encounters.encounter)) {
+    engineRef.current.saveGame();
+  }
+}, [state.encounters]);
 ```
 
 ### UI Components
@@ -304,45 +315,76 @@ The game implements several mechanisms for state persistence to ensure a smooth 
 
 To maintain game state during navigation between different pages within the application, a memory caching system is implemented:
 
-1. **In-Memory Cache**: A singleton memory cache stores the game state when navigating between pages
-2. **Game Engine Integration**: The game engine checks for cached state during initialization
-3. **Navigation Persistence**: State is preserved when users navigate between different game areas
+1. **Module-Level Cache**: A singleton variable that persists between React render cycles
+2. **Window-Level Cache**: A backup cache stored in the window object for improved resilience
+3. **Game Engine Integration**: The game engine checks for cached state during initialization
+4. **Navigation Persistence**: State is preserved when users navigate between different game areas
 
 ```typescript
 // Memory cache implementation
-// Location: app/game/core/MemoryCache.ts
-export class MemoryCache {
-  private static instance: MemoryCache;
-  private cache: Record<string, any> = {};
-
-  static getInstance(): MemoryCache {
-    if (!MemoryCache.instance) {
-      MemoryCache.instance = new MemoryCache();
-    }
-    return MemoryCache.instance;
-  }
-
-  set(key: string, value: any): void {
-    this.cache[key] = value;
-  }
-
-  get(key: string): any {
-    return this.cache[key];
-  }
-
-  has(key: string): boolean {
-    return key in this.cache;
-  }
-
-  clear(key?: string): void {
-    if (key) {
-      delete this.cache[key];
-    } else {
-      this.cache = {};
-    }
+// Location: app/game/core/memoryCache.ts
+// Cache the current game state for quick access
+export function cacheState(state: GameState): void {
+  // Store in module-level variable for in-app navigation
+  cachedGameState = JSON.parse(JSON.stringify(state));
+  
+  // Also store in window object for more resilience
+  if (typeof window !== 'undefined') {
+    // @ts-ignore
+    window.__GAME_STATE_CACHE__ = JSON.parse(JSON.stringify(state));
   }
 }
+
+// Get the cached game state, if available
+export function getCachedState(): GameState | null {
+  return cachedGameState;
+}
 ```
+
+This caching mechanism works well for normal navigation but has limitations for full page refreshes or when the user closes and reopens the browser.
+
+### URL-Based State Persistence
+
+To ensure critical game state survives across page refreshes, the application implements a URL-based persistence strategy for certain state elements:
+
+1. **Encounter ID in URL**: The encounter ID is maintained in the URL parameters, allowing the application to restore the exact encounter after a page refresh.
+2. **ID-Based State Restoration**: When loading the encounter page, the application checks for an encounter ID in the URL and attempts to restore that specific encounter.
+3. **Navigation Integration**: The navigation system updates URL parameters when transitioning between pages, ensuring state continuity.
+
+```tsx
+// Location: app/encounter/page.tsx
+// Example of URL-based encounter state persistence
+const EncounterPage: React.FC = () => {
+  const { state, dispatch } = useGame();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const encounterId = searchParams.get('id');
+  
+  // Restore encounter from URL parameter
+  useEffect(() => {
+    if (encounterId && !state.encounters.active) {
+      // Try to find and restore the encounter with this ID
+      if (state.encounters.encounter?.id === encounterId) {
+        dispatch({
+          type: 'SET_ENCOUNTER_ACTIVE',
+          payload: { active: true }
+        });
+      }
+    }
+  }, [encounterId, state.encounters, dispatch]);
+  
+  // Update URL when encounter changes
+  useEffect(() => {
+    if (state.encounters.active && state.encounters.encounter) {
+      router.replace(`/encounter?id=${state.encounters.encounter.id}`);
+    }
+  }, [state.encounters.active, state.encounters.encounter, router]);
+  
+  // ... rest of component
+};
+```
+
+This approach complements the memory cache by providing a fallback mechanism when the cache might be lost (such as during a hard refresh).
 
 ### Loading States
 
@@ -393,6 +435,84 @@ Logger.debug(
   LogContext.REACTOR_LIFECYCLE
 );
 ```
+
+## Action Type System
+
+The application maintains a strict contract between action definitions and their handlers to ensure type safety and prevent runtime errors.
+
+### Action Type Registry
+
+All action types are defined in a central registry file as TypeScript interfaces:
+
+```typescript
+// Location: app/game/types/actions.ts
+// Action type definitions
+export interface CompleteEncounterAction extends GameAction {
+  type: 'COMPLETE_ENCOUNTER';
+  payload?: {
+    choiceId?: string;
+  };
+}
+
+export interface MakeStoryChoiceAction extends GameAction {
+  type: 'MAKE_STORY_CHOICE';
+  payload: {
+    choiceId: string;
+  };
+}
+
+export interface SetEncounterActiveAction extends GameAction {
+  type: 'SET_ENCOUNTER_ACTIVE';
+  payload: {
+    active: boolean;
+  };
+}
+
+// Union type of all possible actions
+export type GameActions = 
+  | ClickResourceAction
+  | PurchaseUpgradeAction
+  | CompleteEncounterAction
+  | MakeStoryChoiceAction
+  | SetEncounterActiveAction
+  // ... other action types
+```
+
+### Action Handler Mapping
+
+The ActionSystem maps these action types to their corresponding handler methods:
+
+```typescript
+// Location: app/game/systems/ActionSystem.ts
+// Action handler mapping in the switch statement
+processAction(state: GameState, action: GameAction): GameState {
+  switch (action.type) {
+    case 'CLICK_RESOURCE':
+      return this.handleResourceClick(state, action);
+      
+    case 'COMPLETE_ENCOUNTER':
+      return this.handleCompleteEncounter(state, action);
+      
+    case 'MAKE_STORY_CHOICE':
+      return this.handleStoryChoice(state, action);
+      
+    case 'SET_ENCOUNTER_ACTIVE':
+      return this.handleSetEncounterActive(state, action);
+      
+    // ... other action handlers
+    
+    default:
+      Logger.warn(
+        LogCategory.ACTIONS,
+        `Unknown action type: ${action.type}`,
+        LogContext.NONE
+      );
+      return state;
+  }
+}
+```
+
+This structured approach prevents runtime errors by ensuring that all action types are properly handled and that action payloads match the expected structure.
 
 ## Encounter System
 
@@ -513,6 +633,66 @@ private handleStoryChoice(state: GameState, action: MakeStoryChoiceAction) {
   }
 }
 ```
+
+### Encounter State Persistence
+
+Encounter state persistence is critical for maintaining game continuity across page refreshes and navigation. The game implements a robust approach to ensure encounter state is reliably maintained:
+
+1. **Unique Encounter IDs**: Each encounter is assigned a unique ID when generated.
+2. **URL Parameter Integration**: The encounter ID is stored in the URL parameters.
+3. **State Restoration**: When the encounter page loads, it attempts to restore the encounter from the ID in the URL.
+4. **History Tracking**: Completed encounters are tracked in an encounter history array.
+
+```typescript
+// Location: app/game/systems/EncounterSystem.ts
+// Adding encounters to history when completed
+completeEncounter(state: GameState, choiceId?: string): GameState {
+  // ... handle encounter completion logic
+  
+  // Add to encounter history
+  newState.encounters.history = [
+    ...newState.encounters.history,
+    {
+      id: encounter.id,
+      type: encounter.type,
+      result: choiceId || 'completed',
+      date: Date.now(),
+      region: encounter.region
+    }
+  ];
+  
+  // Clear the active encounter
+  newState.encounters.active = false;
+  newState.encounters.encounter = undefined;
+  
+  return newState;
+}
+```
+
+The navigation flow ensures that the encounter ID is preserved:
+
+```typescript
+// Location: app/navigation/page.tsx
+// Initiating a jump and preserving encounter ID
+const initiateJump = () => {
+  // Set a pending jump flag
+  setPendingJump(true);
+  
+  // Dispatch action to generate encounter
+  dispatch({ type: 'INITIATE_JUMP' });
+};
+
+// Monitor for generated encounter and navigate
+useEffect(() => {
+  if (pendingJump && state.encounters.active && state.encounters.encounter) {
+    // Navigate to encounter page with ID
+    router.push(`/encounter?id=${state.encounters.encounter.id}`);
+    setPendingJump(false);
+  }
+}, [state.encounters, pendingJump, router]);
+```
+
+This approach ensures that even if the page is refreshed, the encounter state can be restored from the URL parameter.
 
 ### Encounter UI Components
 
@@ -956,6 +1136,7 @@ The architecture employs several design patterns:
 3. **Strategy Pattern**: Different game systems implement specialized strategies for handling different aspects of gameplay
 4. **Factory Pattern**: The GameSystemManager acts as a factory for creating and managing game systems
 5. **Command Pattern**: Game actions follow the command pattern, encapsulating requests as objects
+6. **URL-Based State Preservation**: The application uses URL parameters to preserve critical state across page refreshes
 
 ## Future Considerations
 
@@ -970,4 +1151,4 @@ The current architecture supports several potential extensions:
 
 ---
 
-This document provides an overview of the architecture as of March 24, 2024. As the game evolves, this architecture may be refined and extended to meet new requirements. 
+This document provides an overview of the architecture as of April 5, 2024. As the game evolves, this architecture may be refined and extended to meet new requirements. 
