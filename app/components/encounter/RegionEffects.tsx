@@ -27,7 +27,7 @@ const RegionEffects: React.FC<RegionEffectsProps> = ({ region }) => {
   const regionClass = getRegionBackgroundClass(region);
   
   return (
-    <div className="absolute inset-0 -m-4 md:-m-8 z-0 overflow-hidden opacity-20">
+    <div className="absolute inset-0 -m-4 md:-m-8 z-0 overflow-hidden opacity-30">
       <div className={`${region === 'nebula' ? 'nebula-effect' : 
                    region === 'blackhole' ? 'blackhole-effect' : 
                    region === 'asteroid' ? 'asteroid-effect' : 

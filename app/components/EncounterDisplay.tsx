@@ -94,9 +94,13 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
           <button 
             onClick={handleComplete}
             disabled={isStoryEncounter && !selectedChoice}
-            className={`w-full flex items-center justify-center gap-2 system-panel py-3 px-6 hover:bg-accent/10 transition-colors ${shouldFlicker('navigation') ? 'flickering-text' : ''} ${isStoryEncounter && !selectedChoice ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`w-full flex items-center justify-center gap-2 system-panel py-3 px-6 transition-all ${
+              isCombatEncounter 
+                ? 'bg-red-900/40 hover:bg-red-800/50 text-red-100 border-red-700/50' 
+                : 'hover:bg-accent/20'
+            } ${shouldFlicker('navigation') ? 'flickering-text' : ''} ${isStoryEncounter && !selectedChoice ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <span className="text-lg">
+            <span className={`text-lg font-medium ${isCombatEncounter ? 'text-red-100' : ''}`}>
               {isCombatEncounter ? 'All Hands to Battle Stations!' : 'Continue Journey'}
             </span>
             <ChevronRightIcon className="h-5 w-5" />

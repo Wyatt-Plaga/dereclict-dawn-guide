@@ -41,16 +41,38 @@ const EncounterHeader: React.FC<EncounterHeaderProps> = ({ title, region, type }
   return (
     <div className="flex items-center gap-3 mb-8 border-b border-accent/30 pb-4">
       {regionIcon}
-      <div>
-        <h1 className={`text-3xl font-bold mb-1 ${shouldFlicker('encounters') ? 'flickering-text' : ''}`}>
+      <div className="flex-1">
+        <h1 className={`text-3xl font-bold mb-1 ${shouldFlicker('encounters') ? 'flickering-text' : ''} ${
+          region === 'void' ? 'text-slate-300' :
+          region === 'nebula' ? 'text-indigo-300' :
+          region === 'asteroid' ? 'text-amber-300' :
+          region === 'deepspace' ? 'text-blue-300' :
+          region === 'blackhole' ? 'text-zinc-300' : 'text-slate-300'
+        }`} style={{
+          textShadow: shouldFlicker('encounters') ? 'none' : `0 0 10px ${
+            region === 'void' ? 'rgba(203, 213, 225, 0.5)' :
+            region === 'nebula' ? 'rgba(165, 180, 252, 0.5)' :
+            region === 'asteroid' ? 'rgba(251, 191, 36, 0.5)' :
+            region === 'deepspace' ? 'rgba(96, 165, 250, 0.5)' :
+            region === 'blackhole' ? 'rgba(212, 212, 216, 0.5)' : 'rgba(203, 213, 225, 0.5)'
+          }`
+        }}>
           {title}
         </h1>
-        <div className="flex items-center text-sm text-muted-foreground">
-          <span>Region: {region.charAt(0).toUpperCase() + region.slice(1)}</span>
+        <div className="flex items-center text-sm">
+          <span className={`px-2 py-1 rounded-md ${
+            region === 'void' ? 'bg-slate-800 text-slate-300' :
+            region === 'nebula' ? 'bg-indigo-900 text-indigo-300' :
+            region === 'asteroid' ? 'bg-amber-900 text-amber-300' :
+            region === 'deepspace' ? 'bg-blue-900 text-blue-300' :
+            region === 'blackhole' ? 'bg-zinc-900 text-zinc-300' : 'bg-slate-800 text-slate-300'
+          }`}>
+            Region: {region.charAt(0).toUpperCase() + region.slice(1)}
+          </span>
           
           {/* Display combat badge for combat encounters */}
           {isCombatEncounter && (
-            <div className="ml-3 flex items-center text-red-500">
+            <div className="ml-3 flex items-center bg-red-900/60 text-red-300 px-2 py-1 rounded-md border border-red-700 animate-pulse">
               <Sword className="h-4 w-4 mr-1" />
               <span>Combat</span>
             </div>
