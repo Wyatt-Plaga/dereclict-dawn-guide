@@ -103,16 +103,13 @@ export class EncounterSystem {
     applyRewards(state: GameState, rewards: ResourceReward[]): GameState {
         Logger.info(LogCategory.RESOURCES, 'Applying encounter rewards', LogContext.NONE);
         
-        // Create a copy of the state to modify
-        const newState = { ...state };
-        
         // Apply each reward
         rewards.forEach(reward => {
             const { type, amount } = reward;
             
             // Emit an event for resource changes instead of directly modifying the state
             this.eventBus.emit('resourceChange', {
-                state: newState,
+                state: state,
                 resourceType: type,
                 amount: amount,
                 source: 'encounter'
@@ -143,7 +140,7 @@ export class EncounterSystem {
             }
         });
         
-        return newState;
+        return state;
     }
     
     /**
@@ -165,9 +162,6 @@ export class EncounterSystem {
             return state;
         }
         
-        // Create a copy of the state to modify
-        let newState = { ...state };
-        
         // Get the current encounter
         const encounter = state.encounters.encounter;
         
@@ -175,7 +169,7 @@ export class EncounterSystem {
         if (encounter.type === 'empty') {
             const emptyEncounter = encounter as EmptyEncounter;
             if (emptyEncounter.resources && emptyEncounter.resources.length > 0) {
-                newState = this.applyRewards(newState, emptyEncounter.resources);
+                this.applyRewards(state, emptyEncounter.resources);
             }
         } else if (encounter.type === 'story') {
             const storyEncounter = encounter as StoryEncounter;
@@ -195,7 +189,7 @@ export class EncounterSystem {
             
             // Apply rewards from the outcome if any
             if (selectedChoice.outcome.resources && selectedChoice.outcome.resources.length > 0) {
-                newState = this.applyRewards(newState, selectedChoice.outcome.resources);
+                this.applyRewards(state, selectedChoice.outcome.resources);
             }
         } else if (encounter.type === 'combat') {
             // Combat encounters will be handled by the CombatSystem
@@ -219,44 +213,43 @@ export class EncounterSystem {
             if (enemyId) {
                 // Instead of directly calling CombatSystem, emit an event
                 this.eventBus.emit('combatEncounterTriggered', {
-                    state: newState,
+                    state: state,
                     enemyId: enemyId,
                     regionId: regionId
                 });
                 
                 // Mark the encounter as completed, but combat as active
                 // This will clear the encounter and allow the combat to be handled by the battle page
-                newState.encounters.active = false;
-                newState.encounters.encounter = undefined;
-                newState.combat.active = true;
+                state.encounters.active = false;
+                state.encounters.encounter = undefined;
+                state.combat.active = true;
                 
                 // Add to encounter history
-                newState.encounters.history = Array.isArray(newState.encounters.history) 
-                    ? [
-                        ...newState.encounters.history,
-                        {
-                            id: encounter.id,
-                            type: encounter.type,
-                            result: 'initiated',
-                            date: Date.now(),
-                            region: encounter.region
-                        }
-                    ]
-                    : [
-                        {
-                            id: encounter.id,
-                            type: encounter.type,
-                            result: 'initiated',
-                            date: Date.now(),
-                            region: encounter.region
-                        }
-                    ];
+                if (Array.isArray(state.encounters.history)) {
+                    state.encounters.history.push({
+                        id: encounter.id,
+                        type: encounter.type,
+                        result: 'initiated',
+                        date: Date.now(),
+                        region: encounter.region
+                    });
+                } else {
+                    state.encounters.history = [{
+                        id: encounter.id,
+                        type: encounter.type,
+                        result: 'initiated',
+                        date: Date.now(),
+                        region: encounter.region
+                    }];
+                }
                 
                 Logger.info(
                     LogCategory.COMBAT,
                     `Combat initiated with enemy: ${enemyId} in region: ${regionId}`,
                     LogContext.COMBAT
                 );
+                
+                return state;
             } else {
                 Logger.error(
                     LogCategory.COMBAT,
@@ -267,32 +260,29 @@ export class EncounterSystem {
         }
         
         // Add to encounter history
-        newState.encounters.history = Array.isArray(newState.encounters.history) 
-          ? [
-              ...newState.encounters.history,
-              {
-                  id: encounter.id,
-                  type: encounter.type,
-                  result: choiceId || 'completed',
-                  date: Date.now(),
-                  region: encounter.region
-              }
-            ]
-          : [
-              {
-                  id: encounter.id,
-                  type: encounter.type,
-                  result: choiceId || 'completed',
-                  date: Date.now(),
-                  region: encounter.region
-              }
-            ];
+        if (Array.isArray(state.encounters.history)) {
+            state.encounters.history.push({
+                id: encounter.id,
+                type: encounter.type,
+                result: choiceId || 'completed',
+                date: Date.now(),
+                region: encounter.region
+            });
+        } else {
+            state.encounters.history = [{
+                id: encounter.id,
+                type: encounter.type,
+                result: choiceId || 'completed',
+                date: Date.now(),
+                region: encounter.region
+            }];
+        }
         
         // Clear the active encounter
-        newState.encounters.active = false;
-        newState.encounters.encounter = undefined;
+        state.encounters.active = false;
+        state.encounters.encounter = undefined;
         
-        return newState;
+        return state;
     }
 
     // Add a new method for generating combat encounters

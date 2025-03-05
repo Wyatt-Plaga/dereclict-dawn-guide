@@ -898,19 +898,16 @@ export class CombatSystem {
       LogContext.COMBAT
     );
     
-    // Create a copy of the state to modify
-    const newState = { ...state };
-    
     // Apply a resource penalty for retreating (e.g., lose 25% of resources)
     // This makes retreat a viable but costly option
     const retreatPenalty = 0.25; // 25% resource loss
     
     // Apply the penalty to all resource categories
     // Reactor - Energy
-    if (newState.categories.reactor && newState.categories.reactor.resources) {
-      const currentEnergy = newState.categories.reactor.resources.energy;
+    if (state.categories.reactor && state.categories.reactor.resources) {
+      const currentEnergy = state.categories.reactor.resources.energy;
       const penaltyAmount = Math.floor(currentEnergy * retreatPenalty);
-      newState.categories.reactor.resources.energy = Math.max(0, currentEnergy - penaltyAmount);
+      state.categories.reactor.resources.energy = Math.max(0, currentEnergy - penaltyAmount);
       
       Logger.debug(
         LogCategory.COMBAT,
@@ -920,10 +917,10 @@ export class CombatSystem {
     }
 
     // Processor - Insight
-    if (newState.categories.processor && newState.categories.processor.resources) {
-      const currentInsight = newState.categories.processor.resources.insight;
+    if (state.categories.processor && state.categories.processor.resources) {
+      const currentInsight = state.categories.processor.resources.insight;
       const penaltyAmount = Math.floor(currentInsight * retreatPenalty);
-      newState.categories.processor.resources.insight = Math.max(0, currentInsight - penaltyAmount);
+      state.categories.processor.resources.insight = Math.max(0, currentInsight - penaltyAmount);
       
       Logger.debug(
         LogCategory.COMBAT,
@@ -933,10 +930,10 @@ export class CombatSystem {
     }
 
     // Crew Quarters - Crew
-    if (newState.categories.crewQuarters && newState.categories.crewQuarters.resources) {
-      const currentCrew = newState.categories.crewQuarters.resources.crew;
+    if (state.categories.crewQuarters && state.categories.crewQuarters.resources) {
+      const currentCrew = state.categories.crewQuarters.resources.crew;
       const penaltyAmount = Math.floor(currentCrew * retreatPenalty);
-      newState.categories.crewQuarters.resources.crew = Math.max(0, currentCrew - penaltyAmount);
+      state.categories.crewQuarters.resources.crew = Math.max(0, currentCrew - penaltyAmount);
       
       Logger.debug(
         LogCategory.COMBAT,
@@ -946,10 +943,10 @@ export class CombatSystem {
     }
 
     // Manufacturing - Scrap
-    if (newState.categories.manufacturing && newState.categories.manufacturing.resources) {
-      const currentScrap = newState.categories.manufacturing.resources.scrap;
+    if (state.categories.manufacturing && state.categories.manufacturing.resources) {
+      const currentScrap = state.categories.manufacturing.resources.scrap;
       const penaltyAmount = Math.floor(currentScrap * retreatPenalty);
-      newState.categories.manufacturing.resources.scrap = Math.max(0, currentScrap - penaltyAmount);
+      state.categories.manufacturing.resources.scrap = Math.max(0, currentScrap - penaltyAmount);
       
       Logger.debug(
         LogCategory.COMBAT,
@@ -959,51 +956,44 @@ export class CombatSystem {
     }
     
     // Update the combat state to reflect the retreat
-    newState.combat = {
-      ...newState.combat,
-      active: false,
-      encounterCompleted: true,
-      outcome: 'retreat',
-      battleLog: [
-        ...newState.combat.battleLog,
-        {
-          id: uuidv4(),
-          text: 'You retreated from combat, losing 25% of your resources in the hasty escape.',
-          type: 'SYSTEM',
-          timestamp: Date.now()
-        }
-      ]
-    };
+    state.combat.active = false;
+    state.combat.encounterCompleted = true;
+    state.combat.outcome = 'retreat';
+    
+    // Add a new log entry
+    state.combat.battleLog.push({
+      id: uuidv4(),
+      text: 'You retreated from combat, losing 25% of your resources in the hasty escape.',
+      type: 'SYSTEM',
+      timestamp: Date.now()
+    });
     
     // If there's an active encounter, mark it as completed
-    if (newState.encounters.active && newState.encounters.encounter) {
+    if (state.encounters.active && state.encounters.encounter) {
       // Add to encounter history
-      newState.encounters.history = Array.isArray(newState.encounters.history) 
-        ? [
-            ...newState.encounters.history,
-            {
-              id: newState.encounters.encounter.id,
-              type: newState.encounters.encounter.type,
-              result: 'retreat',
-              date: Date.now(),
-              region: newState.encounters.encounter.region
-            }
-          ]
-        : [
-            {
-              id: newState.encounters.encounter.id,
-              type: newState.encounters.encounter.type,
-              result: 'retreat',
-              date: Date.now(),
-              region: newState.encounters.encounter.region
-            }
-          ];
+      if (Array.isArray(state.encounters.history)) {
+        state.encounters.history.push({
+          id: state.encounters.encounter.id,
+          type: state.encounters.encounter.type,
+          result: 'retreat',
+          date: Date.now(),
+          region: state.encounters.encounter.region
+        });
+      } else {
+        state.encounters.history = [{
+          id: state.encounters.encounter.id,
+          type: state.encounters.encounter.type,
+          result: 'retreat',
+          date: Date.now(),
+          region: state.encounters.encounter.region
+        }];
+      }
       
       // Clear the active encounter
-      newState.encounters.active = false;
-      newState.encounters.encounter = undefined;
+      state.encounters.active = false;
+      state.encounters.encounter = undefined;
     }
     
-    return newState;
+    return state;
   }
 } 

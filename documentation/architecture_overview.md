@@ -12,6 +12,7 @@
   - [GameProvider & useGame Hook](#gameprovider--usegame-hook)
   - [UI Components](#ui-components)
 - [Data Flow](#data-flow)
+- [State Mutation Pattern](#state-mutation-pattern)
 - [State Persistence](#state-persistence)
   - [Memory Caching](#memory-caching)
   - [Loading States](#loading-states)
@@ -145,10 +146,13 @@ The game employs a modular system architecture with specialized systems for diff
 3. **ActionSystem**: Processes player actions (clicks, purchases)
 4. **GameSystemManager**: Coordinates all systems and provides a unified interface
 
+Each system directly mutates the game state object passed to it, following the direct mutation pattern used throughout the codebase.
+
 This approach allows for:
 - Separation of concerns
 - Easier testing and maintenance
 - Modular extension of game features
+- Consistent state mutation patterns
 
 ```typescript
 // Example from GameSystemManager
@@ -165,11 +169,13 @@ export class GameSystemManager {
     }
     
     // Update all systems with the current delta time
+    // Each system directly mutates the state object
     update(state: GameState, delta: number) {
         this.resource.update(state, delta);
     }
     
     // Process player actions by delegating to the ActionSystem
+    // ActionSystem directly mutates the state object
     processAction(state: GameState, action: GameAction) {
         this.action.process(state, action, this.upgrade);
     }
@@ -295,6 +301,66 @@ The data flow in the application follows a unidirectional pattern:
 9. React Context Update → **UI Component Re-render**
 
 This unidirectional flow ensures predictable state updates and clear data paths through the application.
+
+## State Mutation Pattern
+
+The application uses a direct state mutation pattern throughout all systems. This architectural decision has been made for simplicity and performance reasons:
+
+1. **Direct Mutation**: All game systems directly modify the state object that is passed to them rather than creating and returning new state objects.
+
+```typescript
+// Example of the direct mutation pattern used throughout the codebase
+update(state: GameState, delta: number) {
+  // Direct mutation of state properties
+  state.categories.reactor.resources.energy.amount += state.categories.reactor.stats.energyPerTick * delta;
+  
+  // Enforce resource caps
+  if (state.categories.reactor.resources.energy.amount > state.categories.reactor.stats.energyCapacity) {
+    state.categories.reactor.resources.energy.amount = state.categories.reactor.stats.energyCapacity;
+  }
+}
+```
+
+2. **Event-Based State Updates**: When using the event system, the same pattern applies - the state object is passed to event handlers which directly modify it:
+
+```typescript
+// Example of direct mutation in an event handler
+this.eventBus.on('resourceChange', (data) => {
+  const { state, resourceType, amount } = data;
+  
+  // Direct mutation based on resource type
+  switch(resourceType) {
+    case 'energy':
+      state.categories.reactor.resources.energy.amount += amount;
+      break;
+    // Other resources...
+  }
+});
+```
+
+3. **React Integration**: To ensure React properly detects these mutations, the GameProvider creates a deep clone of the mutated state before updating React state:
+
+```typescript
+useEffect(() => {
+  const handleStateUpdate = (newState: GameState) => {
+    // Deep clone the directly mutated state to ensure React detects the changes
+    setState(JSON.parse(JSON.stringify(newState)));
+  };
+  
+  const unsubscribe = engineRef.current.eventBus.on('stateUpdated', handleStateUpdate);
+  
+  return () => {
+    unsubscribe();
+  };
+}, []);
+```
+
+This pattern was chosen for the following reasons:
+- **Simplicity**: Easier to understand and implement without complex immutability patterns
+- **Performance**: Potentially better performance by avoiding object creation/copying
+- **Consistency**: Establishes a clear, consistent pattern across all systems
+
+While this approach deviates from React's typical immutable state pattern, the architecture ensures proper React updates through strategic deep cloning at the boundary between the game engine and React components.
 
 ## State Persistence
 
@@ -956,6 +1022,7 @@ The architecture employs several design patterns:
 3. **Strategy Pattern**: Different game systems implement specialized strategies for handling different aspects of gameplay
 4. **Factory Pattern**: The GameSystemManager acts as a factory for creating and managing game systems
 5. **Command Pattern**: Game actions follow the command pattern, encapsulating requests as objects
+6. **Direct Mutation Pattern**: All systems directly mutate the state object rather than creating new copies, with strategic deep cloning at the React boundary
 
 ## Future Considerations
 
@@ -967,6 +1034,7 @@ The current architecture supports several potential extensions:
 4. **Game Balancing**: The separation of game logic makes it easier to tune and balance game parameters
 5. **Mobile Optimization**: The throttled state updates already consider performance on mobile devices
 6. **Progressive Web App**: The architecture supports conversion to a PWA for offline play
+7. **Immutability Patterns**: If needed in the future, the direct mutation pattern could be replaced with immutable updates for better debugging and time-travel capabilities
 
 ---
 

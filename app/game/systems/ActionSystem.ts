@@ -37,53 +37,50 @@ export class ActionSystem {
       LogContext.NONE
     );
     
-    // Create a copy of the state to update
-    let newState = { ...state };
-    
-    // Process the action based on its type
+    // Process the action based on its type - directly mutate the state
     switch (action.type) {
       case 'CLICK_RESOURCE':
-        newState = this.handleResourceClick(newState, action);
+        this.handleResourceClick(state, action);
         break;
 
       case 'PURCHASE_UPGRADE':
-        newState = this.handleUpgradePurchase(
-          newState, 
+        this.handleUpgradePurchase(
+          state, 
           action.payload.category, 
           action.payload.upgradeType
         );
         break;
 
       case 'MARK_LOG_READ':
-        newState = this.handleMarkLogRead(newState, action.payload.logId);
+        this.handleMarkLogRead(state, action.payload.logId);
         break;
 
       case 'MARK_ALL_LOGS_READ':
-        newState = this.handleMarkAllLogsRead(newState);
+        this.handleMarkAllLogsRead(state);
         break;
 
       case 'SELECT_REGION': 
-        newState = this.handleSelectRegion(newState, action.payload.regionId);
+        this.handleSelectRegion(state, action.payload.regionId);
         break;
         
       case 'INITIATE_JUMP':
-        newState = this.handleInitiateJump(newState);
+        this.handleInitiateJump(state);
         break;
         
       case 'COMPLETE_ENCOUNTER':
-        newState = this.handleCompleteEncounter(newState, action);
+        this.handleCompleteEncounter(state, action);
         break;
         
       case 'MAKE_STORY_CHOICE':
-        newState = this.handleStoryChoice(newState, action as MakeStoryChoiceAction);
+        this.handleStoryChoice(state, action as MakeStoryChoiceAction);
         break;
         
       case 'COMBAT_ACTION':
-        newState = this.handleCombatAction(newState, action);
+        this.handleCombatAction(state, action);
         break;
         
       case 'RETREAT_FROM_BATTLE':
-        newState = this.handleRetreatFromBattle(newState);
+        this.handleRetreatFromBattle(state);
         break;
         
       default:
@@ -94,7 +91,7 @@ export class ActionSystem {
         );
     }
     
-    return newState;
+    return state;
   }
   
   /**
@@ -118,18 +115,15 @@ export class ActionSystem {
       LogContext.NONE
     );
     
-    // Create a shallow copy of the state to modify
-    const newState = { ...state };
-    
     switch (category) {
       case 'reactor':
-        return this.handleReactorClick(newState);
+        return this.handleReactorClick(state);
       case 'processor':
-        return this.handleProcessorClick(newState);
+        return this.handleProcessorClick(state);
       case 'manufacturing':
-        return this.handleManufacturingClick(newState);
+        return this.handleManufacturingClick(state);
       case 'crewQuarters':
-        return this.handleCrewQuartersClick(newState);
+        return this.handleCrewQuartersClick(state);
       default:
         Logger.warn(
           LogCategory.ACTIONS,
@@ -401,15 +395,11 @@ export class ActionSystem {
     // Generate an encounter based on the current region
     const encounter = this.manager.encounter.generateEncounter(state);
     
-    // Update the game state
-    return {
-      ...state,
-      encounters: {
-        ...state.encounters,
-        active: true,
-        encounter
-      }
-    };
+    // Update the game state directly
+    state.encounters.active = true;
+    state.encounters.encounter = encounter;
+    
+    return state;
   }
   
   /**
@@ -446,13 +436,10 @@ export class ActionSystem {
       LogContext.NONE
     );
     
-    return {
-      ...state,
-      navigation: {
-        ...state.navigation,
-        currentRegion: region
-      }
-    };
+    // Directly update the state
+    state.navigation.currentRegion = region;
+    
+    return state;
   }
 
   /**
@@ -518,20 +505,17 @@ export class ActionSystem {
       return state;
     }
     
-    // Create a copy of the state to update
-    const newState = { ...state };
-    
-    // Perform the combat action
-    const result = this.manager.combat.performCombatAction(newState, actionId);
+    // Perform the combat action - direct mutation happens in performCombatAction
+    const result = this.manager.combat.performCombatAction(state, actionId);
     
     // Update the combat state with the result
     if (result.success) {
       // Record the action result in the combat state
-      newState.combat.lastActionResult = result;
+      state.combat.lastActionResult = result;
       
       // Add a log entry if provided
       if (result.message) {
-        newState.combat.battleLog.push({
+        state.combat.battleLog.push({
           id: uuidv4(),
           text: result.message,
           type: 'PLAYER',
@@ -547,7 +531,7 @@ export class ActionSystem {
       );
     }
     
-    return newState;
+    return state;
   }
 
   /**
