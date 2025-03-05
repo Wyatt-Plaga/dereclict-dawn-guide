@@ -5,7 +5,7 @@
 /**
  * Region Types
  */
-export type RegionType = 'void' | 'nebula' | 'asteroid' | 'deepspace' | 'blackhole';
+export type RegionType = 'void' | 'nebula' | 'asteroid' | 'supernova' | 'blackhole' | 'habitable' | 'anomaly';
 
 /**
  * Log Categories

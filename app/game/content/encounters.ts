@@ -9,12 +9,12 @@ import { v4 as uuidv4 } from 'uuid';
 /**
  * Chances of getting encounters in different regions
  */
-export const REGION_ENCOUNTER_CHANCES: Record<RegionType, { combat: number, empty: number, narrative: number }> = {
-    'void': { combat: 0.5, empty: 0.05, narrative: 0.45 },
-    'nebula': { combat: 0.3, empty: 0.5, narrative: 0.2 },
-    'asteroid': { combat: 0.5, empty: 0.3, narrative: 0.2 },
-    'deepspace': { combat: 0.7, empty: 0.2, narrative: 0.1 },
-    'blackhole': { combat: 0.9, empty: 0.05, narrative: 0.05 }
+export const REGION_ENCOUNTER_CHANCES: Record<string, { combat: number, empty: number, narrative: number }> = {
+    [RegionType.VOID]: { combat: 0.5, empty: 0.2, narrative: 0.3 },
+    [RegionType.BLACK_HOLE]: { combat: 0.6, empty: 0.1, narrative: 0.3 },
+    [RegionType.ASTEROID_FIELD]: { combat: 0.5, empty: 0.2, narrative: 0.3 },
+    [RegionType.HABITABLE_ZONE]: { combat: 0.4, empty: 0.3, narrative: 0.3 },
+    [RegionType.SUPERNOVA]: { combat: 0.7, empty: 0.1, narrative: 0.2 }
 };
 
 /**
@@ -24,27 +24,37 @@ export const EMPTY_ENCOUNTER_TITLES: Record<RegionType, string[]> = {
     'void': [
         "Silent Vacuum",
         "Empty Expanse",
-        "Quiet Sector"
+        "Quiet Sector",
+        "Interstellar Drift",
+        "Cosmic Silence"
     ],
-    'nebula': [
-        "Colorful Mists",
-        "Stellar Nursery",
-        "Cosmic Clouds"
+    'blackhole': [
+        "Event Horizon",
+        "Gravity Well",
+        "Spacetime Distortion",
+        "Singularity's Edge",
+        "Temporal Anomaly"
     ],
     'asteroid': [
         "Rocky Passage",
         "Mineral Wealth",
-        "Silent Stones"
+        "Silent Stones",
+        "Debris Field",
+        "Floating Giants"
     ],
-    'deepspace': [
-        "Vast Emptiness",
-        "Interstellar Medium",
-        "Cosmic Void"
+    'habitable': [
+        "Stellar Garden",
+        "Life-Bearing Zone",
+        "Planetary Sanctuary",
+        "Eden Sector",
+        "Verdant Orbit"
     ],
-    'blackhole': [
-        "Gravity Well",
-        "Event Horizon",
-        "Time Anomaly"
+    'supernova': [
+        "Stellar Remnant",
+        "Cosmic Furnace",
+        "Star's Grave",
+        "Fusion Aftermath",
+        "Stellar Ash"
     ]
 };
 
@@ -55,27 +65,32 @@ export const EMPTY_ENCOUNTER_DESCRIPTIONS: Record<RegionType, string[]> = {
     'void': [
         "Your ship drifts through an unremarkable sector of space. Sensors indicate nothing of significance in the vicinity.",
         "The emptiness of space stretches out in all directions. This sector appears to be devoid of noteworthy phenomena.",
-        "A quiet region where little happens. The background radiation is slightly higher than normal, but otherwise unremarkable."
-    ],
-    'nebula': [
-        "The ship passes through a region of colorful gas clouds. Stellar formations cast beautiful patterns of light through the mist.",
-        "This part of the nebula contains ionized gases that create a spectacular light show as your ship passes through them.",
-        "Swirling clouds of cosmic dust and gas create an otherworldly landscape. Your sensors struggle to penetrate the dense matter."
-    ],
-    'asteroid': [
-        "Your ship navigates through a field of small asteroids. Some appear to contain valuable minerals worth investigating.",
-        "Several large asteroids float peacefully in this sector. Long-range scanners detect metal deposits in some of them.",
-        "A collection of space rocks tumble slowly through the void. They appear to be the remnants of a larger celestial body."
-    ],
-    'deepspace': [
-        "The ship travels through the vast darkness between stars. Distant galaxies are visible as mere pinpricks of light.",
-        "This region of space is particularly empty, far from any stellar body. It's an eerie reminder of the universe's vastness.",
-        "Long-range sensors detect nothing but the cosmic microwave background in this remote region between star systems."
+        "A quiet region where little happens. The background radiation is slightly higher than normal, but otherwise unremarkable.",
+        "Stars glitter distantly as you traverse this empty section of void. The sensors remain quiet, detecting no threats or opportunities."
     ],
     'blackhole': [
-        "Your ship's sensors detect the immense gravitational distortions of a nearby black hole, though you maintain a safe distance.",
-        "Time itself seems to flow differently as you pass near the black hole's influence. The view outside is distorted by gravitational lensing.",
-        "The black hole's event horizon creates strange visual effects. Matter being drawn in forms a distant, beautiful accretion disk."
+        "Your ship skirts the edge of the black hole's influence, where light bends and time dilates perceptibly.",
+        "The accretion disk glows with intense radiation as matter spirals toward the event horizon, creating a hypnotic visual display.",
+        "Spacetime warps around the massive gravitational well, creating strange visual distortions that challenge perception.",
+        "Light bends eerily around the black hole, creating phantom images of distant stars and galaxies as you carefully maintain a safe distance."
+    ],
+    'asteroid': [
+        "Your ship navigates through a field of tumbling space rocks. Some appear to contain valuable minerals worth investigating.",
+        "Several large asteroids float peacefully in this sector. Long-range scanners detect metal deposits in some of them.",
+        "A collection of space rocks tumble slowly through the void. They appear to be the remnants of a larger celestial body.",
+        "The ship's navigation system plots a safe course through the densely packed rocks, identifying potential mining opportunities."
+    ],
+    'habitable': [
+        "The gentle light of a stable star bathes nearby planets with perfect conditions for life to flourish.",
+        "Lush green and blue worlds orbit at the perfect distance from their star, teeming with ecological diversity.",
+        "Your scanners detect multiple planets with oxygen-rich atmospheres and abundant water in this stable stellar zone.",
+        "The conditions here are perfect for life - planets orbit in the sweet spot between too hot and too cold, with atmospheres perfect for organic development."
+    ],
+    'supernova': [
+        "The shattered remains of a once-mighty star spread across this sector, still glowing with residual energy.",
+        "Waves of superheated gas and exotic particles wash over your shields as you navigate through the stellar graveyard.",
+        "The aftermath of stellar death surrounds your ship, beautiful yet deadly with radiation and gravitational anomalies.",
+        "Brilliant colors illuminate the cosmos where the star exploded, leaving behind a nebula of stellar debris and intense energy."
     ]
 };
 
@@ -90,33 +105,33 @@ export const EMPTY_ENCOUNTER_MESSAGES: Record<RegionType, string[]> = {
         "The ship's chronometer ticks steadily as you pass through this unremarkable region. Sometimes, uneventful moments are a blessing.",
         "Complete silence fills the bridge as you gaze out at the stars. In this moment of peace, the mission's purpose feels renewed."
     ],
-    'nebula': [
-        "Colorful gases swirl around your ship as you navigate through the nebula. The spectacle provides a much-needed morale boost to the crew.",
-        "The nebula's radiation interferes with your sensors, but no threats are detected. The cosmic light show outside the viewports is breathtaking.",
-        "You pass through a particularly dense cloud of stellar dust. For a moment, it seems as if the ship is flying through a multi-colored dream.",
-        "Electric blue and purple wisps of ionized gas caress the hull as you pass. Some crew members swear they can hear the nebula 'singing' through the ship's frame.",
-        "The nebula's gases reflect and refract starlight, turning your surroundings into a cathedral of cosmic light and color."
+    'blackhole': [
+        "Time slows perceptibly as you navigate near the event horizon. Your sensors struggle to make sense of the warped physics.",
+        "The black hole's gravitational pull tugs gently at your ship, requiring constant course corrections to maintain a safe orbit.",
+        "Strange quantum fluctuations appear on your sensors. The black hole's gravity well distorts space into impossible geometries.",
+        "The accretion disk of the black hole glows with ethereal beauty, matter spiraling inward toward the event horizon in a cosmic light show.",
+        "Your ship's AI reports unusual mathematical patterns in the space-time distortions surrounding you. There seems to be an order to the chaos."
     ],
     'asteroid': [
         "You navigate between floating rocks of various sizes. They tumble silently in the void, ancient witnesses to the solar system's formation.",
-        "A small asteroid passes harmlessly by your ship. Surface scans reveal a composition rich in rare elements.",
-        "Your scanners detect valuable minerals in nearby asteroids. With more time, this area could be worth mining.",
+        "A small asteroid passes harmlessly by your ship. Surface scans reveal a composition rich in rare elements and minerals.",
+        "Your scanners detect valuable minerals in nearby asteroids. With more time, this area could yield substantial mining returns.",
         "The asteroid field is sparse enough to navigate safely, yet dense enough to shield you from long-range scans. A good place to catch your breath.",
         "Crystalline formations glint on the surface of nearby asteroids, reflecting starlight like a field of cosmic diamonds."
     ],
-    'deepspace': [
-        "The vast emptiness of deep space surrounds your ship. Out here, between the stars, the universe feels impossibly large.",
-        "You detect the faint signals of distant stars. In this profound isolation, the crew finds a moment of quiet contemplation.",
-        "Your ship drifts through the cosmic void without incident. The silence of deep space is both terrifying and comforting.",
-        "Out here, far from any star system, the darkness is nearly complete. Only the distant galaxies provide any light to navigate by.",
-        "The ship's hull creaks slightly as it adjusts to the perfect vacuum of deep space. Some crew members claim to hear whispers in those sounds."
+    'habitable': [
+        "Lush planetary bodies orbit in the perfect zone for life to flourish. The vibrant colors of vegetation are visible even from orbit.",
+        "A gentle star provides ideal conditions for the planets in this zone. Sensors detect water oceans, oxygen atmospheres, and complex ecosystems.",
+        "This region reminds the crew of Earth - temperate worlds orbit at the perfect distance from their star, with conditions ideal for human settlement.",
+        "Scans reveal planets with diverse biospheres - from ocean worlds to forest planets. The conditions here could support colonization efforts.",
+        "The habitable planets in this zone appear untouched by advanced civilization, preserving pristine ecosystems that evolved in perfect isolation."
     ],
-    'blackhole': [
-        "The gravitational pull of the black hole tugs gently at your ship. Time seems to flow differently in its presence.",
-        "Time seems to slow as you navigate near the event horizon. The laws of physics bend in ways that challenge comprehension.",
-        "Strange quantum fluctuations appear on your sensors. The black hole's gravity well distorts light into impossible patterns.",
-        "The accretion disk of the black hole glows with ethereal beauty. Matter spirals inward toward the event horizon, creating a cosmic light show.",
-        "Your ship's AI reports unusual mathematical patterns in the space-time distortions surrounding you. There seems to be an order in the chaos."
+    'supernova': [
+        "The shockwave of the supernova has long passed, but the region still teems with radiation and exotic particles.",
+        "What was once a massive star is now a brilliant nebula of gas and dust, gradually cooling and dispersing into the void.",
+        "The sensors register intense radiation and magnetic fields - the aftereffects of stellar death that will linger for millennia.",
+        "Elements forged in the heart of the supernova float through space - the building blocks of future planets and perhaps even life.",
+        "The supernova remnant glows in spectacular colors, illuminating the surrounding space with the final legacy of a dead star."
     ]
 };
 
@@ -151,49 +166,13 @@ export function generateEmptyEncounterRewards(region: RegionType): ResourceRewar
     const rewards: ResourceReward[] = [];
     
     // Define resource messages by type and region
-    const resourceMessages: Record<RegionType, Partial<Record<string, string[]>>> = {
+    const resourceMessages: Record<string, Partial<Record<string, string[]>>> = {
         void: {
             energy: [
                 "Your sensors detected trace amounts of energy residue, allowing for a small collection.",
                 "The Dawn's energy collectors captured stray particles from the void.",
                 "A small energy fluctuation in the void provided a minor boost to ship systems."
             ],
-        },
-        nebula: {
-            energy: [
-                "The nebula's ionized gases infused the Dawn's collectors with energy.",
-                "Energy discharge from the nebula's star formation yielded valuable power.",
-                "The ship's energy arrays harvested photonic radiation from the surrounding nebula."
-            ],
-            insight: [
-                "Analysis of the nebula's unique composition yielded valuable scientific data.",
-                "The Dawn's sensors cataloged previously unknown stellar phenomena.",
-                "Atmospheric scans of the nebula revealed patterns worthy of further study."
-            ]
-        },
-        asteroid: {
-            scrap: [
-                "Mineral-rich fragments were collected from nearby asteroids.",
-                "The Dawn's automated collectors harvested valuable ore deposits.",
-                "A successful mining operation yielded substantial material resources."
-            ],
-            energy: [
-                "Specialized collectors siphoned energy from highly charged asteroid fragments.",
-                "Radioactive elements in the asteroid field provided harvestable energy.",
-                "The ship's systems absorbed kinetic energy from microimpacts in the field."
-            ]
-        },
-        deepspace: {
-            insight: [
-                "Long-range scans captured data from distant celestial bodies.",
-                "The vast emptiness of deep space allowed for clear astronomical observations.",
-                "Cosmic background radiation analysis yielded valuable scientific insights."
-            ],
-            crew: [
-                "A derelict escape pod with a survivor was found drifting in the void.",
-                "Long-range communication established contact with a stranded crewmember.",
-                "A stasis pod with a hibernating crew member was recovered from debris."
-            ]
         },
         blackhole: {
             insight: [
@@ -211,11 +190,57 @@ export function generateEmptyEncounterRewards(region: RegionType): ResourceRewar
                 "Wreckage from unfortunate vessels was recovered from the gravity well.",
                 "Exotic metals compressed by gravitational forces were collected for use."
             ]
+        },
+        asteroid: {
+            scrap: [
+                "Mineral-rich fragments were collected from nearby asteroids.",
+                "The Dawn's automated collectors harvested valuable ore deposits.",
+                "A successful mining operation yielded substantial material resources."
+            ],
+            energy: [
+                "Specialized collectors siphoned energy from highly charged asteroid fragments.",
+                "Radioactive elements in the asteroid field provided harvestable energy.",
+                "The ship's systems absorbed kinetic energy from microimpacts in the field."
+            ]
+        },
+        habitable: {
+            insight: [
+                "Scans of diverse planetary ecosystems yielded valuable biological data.",
+                "Analysis of habitable zone atmospheric compositions expanded scientific understanding.",
+                "Observations of evolving life forms provided insights into planetary development."
+            ],
+            crew: [
+                "A small settlement on one of the habitable moons agreed to send a volunteer to join your mission.",
+                "A stranded explorer was rescued from a habitable world and joined your crew.",
+                "A curious native with valuable knowledge of this region requested passage on your vessel."
+            ],
+            energy: [
+                "Solar collectors achieved peak efficiency in this perfectly positioned stellar region.",
+                "Atmospheric harvesting from a gas giant yielded substantial energy resources.",
+                "The balanced radiation from the nearby star charged your collectors to capacity."
+            ]
+        },
+        supernova: {
+            insight: [
+                "Analysis of the supernova remnant provided valuable astrophysical data.",
+                "The Dawn's scientific instruments recorded rare nuclear processes occurring in the stellar debris.",
+                "Scans of the supernova aftermath revealed previously unknown stellar phenomena."
+            ],
+            energy: [
+                "Residual energy from the stellar explosion was captured by your collectors.",
+                "Highly charged particles from the supernova remnant were harvested for power.",
+                "The intense radiation field surrounding the stellar remnant provided abundant energy."
+            ],
+            scrap: [
+                "Heavy elements forged in the supernova were collected from the debris field.",
+                "Rare metals formed during stellar death were added to your material reserves.",
+                "Elements only created in stellar explosions were harvested from the remnant cloud."
+            ]
         }
     };
 
     // Get a random message for a given resource type and region
-    const getRandomMessage = (region: RegionType, type: string): string => {
+    const getRandomMessage = (region: string, type: string): string => {
         const messagesForRegion = resourceMessages[region] || {};
         const messagesForType = messagesForRegion[type] || [];
         
@@ -228,7 +253,7 @@ export function generateEmptyEncounterRewards(region: RegionType): ResourceRewar
     
     // Different regions provide different resources and amounts
     switch(region) {
-        case 'void':
+        case RegionType.VOID:
             if (Math.random() < 0.3) {
                 rewards.push({ 
                     type: 'energy', 
@@ -237,55 +262,7 @@ export function generateEmptyEncounterRewards(region: RegionType): ResourceRewar
                 });
             }
             break;
-        case 'nebula':
-            if (Math.random() < 0.4) {
-                rewards.push({ 
-                    type: 'energy', 
-                    amount: Math.floor(Math.random() * 10) + 5,
-                    message: getRandomMessage('nebula', 'energy')
-                });
-            }
-            if (Math.random() < 0.2) {
-                rewards.push({ 
-                    type: 'insight', 
-                    amount: Math.floor(Math.random() * 3) + 1,
-                    message: getRandomMessage('nebula', 'insight')
-                });
-            }
-            break;
-        case 'asteroid':
-            if (Math.random() < 0.5) {
-                rewards.push({ 
-                    type: 'scrap', 
-                    amount: Math.floor(Math.random() * 15) + 5,
-                    message: getRandomMessage('asteroid', 'scrap')
-                });
-            }
-            if (Math.random() < 0.3) {
-                rewards.push({ 
-                    type: 'energy', 
-                    amount: Math.floor(Math.random() * 8) + 3,
-                    message: getRandomMessage('asteroid', 'energy')
-                });
-            }
-            break;
-        case 'deepspace':
-            if (Math.random() < 0.6) {
-                rewards.push({ 
-                    type: 'insight', 
-                    amount: Math.floor(Math.random() * 5) + 3,
-                    message: getRandomMessage('deepspace', 'insight')
-                });
-            }
-            if (Math.random() < 0.4) {
-                rewards.push({ 
-                    type: 'crew', 
-                    amount: Math.random() < 0.2 ? 1 : 0,
-                    message: Math.random() < 0.2 ? getRandomMessage('deepspace', 'crew') : undefined
-                });
-            }
-            break;
-        case 'blackhole':
+        case RegionType.BLACK_HOLE:
             if (Math.random() < 0.7) {
                 rewards.push({ 
                     type: 'insight', 
@@ -305,6 +282,68 @@ export function generateEmptyEncounterRewards(region: RegionType): ResourceRewar
                     type: 'scrap', 
                     amount: Math.floor(Math.random() * 10) + 5,
                     message: getRandomMessage('blackhole', 'scrap')
+                });
+            }
+            break;
+        case RegionType.ASTEROID_FIELD:
+            if (Math.random() < 0.5) {
+                rewards.push({ 
+                    type: 'scrap', 
+                    amount: Math.floor(Math.random() * 15) + 5,
+                    message: getRandomMessage('asteroid', 'scrap')
+                });
+            }
+            if (Math.random() < 0.3) {
+                rewards.push({ 
+                    type: 'energy', 
+                    amount: Math.floor(Math.random() * 8) + 3,
+                    message: getRandomMessage('asteroid', 'energy')
+                });
+            }
+            break;
+        case RegionType.HABITABLE_ZONE:
+            if (Math.random() < 0.6) {
+                rewards.push({ 
+                    type: 'insight', 
+                    amount: Math.floor(Math.random() * 5) + 3,
+                    message: getRandomMessage('habitable', 'insight')
+                });
+            }
+            if (Math.random() < 0.4) {
+                rewards.push({ 
+                    type: 'crew', 
+                    amount: Math.random() < 0.3 ? 1 : 0,
+                    message: Math.random() < 0.3 ? getRandomMessage('habitable', 'crew') : undefined
+                });
+            }
+            if (Math.random() < 0.3) {
+                rewards.push({ 
+                    type: 'energy', 
+                    amount: Math.floor(Math.random() * 10) + 5,
+                    message: getRandomMessage('habitable', 'energy')
+                });
+            }
+            break;
+        case RegionType.SUPERNOVA:
+            if (Math.random() < 0.7) {
+                rewards.push({ 
+                    type: 'insight', 
+                    amount: Math.floor(Math.random() * 10) + 5,
+                    message: getRandomMessage('supernova', 'insight')
+                });
+            }
+            if (Math.random() < 0.5) {
+                rewards.push({ 
+                    type: 'energy', 
+                    amount: Math.floor(Math.random() * 15) + 10,
+                    message: getRandomMessage('supernova', 'energy')
+                });
+            }
+            if (Math.random() < 0.3) {
+                rewards.push({ 
+                    type: 'scrap', 
+                    amount: Math.floor(Math.random() * 10) + 5,
+                    message: getRandomMessage('supernova', 'scrap')
                 });
             }
             break;

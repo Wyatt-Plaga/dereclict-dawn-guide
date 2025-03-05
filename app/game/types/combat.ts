@@ -13,10 +13,10 @@ import { RegionType as GameRegionType } from './index';
  */
 export enum RegionType {
   VOID = 'void',
-  NEBULA = 'nebula',
+  BLACK_HOLE = 'blackhole',
   ASTEROID_FIELD = 'asteroid',
-  RADIATION_ZONE = 'deepspace',
-  SUPERNOVA = 'blackhole'
+  HABITABLE_ZONE = 'habitable',
+  SUPERNOVA = 'supernova'
 }
 
 // Type compatibility check to ensure our enum values match the string union type
