@@ -18,6 +18,7 @@ import {
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { GameSystemManager } from './index';
 import { REGION_DEFINITIONS } from '../content/regions';
+import { ENEMY_DEFINITIONS } from '../content/enemies';
 
 /**
  * System responsible for generating and managing encounters
@@ -508,39 +509,129 @@ export class EncounterSystem {
     private generateCombatEncounter(region: string): BaseEncounter {
         const regionType = region as RegionType;
         
-        // Region-specific encounter titles and descriptions
-        const encounterDetails = {
-            'void': {
-                title: "Unknown Vessel Approaching",
-                description: "Long-range sensors have detected an unidentified vessel approaching on an intercept course. The vessel is not responding to hails and appears to be powering weapons systems. The emptiness of the void offers little cover for evasive maneuvers."
+        // Generate a random enemy for this region
+        const enemyId = this.generateRandomEnemyForRegion(regionType);
+        
+        // Get the enemy definition
+        const enemyDef = enemyId ? ENEMY_DEFINITIONS[enemyId] : null;
+        
+        // Enemy-specific encounter messages
+        const enemyEncounterMessages: Record<string, { title: string, description: string }> = {
+            // Void Region Enemies
+            'scavenger': {
+                title: "Abandoned Salvager",
+                description: "A drifting vessel turns suddenly toward the Dawn. Its hull is patchwork, systems flickering erratically. No response to hails. No life signs."
             },
-            'nebula': {
-                title: "Ambush in the Nebula",
-                description: "The dense nebula clouds suddenly part to reveal a hostile vessel lying in wait. The electromagnetic interference from the nebula masked their presence until now. Their weapons are charged and targeting systems locked onto the Dawn."
+            'patrol-drone': {
+                title: "Automated Sentry",
+                description: "An automated patrol drone has locked onto the Dawn. Its signal patterns make no sense..."
             },
-            'asteroid': {
-                title: "Mining Claim Dispute",
-                description: "A rugged mining vessel emerges from behind a large asteroid, broadcasting territorial warnings. They claim this asteroid field as their exclusive mining territory and demand immediate departure or payment. Weapons systems are online and tracking the Dawn."
+            'derelict-hunter': {
+                title: "Hunter in the Void",
+                description: "A vessel approaches silently. Its systems are cold except for scanning arrays focused intently on the Dawn. Ancient recovery protocols activated. No crew."
             },
-            'deepspace': {
-                title: "Deep Space Hunter",
-                description: "A sleek combat vessel appears on sensors, accelerating toward the Dawn at high velocity. Its design suggests advanced technology and dedicated combat capabilities. No communication attempts have been made - their intentions appear hostile."
+            
+            // Nebula Region Enemies
+            'nebula-lurker': {
+                title: "Movement in the Mists",
+                description: "Something is moving through the nebula, displacing the gases in an unnatural pattern. Sensors detect propulsion signatures attempting to mask their approach. Suddenly, targeting locks engage as a previously hidden vessel abandons stealth for attack speed."
             },
-            'blackhole': {
-                title: "Guardians of the Singularity",
-                description: "A strange vessel of unknown origin materializes near the event horizon. Its design defies conventional physics, suggesting either incredibly advanced technology or origins from beyond known space. They appear to be positioning to prevent the Dawn from approaching the black hole further."
+            'ion-storm': {
+                title: "Anomalous Energy Readings",
+                description: "The nebula ahead is churning with electromagnetic energy that's coalescing into a distinct pattern. Ship sensors are registering power surges that don't match any known natural phenomena. The energy formation is moving with purpose, directly toward the Dawn."
+            },
+            'mist-stalker': {
+                title: "Predator of the Nebula",
+                description: "Warning klaxons blare as specialized scanning beams probe the Dawn's systems. A sleek vessel emerges from the densest part of the nebula, its hull design clearly evolved for hunting in this environment. It's circling in a classic predatory pattern, looking for weaknesses."
+            },
+            
+            // Asteroid Field Enemies
+            'mining-rig': {
+                title: "Territorial Mining Operation",
+                description: "A bulky mining vessel pivots its industrial cutting equipment toward the Dawn. Their communications are hostile, claiming exclusive mining rights to this sector. The operator demands immediate tribute or departure, mining lasers powering up to emphasize their point."
+            },
+            'asteroid-hive': {
+                title: "Colony Defense Protocol",
+                description: "Sensors detect unusual activity within a nearby hollowed asteroid. Moments later, multiple small signatures detach from its surface. A swarm of drones is emerging, moving in perfect coordination. The asteroid appears to be an artificial hive colony, and you've triggered its defense systems."
+            },
+            'rock-crusher': {
+                title: "Industrial Behemoth",
+                description: "The asteroid field trembles as a massive industrial vessel activates its engines. Its crushing mechanisms, designed to process the largest asteroids, are rotating toward the Dawn. The crew's communications suggest they see your ship as nothing more than another resource to be processed."
+            },
+            
+            // Radiation Zone Enemies
+            'mutated-vessel': {
+                title: "Biological Signal Anomaly",
+                description: "Sensors detect a vessel approaching that defies conventional design principles. Scans reveal a horrifying truth - the ship's hull has partially fused with organic matter, including what appears to be its original crew. The resulting entity seems driven by instinct rather than reason as it moves to intercept."
+            },
+            'radiation-eater': {
+                title: "Energy Parasite Detected",
+                description: "A strange entity is absorbing ambient radiation in the sector, creating a visible dark patch against the background radiation. As it detects the Dawn's power signature, it changes course, accelerating toward the ship. It seems to perceive your reactor as a rich feeding opportunity."
+            },
+            'void-abomination': {
+                title: "Horror from the Deep Void",
+                description: "A twisted mass of ship components and organic matter emerges from a radiation hot spot. Its movement is unnatural, pulsing and flowing rather than using conventional propulsion. Communication attempts result only in disturbing organic sounds mixed with fragmented distress calls from ships long missing."
+            },
+            
+            // Supernova Region Enemies
+            'solar-remnant': {
+                title: "Star Fragment Awakens",
+                description: "A fragment of stellar material suddenly flares with renewed energy, developing a coherent shape. What appeared to be debris from the supernova is revealing itself as something more - a semi-sentient collection of stellar energy that's reacting defensively to the Dawn's presence."
+            },
+            'guardian-construct': {
+                title: "Ancient Defense Grid",
+                description: "A massive construct of unfamiliar design powers up, its architecture suggesting origins far predating human space exploration. Symbols flash across its surface as it seems to categorize and analyze the Dawn. Whatever civilization built this guardian, they meant it to protect something in this region from intruders."
+            },
+            'event-horizon': {
+                title: "Spacetime Distortion",
+                description: "Gravitational sensors are going haywire as a localized distortion in spacetime manifests ahead. The phenomenon doesn't match natural black hole behavior - it's moving with apparent purpose and intelligence. The fabric of reality itself seems to be responding to the Dawn's presence."
+            },
+            'cosmic-leviathan': {
+                title: "Ancient One Stirring",
+                description: "Something enormous is moving through the stellar graveyard, its size difficult to comprehend. Sensors struggle to map its full dimensions as it seems to exist partially in dimensions beyond normal space. The entity's movement creates ripples in gravity itself as it turns its attention toward the Dawn."
             }
         };
         
-        // Get region-specific details or use defaults
-        const details = encounterDetails[regionType] || {
+        // Region-specific encounter titles and descriptions as fallbacks
+        const regionEncounterDetails = {
+            'void': {
+                title: "Void Encounter",
+                description: "A hostile entity emerges from the void of space, moving to intercept the Dawn. Its intentions are clearly aggressive as it powers up weapon systems and adjusts course for optimal attack positioning."
+            },
+            'nebula': {
+                title: "Ambush in the Nebula",
+                description: "The dense nebula clouds suddenly part to reveal a hostile entity lying in wait. The electromagnetic interference from the nebula masked their presence until now. Their weapons are charged and targeting systems locked onto the Dawn."
+            },
+            'asteroid': {
+                title: "Asteroid Field Confrontation",
+                description: "A hostile presence reveals itself among the asteroids, using the dense field to approach undetected. Now within striking range, they abandon stealth for an aggressive posture, weapons systems coming online and targeting the Dawn."
+            },
+            'deepspace': {
+                title: "Deep Space Hunter",
+                description: "A hostile entity appears on sensors, accelerating toward the Dawn at high velocity through the radiation-saturated environment. Its design suggests adaptation to the harsh conditions of deep space. No communication attempts have been made - their intentions appear hostile."
+            },
+            'blackhole': {
+                title: "Guardians of the Singularity",
+                description: "A strange entity materializes near the event horizon. Its behavior defies conventional physics, suggesting either incredibly advanced technology or origins from beyond known space. They appear to be positioning to prevent the Dawn from approaching the black hole further."
+            }
+        };
+        
+        // Get enemy-specific details, fall back to region-specific, or use default
+        let details;
+        if (enemyId && enemyEncounterMessages[enemyId]) {
+            details = enemyEncounterMessages[enemyId];
+        } else if (regionEncounterDetails[regionType]) {
+            details = regionEncounterDetails[regionType];
+        } else {
+            details = {
             title: "Hostile Encounter",
             description: "Sensors have detected a hostile entity approaching. Weapon signatures detected. Combat seems inevitable."
         };
+        }
         
         // Create a basic encounter structure that will be handled by the combat system
         return {
-            id: `combat-${region}-${Date.now()}`,
+            id: `combat-${region}-${enemyId || 'unknown'}-${Date.now()}`,
             title: details.title,
             description: details.description,
             region: regionType,

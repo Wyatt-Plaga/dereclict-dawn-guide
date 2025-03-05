@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { GameEngine } from '../core/GameEngine';
 import { GameState } from '../types';
 import { GameAction } from '../types/actions';
@@ -133,6 +133,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
       unsubscribe();
     };
   }, []); // Empty dependency array - only run once
+
+  // Save the game state when the encounter state changes or when an encounter is active
+  useEffect(() => {
+    // Always ensure active encounters are persisted
+    if (state.encounters && (state.encounters.active || state.encounters.encounter)) {
+      Logger.debug(
+        LogCategory.ENGINE,
+        'Active encounter detected, ensuring state is saved',
+        LogContext.NONE
+      );
+      
+      // Trigger a snapshot save
+      engineRef.current.saveGame();
+    }
+  }, [state.encounters]);
 
   // Include isInitializing in the context value
   const contextValue: GameContextType = {

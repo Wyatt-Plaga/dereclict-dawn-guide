@@ -401,6 +401,7 @@ export const initialGameState: GameState = {
     },
     encounters: {
         active: false,
+        encounter: undefined,
         history: []
     },
     combat: {

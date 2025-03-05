@@ -177,6 +177,9 @@ export class CombatSystem {
     // Reset cooldowns
     state.combat.cooldowns = {};
     
+    // Clear battle log for a fresh start
+    state.combat.battleLog = [];
+    
     // Add initial battle log entry
     this.addBattleLog(state, {
       id: uuidv4(),
@@ -238,6 +241,9 @@ export class CombatSystem {
       text: message,
       type: 'SYSTEM'
     });
+    
+    // Clear the battle log for the next encounter
+    state.combat.battleLog = [];
   }
 
   /**
@@ -923,7 +929,6 @@ export class CombatSystem {
       encounterCompleted: true,
       outcome: 'retreat',
       battleLog: [
-        ...newState.combat.battleLog,
         {
           id: uuidv4(),
           text: 'You retreated from combat, losing 25% of your resources in the hasty escape.',

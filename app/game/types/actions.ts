@@ -103,6 +103,18 @@ export interface MakeStoryChoiceAction extends GameAction {
 }
 
 /**
+ * Set Encounter Active Action
+ * Triggered when we need to set the active state of an encounter
+ * (used for state recovery after page refresh)
+ */
+export interface SetEncounterActiveAction extends GameAction {
+  type: 'SET_ENCOUNTER_ACTIVE';
+  payload: {
+    active: boolean;
+  };
+}
+
+/**
  * Union type of all possible game actions
  */
 export type GameActions = 
@@ -113,4 +125,5 @@ export type GameActions =
   | InitiateJumpAction
   | CompleteEncounterAction
   | SelectRegionAction
-  | MakeStoryChoiceAction; 
+  | MakeStoryChoiceAction
+  | SetEncounterActiveAction; 

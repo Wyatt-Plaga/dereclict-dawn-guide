@@ -7,6 +7,7 @@ import { useGame } from "@/app/game/hooks/useGame"
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
 import { useRouter } from "next/navigation"
+import { useEffect, useRef } from "react"
 
 // Region types
 interface Region {
@@ -19,6 +20,7 @@ export default function NavigationPage() {
   const { state, dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
   const router = useRouter()
+  const pendingJump = useRef(false)
   
   // Log component render
   Logger.debug(
@@ -34,7 +36,26 @@ export default function NavigationPage() {
     description: 'The empty vacuum of space surrounds the Dawn. Long-range sensors detect potential areas of interest.'
   }
   
-  // Dispatch INITIATE_JUMP action and navigate to encounter page
+  // Monitor for encounter creation and navigate when ready
+  useEffect(() => {
+    // If we have a pending jump and an active encounter, navigate to it
+    if (pendingJump.current && state.encounters.active && state.encounters.encounter) {
+      const encounterId = state.encounters.encounter.id;
+      Logger.info(
+        LogCategory.UI,
+        `Encounter ${encounterId} created, navigating to encounter page`,
+        LogContext.NONE
+      );
+      
+      // Reset the pending jump flag
+      pendingJump.current = false;
+      
+      // Navigate to the encounter page with the ID
+      router.push(`/encounter?id=${encounterId}`);
+    }
+  }, [state.encounters.active, state.encounters.encounter, router]);
+  
+  // Dispatch INITIATE_JUMP action
   const initiateJump = () => {
     Logger.info(
       LogCategory.ACTIONS, 
@@ -42,13 +63,11 @@ export default function NavigationPage() {
       LogContext.NONE
     );
     
+    // Set the pending jump flag
+    pendingJump.current = true;
+    
     // Dispatch the action to generate an encounter
     dispatch({ type: 'INITIATE_JUMP' });
-    
-    // Give a small delay to ensure the state is updated before navigating
-    setTimeout(() => {
-      router.push('/encounter');
-    }, 100);
   }
   
   return (
@@ -88,6 +107,7 @@ export default function NavigationPage() {
               <button 
                 onClick={initiateJump}
                 className="system-panel w-full py-8 flex items-center justify-center hover:bg-accent/10 transition-colors"
+                disabled={pendingJump.current}
               >
                 <div className="flex flex-col items-center">
                   <Rocket className={`h-12 w-12 text-chart-1 mb-2 ${shouldFlicker('navigation') ? 'flickering-text' : ''}`} />

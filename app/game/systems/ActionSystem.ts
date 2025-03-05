@@ -74,7 +74,11 @@ export class ActionSystem {
         newState = this.handleCompleteEncounter(newState, action);
         break;
         
-      case 'STORY_CHOICE':
+      case 'SET_ENCOUNTER_ACTIVE':
+        newState = this.handleSetEncounterActive(newState, action);
+        break;
+        
+      case 'MAKE_STORY_CHOICE':
         newState = this.handleStoryChoice(newState, action);
         break;
         
@@ -570,5 +574,36 @@ export class ActionSystem {
     );
     
     return this.manager.combat.retreatFromCombat(state);
+  }
+
+  /**
+   * Handle setting encounter active state (used for state recovery after page refresh)
+   */
+  private handleSetEncounterActive(state: GameState, action: any): GameState {
+    Logger.info(
+      LogCategory.ACTIONS,
+      `Setting encounter active state to: ${action.payload?.active}`,
+      LogContext.NONE
+    );
+    
+    if (action.payload?.active === undefined) {
+      Logger.error(
+        LogCategory.ACTIONS,
+        'No active state provided for SET_ENCOUNTER_ACTIVE action',
+        LogContext.NONE
+      );
+      return state;
+    }
+    
+    // Create a copy of the state to update
+    const newState = { ...state };
+    
+    // Update the encounter active state
+    newState.encounters = {
+      ...newState.encounters,
+      active: action.payload.active
+    };
+    
+    return newState;
   }
 } 

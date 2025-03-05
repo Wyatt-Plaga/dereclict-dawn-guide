@@ -121,7 +121,12 @@ export default function BattlePage() {
   }
   
   // Convert battle log entries for display
-  const battleLog = state.combat?.battleLog || [] 
+  const battleLog = state.combat?.battleLog || []
+  
+  // Get the enemy's last action from battle log
+  const lastEnemyAction = battleLog
+    .filter((entry: BattleLogEntry) => entry.type === 'ENEMY')
+    .pop()
   
   // Dispatch combat actions
   const performCombatAction = (actionId: string) => {
@@ -244,6 +249,13 @@ export default function BattlePage() {
                 <div>
                   <h2 className="text-lg font-medium mb-2">{enemy.name}</h2>
                   <p className="text-sm text-muted-foreground">{enemy.description}</p>
+                  
+                  {/* Enemy's last action - only shown if available */}
+                  {lastEnemyAction && (
+                    <div className="mt-2 py-1 px-2 bg-red-900/20 border border-red-900/30 rounded text-xs">
+                      <p className="text-red-400 font-mono">Last Action: {lastEnemyAction.text}</p>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Push shield and hull to bottom with auto margin */}

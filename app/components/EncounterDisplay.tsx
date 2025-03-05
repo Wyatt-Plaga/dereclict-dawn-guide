@@ -178,7 +178,7 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
   return (
     <div className="relative w-full">
       {/* Region-specific effects only without the gradient background */}
-      <div className="absolute inset-0 -m-4 md:-m-8 z-0 overflow-hidden opacity-20">
+      <div className="absolute inset-0 -m-4 md:-m-8 z-0 overflow-hidden opacity-30">
         <div className={`${encounter.region === 'nebula' ? 'nebula-effect' : 
                      encounter.region === 'blackhole' ? 'blackhole-effect' : 
                      encounter.region === 'asteroid' ? 'asteroid-effect' : 
@@ -190,16 +190,38 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
       <div className="system-panel p-6 mb-6 relative z-10">
         <div className="flex items-center gap-3 mb-8 border-b border-accent/30 pb-4">
           {regionIcon}
-          <div>
-            <h1 className={`text-3xl font-bold mb-1 ${shouldFlicker('encounters') ? 'flickering-text' : ''}`}>
+          <div className="flex-1">
+            <h1 className={`text-3xl font-bold mb-1 ${shouldFlicker('encounters') ? 'flickering-text' : ''} ${
+              encounter.region === 'void' ? 'text-slate-300' :
+              encounter.region === 'nebula' ? 'text-indigo-300' :
+              encounter.region === 'asteroid' ? 'text-amber-300' :
+              encounter.region === 'deepspace' ? 'text-blue-300' :
+              encounter.region === 'blackhole' ? 'text-zinc-300' : 'text-slate-300'
+            }`} style={{
+              textShadow: shouldFlicker('encounters') ? 'none' : `0 0 10px ${
+                encounter.region === 'void' ? 'rgba(203, 213, 225, 0.5)' :
+                encounter.region === 'nebula' ? 'rgba(165, 180, 252, 0.5)' :
+                encounter.region === 'asteroid' ? 'rgba(251, 191, 36, 0.5)' :
+                encounter.region === 'deepspace' ? 'rgba(96, 165, 250, 0.5)' :
+                encounter.region === 'blackhole' ? 'rgba(212, 212, 216, 0.5)' : 'rgba(203, 213, 225, 0.5)'
+              }`
+            }}>
               {encounter.title}
             </h1>
-            <div className="flex items-center text-sm text-muted-foreground">
-              <span>Region: {encounter.region.charAt(0).toUpperCase() + encounter.region.slice(1)}</span>
+            <div className="flex items-center text-sm">
+              <span className={`px-2 py-1 rounded-md ${
+                encounter.region === 'void' ? 'bg-slate-800 text-slate-300' :
+                encounter.region === 'nebula' ? 'bg-indigo-900 text-indigo-300' :
+                encounter.region === 'asteroid' ? 'bg-amber-900 text-amber-300' :
+                encounter.region === 'deepspace' ? 'bg-blue-900 text-blue-300' :
+                encounter.region === 'blackhole' ? 'bg-zinc-900 text-zinc-300' : 'bg-slate-800 text-slate-300'
+              }`}>
+                Region: {encounter.region.charAt(0).toUpperCase() + encounter.region.slice(1)}
+              </span>
               
               {/* Display combat badge for combat encounters */}
               {isCombatEncounter && (
-                <div className="ml-3 flex items-center text-red-500">
+                <div className="ml-3 flex items-center bg-red-900/60 text-red-300 px-2 py-1 rounded-md border border-red-700 animate-pulse">
                   <Sword className="h-4 w-4 mr-1" />
                   <span>Combat</span>
                 </div>
@@ -208,21 +230,33 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
           </div>
         </div>
         
-        <div className="mb-8 system-panel p-6">
-          <p className="text-xl mb-4 leading-relaxed">{encounter.description}</p>
+        <div className={`mb-8 system-panel p-6 transition-all duration-300 hover:shadow-md ${
+          encounter.region === 'void' ? 'hover:shadow-slate-800/30' :
+          encounter.region === 'nebula' ? 'hover:shadow-indigo-800/30' :
+          encounter.region === 'asteroid' ? 'hover:shadow-amber-800/30' :
+          encounter.region === 'deepspace' ? 'hover:shadow-blue-800/30' :
+          encounter.region === 'blackhole' ? 'hover:shadow-zinc-800/30' : 'hover:shadow-slate-800/30'
+        }`}>
+          <p className={`text-xl mb-4 leading-relaxed font-light ${
+            encounter.region === 'void' ? 'text-slate-200' :
+            encounter.region === 'nebula' ? 'text-indigo-200' :
+            encounter.region === 'asteroid' ? 'text-amber-100' :
+            encounter.region === 'deepspace' ? 'text-blue-200' :
+            encounter.region === 'blackhole' ? 'text-zinc-200' : 'text-slate-200'
+          }`}>{encounter.description}</p>
           
           {isEmptyEncounter && emptyEncounter && (
-            <p className="italic text-lg">{emptyEncounter.message}</p>
+            <p className="italic text-lg text-muted-foreground">{emptyEncounter.message}</p>
           )}
           
           {/* Special message for combat encounters */}
           {isCombatEncounter && (
             <div className="mt-6 border-t border-accent/30 pt-4">
-              <p className="text-lg text-red-400 flex items-center gap-2">
+              <p className="text-lg text-red-400 flex items-center gap-2 font-semibold">
                 <Sword className="h-5 w-5" />
                 <span>Hostile entity detected - prepare for combat!</span>
               </p>
-              <p className="mt-2 text-muted-foreground">
+              <p className="mt-2 text-muted-foreground terminal-text text-sm tracking-widest animate-pulse">
                 Initializing combat systems... Transferring to battle interface...
               </p>
             </div>
@@ -231,17 +265,35 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
         
         {/* Story Encounter Choices */}
         {isStoryEncounter && storyEncounter && !selectedChoice && (
-          <div className="mb-8">
-            <h2 className="text-xl font-medium mb-4 terminal-text flex items-center gap-2">
+          <div className="mb-8 animate-fadeIn">
+            <h2 className={`text-xl font-medium mb-4 terminal-text flex items-center gap-2 ${
+              encounter.region === 'void' ? 'text-slate-300' :
+              encounter.region === 'nebula' ? 'text-indigo-300' :
+              encounter.region === 'asteroid' ? 'text-amber-300' :
+              encounter.region === 'deepspace' ? 'text-blue-300' :
+              encounter.region === 'blackhole' ? 'text-zinc-300' : 'text-slate-300'
+            }`}>
               <Brain className="h-5 w-5 text-chart-2" />
               Available Actions
             </h2>
             <div className="grid grid-cols-1 gap-4">
-              {storyEncounter.choices.map((choice) => (
+              {storyEncounter.choices.map((choice, index) => (
                 <button
                   key={choice.id}
-                  className="text-left system-panel p-4 hover:bg-accent/10 transition-all border-l-4 border-transparent hover:border-accent"
+                  className={`text-left system-panel p-4 transition-all hover:bg-accent/20 border-l-4 
+                    ${
+                      encounter.region === 'void' ? 'border-slate-700 hover:border-slate-400' :
+                      encounter.region === 'nebula' ? 'border-indigo-700 hover:border-indigo-400' :
+                      encounter.region === 'asteroid' ? 'border-amber-700 hover:border-amber-400' :
+                      encounter.region === 'deepspace' ? 'border-blue-700 hover:border-blue-400' :
+                      encounter.region === 'blackhole' ? 'border-zinc-700 hover:border-zinc-400' : 'border-slate-700 hover:border-slate-400'
+                    }
+                  `}
                   onClick={() => handleChoiceSelect(choice)}
+                  style={{
+                    animationDelay: `${index * 200}ms`,
+                    animation: 'fadeIn 0.5s ease forwards'
+                  }}
                 >
                   <p className="text-lg font-medium">{choice.text}</p>
                 </button>
@@ -253,12 +305,30 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
         {/* Story Encounter Outcome */}
         {isStoryEncounter && selectedChoice && (
           <div className={`transition-all duration-700 mb-8 ${outcomeText ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <h2 className="text-xl font-medium mb-4 terminal-text flex items-center gap-2">
+            <h2 className={`text-xl font-medium mb-4 terminal-text flex items-center gap-2 ${
+              encounter.region === 'void' ? 'text-slate-300' :
+              encounter.region === 'nebula' ? 'text-indigo-300' :
+              encounter.region === 'asteroid' ? 'text-amber-300' :
+              encounter.region === 'deepspace' ? 'text-blue-300' :
+              encounter.region === 'blackhole' ? 'text-zinc-300' : 'text-slate-300'
+            }`}>
               <ActivityIcon className="h-5 w-5 text-chart-3" />
               Outcome
             </h2>
-            <div className="system-panel p-6">
-              <p className="text-lg mb-6 leading-relaxed">{outcomeText}</p>
+            <div className={`system-panel p-6 transition-all duration-300 hover:shadow-md ${
+              encounter.region === 'void' ? 'hover:shadow-slate-800/30' :
+              encounter.region === 'nebula' ? 'hover:shadow-indigo-800/30' :
+              encounter.region === 'asteroid' ? 'hover:shadow-amber-800/30' :
+              encounter.region === 'deepspace' ? 'hover:shadow-blue-800/30' :
+              encounter.region === 'blackhole' ? 'hover:shadow-zinc-800/30' : 'hover:shadow-slate-800/30'
+            }`}>
+              <p className={`text-lg mb-6 leading-relaxed ${
+                encounter.region === 'void' ? 'text-slate-200' :
+                encounter.region === 'nebula' ? 'text-indigo-200' :
+                encounter.region === 'asteroid' ? 'text-amber-100' :
+                encounter.region === 'deepspace' ? 'text-blue-200' :
+                encounter.region === 'blackhole' ? 'text-zinc-200' : 'text-slate-200'
+              }`}>{outcomeText}</p>
               
               {/* Resources gained from choice */}
               {outcomeResources && outcomeResources.length > 0 && (
@@ -306,22 +376,38 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
         {/* Empty Encounter Resources */}
         {isEmptyEncounter && (
           <div className={`transition-all duration-700 mb-8 ${showRewards ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <h2 className="text-xl font-medium mb-4 terminal-text flex items-center gap-2">
+            <h2 className={`text-xl font-medium mb-4 terminal-text flex items-center gap-2 ${
+              encounter.region === 'void' ? 'text-slate-300' :
+              encounter.region === 'nebula' ? 'text-indigo-300' :
+              encounter.region === 'asteroid' ? 'text-amber-300' :
+              encounter.region === 'deepspace' ? 'text-blue-300' :
+              encounter.region === 'blackhole' ? 'text-zinc-300' : 'text-slate-300'
+            }`}>
               <AwardIcon className="h-5 w-5 text-chart-1" />
               Discovered Resources
             </h2>
-            <div className="system-panel p-6">
+            <div className={`system-panel p-6 transition-all duration-300 hover:shadow-md ${
+              encounter.region === 'void' ? 'hover:shadow-slate-800/30' :
+              encounter.region === 'nebula' ? 'hover:shadow-indigo-800/30' :
+              encounter.region === 'asteroid' ? 'hover:shadow-amber-800/30' :
+              encounter.region === 'deepspace' ? 'hover:shadow-blue-800/30' :
+              encounter.region === 'blackhole' ? 'hover:shadow-zinc-800/30' : 'hover:shadow-slate-800/30'
+            }`}>
               {hasRewards ? (
                 <div className="grid grid-cols-1 gap-4">
                   {emptyEncounter!.resources!.map((reward: ResourceReward, index: number) => (
-                    <div key={index} className="flex flex-col gap-3">
-                      <div className="flex items-center gap-3 p-3 system-panel hover:bg-accent/10 transition-colors">
+                    <div 
+                      key={index} 
+                      className="flex flex-col gap-3 animate-fadeIn"
+                      style={{ animationDelay: `${index * 150}ms` }}
+                    >
+                      <div className="flex items-center gap-3 p-3 system-panel hover:bg-accent/10 transition-all duration-300 hover:translate-x-1 hover:shadow-sm">
                         <div className={`p-2 rounded-full ${
-                          reward.type === 'energy' ? 'bg-chart-1/10' : 
-                          reward.type === 'insight' ? 'bg-chart-2/10' : 
-                          reward.type === 'crew' ? 'bg-chart-3/10' : 
-                          reward.type === 'scrap' ? 'bg-chart-4/10' : 
-                          'bg-accent/10'
+                          reward.type === 'energy' ? 'bg-chart-1/20' : 
+                          reward.type === 'insight' ? 'bg-chart-2/20' : 
+                          reward.type === 'crew' ? 'bg-chart-3/20' : 
+                          reward.type === 'scrap' ? 'bg-chart-4/20' : 
+                          'bg-accent/20'
                         }`}>
                           {getResourceIcon(reward.type)}
                         </div>
@@ -337,7 +423,7 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
                         </div>
                       </div>
                       {reward.message && (
-                        <p className="text-sm italic pl-3">{reward.message}</p>
+                        <p className="text-sm italic pl-3 text-muted-foreground">{reward.message}</p>
                       )}
                     </div>
                   ))}
@@ -345,7 +431,13 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
               ) : (
                 <div className="flex flex-col items-center justify-center py-6">
                   <div className="text-lg text-muted-foreground mb-2">No resources acquired</div>
-                  <p className="text-center italic text-sm max-w-lg">{emptyQuote}</p>
+                  <p className={`text-center italic text-sm max-w-lg ${
+                    encounter.region === 'void' ? 'text-slate-400' :
+                    encounter.region === 'nebula' ? 'text-indigo-400' :
+                    encounter.region === 'asteroid' ? 'text-amber-400' :
+                    encounter.region === 'deepspace' ? 'text-blue-400' :
+                    encounter.region === 'blackhole' ? 'text-zinc-400' : 'text-slate-400'
+                  }`}>{emptyQuote}</p>
                 </div>
               )}
             </div>
@@ -356,9 +448,27 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
           <button 
             onClick={handleComplete}
             disabled={isStoryEncounter && !selectedChoice}
-            className={`w-full flex items-center justify-center gap-2 system-panel py-3 px-6 hover:bg-accent/10 transition-colors ${shouldFlicker('navigation') ? 'flickering-text' : ''} ${isStoryEncounter && !selectedChoice ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`w-full flex items-center justify-center gap-2 system-panel py-3 px-6 transition-all ${
+              isCombatEncounter 
+                ? 'bg-red-900/40 hover:bg-red-800/50 text-red-100 border-red-700/50' 
+                : `hover:bg-accent/20 ${
+                  encounter.region === 'void' ? 'hover:border-slate-500' :
+                  encounter.region === 'nebula' ? 'hover:border-indigo-500' :
+                  encounter.region === 'asteroid' ? 'hover:border-amber-500' :
+                  encounter.region === 'deepspace' ? 'hover:border-blue-500' :
+                  encounter.region === 'blackhole' ? 'hover:border-zinc-500' : 'hover:border-slate-500'
+                }`
+            } ${shouldFlicker('navigation') ? 'flickering-text' : ''} ${isStoryEncounter && !selectedChoice ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <span className="text-lg">
+            <span className={`text-lg font-medium ${
+              isCombatEncounter ? 'text-red-100' : `${
+                encounter.region === 'void' ? 'text-slate-200' :
+                encounter.region === 'nebula' ? 'text-indigo-200' :
+                encounter.region === 'asteroid' ? 'text-amber-100' :
+                encounter.region === 'deepspace' ? 'text-blue-200' :
+                encounter.region === 'blackhole' ? 'text-zinc-200' : 'text-slate-200'
+              }`
+            }`}>
               {isCombatEncounter ? 'All Hands to Battle Stations!' : 'Continue Journey'}
             </span>
             <ChevronRightIcon className="h-5 w-5" />

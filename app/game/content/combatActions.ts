@@ -211,5 +211,135 @@ export const ENEMY_ACTIONS: Record<string, EnemyActionDefinition> = {
     },
     cooldown: 4,
     useCondition: { type: 'HEALTH_THRESHOLD', threshold: 0.4 }
+  },
+  
+  // New Void Region Attacks
+  'tractor-beam': {
+    id: 'tractor-beam',
+    name: 'Tractor Beam',
+    description: 'Graviton projector that slows target\'s movement and response time',
+    damage: 5,
+    statusEffect: {
+      type: 'STUN',
+      duration: 1,
+      magnitude: 0.3
+    },
+    cooldown: 3,
+    useCondition: { type: 'RANDOM', probability: 0.4 }
+  },
+  'salvage-claw': {
+    id: 'salvage-claw',
+    name: 'Salvage Claw',
+    description: 'Mechanical arm designed to tear off sections of hull plating',
+    damage: 18,
+    cooldown: 2,
+    useCondition: { type: 'SHIELD_THRESHOLD', threshold: 0.2 } // Used when shields are nearly depleted
+  },
+  
+  // New Nebula Region Attacks
+  'plasma-cloud': {
+    id: 'plasma-cloud',
+    name: 'Plasma Cloud',
+    description: 'Release of ionized gas that corrodes shield systems',
+    shieldDamage: 20,
+    statusEffect: {
+      type: 'WEAKEN',
+      duration: 2,
+      magnitude: 0.15
+    },
+    cooldown: 3,
+    useCondition: { type: 'RANDOM', probability: 0.5 }
+  },
+  'stealth-strike': {
+    id: 'stealth-strike',
+    name: 'Stealth Strike',
+    description: 'Sudden attack from hidden position, difficult to anticipate',
+    damage: 22,
+    cooldown: 3,
+    useCondition: { type: 'HEALTH_THRESHOLD', threshold: 0.7 } // Used when player is still healthy
+  },
+  
+  // New Asteroid Field Attacks
+  'micro-missile-swarm': {
+    id: 'micro-missile-swarm',
+    name: 'Micro-Missile Swarm',
+    description: 'Launch of dozens of tiny guided missiles that overwhelm defenses',
+    damage: 5,
+    shieldDamage: 15,
+    cooldown: 2,
+    useCondition: { type: 'RANDOM', probability: 0.6 }
+  },
+  'mining-laser': {
+    id: 'mining-laser',
+    name: 'Mining Laser',
+    description: 'Industrial cutting beam repurposed for combat',
+    damage: 30,
+    cooldown: 3,
+    useCondition: { type: 'SHIELD_THRESHOLD', threshold: 0.3 } // Used when shields are low
+  },
+  
+  // New Radiation Zone Attacks
+  'radiation-burst': {
+    id: 'radiation-burst',
+    name: 'Radiation Burst',
+    description: 'Concentrated blast of exotic particles that disrupts organic systems',
+    damage: 15,
+    statusEffect: {
+      type: 'DISABLE',
+      duration: 2,
+      magnitude: 0.4
+    },
+    cooldown: 3,
+    useCondition: { type: 'RANDOM', probability: 0.5 }
+  },
+  'bio-corruption': {
+    id: 'bio-corruption',
+    name: 'Bio-Corruption',
+    description: 'Mutagenic field that affects crew performance',
+    damage: 10,
+    statusEffect: {
+      type: 'WEAKEN',
+      duration: 3,
+      magnitude: 0.25
+    },
+    cooldown: 4,
+    useCondition: { type: 'HEALTH_THRESHOLD', threshold: 0.6 }
+  },
+  
+  // New Supernova Attacks
+  'gravity-well': {
+    id: 'gravity-well',
+    name: 'Gravity Well',
+    description: 'Creates a localized gravity distortion that stresses hull integrity',
+    damage: 25,
+    statusEffect: {
+      type: 'DISABLE',
+      duration: 2,
+      magnitude: 0.3
+    },
+    cooldown: 4,
+    useCondition: { type: 'RANDOM', probability: 0.4 }
+  },
+  'stellar-flare': {
+    id: 'stellar-flare',
+    name: 'Stellar Flare',
+    description: 'Intense burst of stellar energy that overwhelms systems',
+    damage: 35,
+    shieldDamage: 20,
+    cooldown: 5,
+    useCondition: { type: 'HEALTH_THRESHOLD', threshold: 0.4 }
+  },
+  'temporal-rift': {
+    id: 'temporal-rift',
+    name: 'Temporal Rift',
+    description: 'Opens a brief tear in spacetime that causes chronometric disruption',
+    damage: 15,
+    statusEffect: {
+      type: 'STUN',
+      duration: 2,
+      magnitude: 0.7
+    },
+    cooldown: 6,
+    useCondition: { type: 'HEALTH_THRESHOLD', threshold: 0.3 }
   }
 }; 
