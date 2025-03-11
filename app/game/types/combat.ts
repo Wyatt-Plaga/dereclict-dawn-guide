@@ -43,6 +43,18 @@ export interface ResourceCost {
 }
 
 /**
+ * Region-based enemy action
+ * This represents the new format used in region-specific enemy files
+ */
+export interface RegionEnemyAction {
+  name: string;
+  damage: number;
+  description: string;
+  target: 'health' | 'shield';
+  probability: number;
+}
+
+/**
  * Status Effect Types
  */
 export type StatusEffectType = 'WEAKEN' | 'EXPOSE' | 'STUN' | 'DISABLE';

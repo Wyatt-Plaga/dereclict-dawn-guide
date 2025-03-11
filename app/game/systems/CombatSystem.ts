@@ -3,17 +3,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { 
   ActionResult, 
   CombatActionDefinition,
-  EnemyActionCondition,
-  EnemyActionDefinition,
-  EnemyDefinition,
   EnemyType,
   RegionDefinition,
+  RegionEnemyAction,
   ResourceCost,
   StatusEffectInstance
 } from '../types/combat';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
-import { ENEMY_ACTIONS, PLAYER_ACTIONS } from '@/app/game/content/combatActions';
-import { ENEMY_DEFINITIONS } from '@/app/game/content/enemies';
+import { PLAYER_ACTIONS } from '@/app/game/content/combatActions';
 import { REGION_DEFINITIONS } from '@/app/game/content/regions';
 import { EventBus } from '../core/EventBus';
 
@@ -312,10 +309,10 @@ export class CombatSystem {
     if (!state.combat.currentEnemy) return;
     
     const enemy = this.getEnemyDefinition(state.combat.currentEnemy);
-    if (!enemy) return;
+    if (!enemy || !enemy.loot) return;
     
     // Process rewards
-    enemy.loot.forEach(reward => {
+    enemy.loot.forEach((reward: { type: string; amount: number; probability?: number }) => {
       // Check probability
       if (reward.probability && Math.random() > reward.probability) {
         return;
@@ -506,128 +503,87 @@ export class CombatSystem {
   private performEnemyAction(state: GameState): void {
     if (!state.combat.currentEnemy) return;
     
+    // Get enemy definition using the new region-based system
     const enemy = this.getEnemyDefinition(state.combat.currentEnemy);
     if (!enemy) return;
     
-    // Get enemy action definitions
-    const availableActions = enemy.actions
-      .map(actionId => ENEMY_ACTIONS[actionId])
-      .filter(action => !!action);
+    // Get enemy actions directly from the enemy definition
+    // Force type to RegionEnemyAction[] since we know that's the structure
+    const availableActions = (enemy.actions || []) as unknown as RegionEnemyAction[];
     
     if (availableActions.length === 0) return;
     
-    // Select action based on enemy health/shield conditions
+    // Select action based on probabilities
     const action = this.selectEnemyAction(state, availableActions);
     
     // Apply action effects
     let message = '';
     
-    // Apply damage to player
+    // Apply damage to player based on the target
     if (action.damage) {
-      if (state.combat.playerStats.shield > 0) {
-        // Damage goes to shield first
+      if (action.target === 'shield' && state.combat.playerStats.shield > 0) {
+        // Damage goes to shield if target is shield and shield is available
         const shieldDamage = Math.min(state.combat.playerStats.shield, action.damage);
         state.combat.playerStats.shield -= shieldDamage;
         
-        // Remaining damage goes to health
-        const remainingDamage = action.damage - shieldDamage;
-        if (remainingDamage > 0) {
-          state.combat.playerStats.health -= remainingDamage;
-          message = `${enemy.name} used ${action.name}, damaging shields for ${shieldDamage} and hull for ${remainingDamage}`;
-        } else {
-          message = `${enemy.name} used ${action.name}, damaging shields for ${shieldDamage}`;
-        }
+        message = `${enemy.name} used ${action.name} dealing ${shieldDamage} damage to your shields!`;
       } else {
-        // All damage goes to health
-        state.combat.playerStats.health -= action.damage;
-        message = `${enemy.name} used ${action.name}, damaging hull for ${action.damage}`;
+        // Damage goes to health
+        let healthDamage = action.damage;
+        
+        // If target is shield but no shield available, or target is health directly
+        if (state.combat.playerStats.shield > 0 && action.target !== 'health') {
+          // Some shield available and not directly targeting health
+          // Apply reduced damage to health
+          healthDamage = Math.floor(healthDamage * 0.5); // 50% damage reduction
+        }
+        
+        state.combat.playerStats.health -= healthDamage;
+        
+        message = `${enemy.name} used ${action.name} dealing ${healthDamage} damage to your hull!`;
       }
-    }
-    
-    // Apply shield damage specifically
-    if (action.shieldDamage && state.combat.playerStats.shield > 0) {
-      const actualDamage = Math.min(state.combat.playerStats.shield, action.shieldDamage);
-      state.combat.playerStats.shield -= actualDamage;
-      message = `${enemy.name} used ${action.name}, damaging shields for ${actualDamage}`;
-    }
-    
-    // Apply status effects
-    if (action.statusEffect) {
-      state.combat.playerStats.statusEffects.push({
-        ...action.statusEffect,
-        remainingTurns: action.statusEffect.duration
-      });
-      
-      message = message || `${enemy.name} used ${action.name}`;
-      message += `, applying ${action.statusEffect.type} effect`;
-    }
-    
-    // If no specific effects, provide generic message
-    if (!message) {
-      message = `${enemy.name} used ${action.name}`;
     }
     
     // Add to battle log
     this.addBattleLog(state, {
       id: uuidv4(),
-      timestamp: Date.now(),
       text: message,
-      type: 'ENEMY'
+      type: 'ENEMY',
+      timestamp: Date.now()
     });
+    
+    // Check if player is defeated
+    if (state.combat.playerStats.health <= 0) {
+      this.endCombatEncounter(state, 'defeat');
+    }
   }
 
   /**
-   * Select an enemy action based on current combat state
+   * Select an enemy action based on probabilities
    */
-  private selectEnemyAction(state: GameState, availableActions: EnemyActionDefinition[]): EnemyActionDefinition {
-    // Filter actions by condition
-    const validActions = availableActions.filter(action => {
-      return this.checkEnemyActionCondition(state, action.useCondition);
-    });
-    
-    // If no valid actions, pick randomly from all
-    if (validActions.length === 0) {
-      const randomIndex = Math.floor(Math.random() * availableActions.length);
-      return availableActions[randomIndex];
+  private selectEnemyAction(state: GameState, availableActions: RegionEnemyAction[]): RegionEnemyAction {
+    // If there's only one action, simply return it
+    if (availableActions.length === 1) {
+      return availableActions[0];
     }
-    
-    // Pick randomly from valid actions
-    const randomIndex = Math.floor(Math.random() * validActions.length);
-    return validActions[randomIndex];
-  }
 
-  /**
-   * Check if enemy action condition is met
-   */
-  private checkEnemyActionCondition(state: GameState, condition: EnemyActionCondition): boolean {
-    const enemyStats = state.combat.enemyStats;
+    // Create a weighted probability array
+    const totalProbability = availableActions.reduce((total, action) => 
+      total + (action.probability || 0.5), 0);
     
-    switch (condition.type) {
-      case 'HEALTH_THRESHOLD':
-        // Use action if health is below threshold (percentage)
-        if (!condition.threshold) return false;
-        const healthPercentage = enemyStats.health / enemyStats.maxHealth;
-        return healthPercentage <= condition.threshold;
-        
-      case 'SHIELD_THRESHOLD':
-        // Use action if shield is below threshold (percentage)
-        if (!condition.threshold) return false;
-        if (enemyStats.maxShield === 0) return false;
-        const shieldPercentage = enemyStats.shield / enemyStats.maxShield;
-        return shieldPercentage <= condition.threshold;
-        
-      case 'ALWAYS':
-        // Always use this action if available
-        return true;
-        
-      case 'RANDOM':
-        // Use action based on random probability
-        if (!condition.probability) return false;
-        return Math.random() <= condition.probability;
-        
-      default:
-        return false;
+    // Get a random number between 0 and totalProbability
+    let random = Math.random() * totalProbability;
+    
+    // Select an action based on its weighted probability
+    for (const action of availableActions) {
+      random -= (action.probability || 0.5);
+      if (random <= 0) {
+        return action;
+      }
     }
+    
+    // Default return the first action if something went wrong
+    return availableActions[0];
   }
 
   /**
@@ -778,29 +734,29 @@ export class CombatSystem {
   /**
    * Get enemy definition by ID from region-specific enemy files
    */
-  private getEnemyDefinition(enemyId: string): EnemyDefinition | undefined {
+  private getEnemyDefinition(enemyId: string): any {
     try {
       // Extract the region prefix from the enemy ID
       let region = '';
       
       if (enemyId.startsWith('void-')) {
         region = 'void';
-      } else if (enemyId.startsWith('asteroid-') || enemyId.includes('asteroid')) {
+      } else if (enemyId.startsWith('asteroid-')) {
         region = 'asteroid';
-      } else if (enemyId.startsWith('blackhole-') || enemyId.includes('blackhole')) {
+      } else if (enemyId.startsWith('blackhole-')) {
         region = 'blackhole';
-      } else if (enemyId.startsWith('supernova-') || enemyId.includes('supernova')) {
+      } else if (enemyId.startsWith('supernova-')) {
         region = 'supernova';
-      } else if (enemyId.startsWith('habitable-') || enemyId.includes('habitable')) {
+      } else if (enemyId.startsWith('habitable-')) {
         region = 'habitable';
       } else {
-        // If no region prefix found, use the legacy system as fallback
+        // If no region prefix found, return undefined
         Logger.warn(
           LogCategory.COMBAT,
-          `No region prefix found in enemy ID: ${enemyId}, using legacy system`,
+          `No region prefix found in enemy ID: ${enemyId}`,
           LogContext.COMBAT
         );
-        return ENEMY_DEFINITIONS[enemyId];
+        return undefined;
       }
       
       // Import the appropriate enemies array based on the region
@@ -841,8 +797,8 @@ export class CombatSystem {
         return undefined;
       }
       
-      // Convert from the new format to the EnemyDefinition format
-      return this.convertToEnemyDefinition(enemy);
+      // Return the enemy directly without conversion
+      return enemy;
     } catch (error) {
       Logger.error(
         LogCategory.COMBAT,
@@ -851,36 +807,6 @@ export class CombatSystem {
       );
       return undefined;
     }
-  }
-
-  /**
-   * Convert from the new Enemy format to the EnemyDefinition format
-   */
-  private convertToEnemyDefinition(enemy: any): EnemyDefinition {
-    // Map actions from the new format to action IDs
-    const actionIds = enemy.actions.map((action: any) => {
-      // Generate an action ID based on the action name
-      // This assumes that action names can be converted to IDs by lowercasing and replacing spaces with hyphens
-      const actionId = action.name.toLowerCase().replace(/\s+/g, '-');
-      return actionId;
-    });
-
-    // Convert to EnemyDefinition format
-    return {
-      id: enemy.id,
-      name: enemy.name,
-      description: enemy.description,
-      type: enemy.type || EnemyType.VESSEL, // Default to VESSEL if not specified
-      health: enemy.health,
-      maxHealth: enemy.maxHealth,
-      shield: enemy.shield,
-      maxShield: enemy.maxShield,
-      image: enemy.image,
-      actions: actionIds,
-      loot: enemy.loot || [],
-      regions: [enemy.region], // Convert region string to array
-      difficultyTier: enemy.difficultyTier || 1
-    };
   }
 
   /**

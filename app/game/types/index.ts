@@ -219,7 +219,7 @@ export interface EnemyAction {
 }
 
 /**
- * Enemy interface
+ * Enemy interface for the region-specific enemy format
  */
 export interface Enemy {
   id: string;
@@ -230,14 +230,22 @@ export interface Enemy {
   shield: number;
   maxShield: number;
   image: string;
-  attackDelay: number; // Time in ms between enemy attacks
-  lastAttackTime: number; // Last time the enemy attacked
-  actions: EnemyAction[];
-  region: RegionType;
-  subRegion?: string; // Optional subregion identifier
-  isBoss?: boolean;   // Whether this is a boss enemy
-  introTitle?: string; // Title to display when encountering this enemy
-  introDescription?: string; // Description to display when encountering this enemy
+  attackDelay: number;
+  lastAttackTime: number;
+  region: string;
+  subRegion?: string;
+  isBoss?: boolean;
+  difficultyTier?: number;
+  introTitle?: string;
+  introDescription?: string;
+  actions: {
+    name: string;
+    damage: number;
+    description: string;
+    target: 'health' | 'shield';
+    probability: number;
+  }[];
+  loot?: { type: string; amount: number; probability?: number }[];
 }
 
 /**
