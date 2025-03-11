@@ -6,6 +6,7 @@ import {
   EnemyActionCondition,
   EnemyActionDefinition,
   EnemyDefinition,
+  EnemyType,
   RegionDefinition,
   ResourceCost,
   StatusEffectInstance
@@ -775,10 +776,111 @@ export class CombatSystem {
   }
 
   /**
-   * Get enemy definition by ID
+   * Get enemy definition by ID from region-specific enemy files
    */
   private getEnemyDefinition(enemyId: string): EnemyDefinition | undefined {
-    return ENEMY_DEFINITIONS[enemyId];
+    try {
+      // Extract the region prefix from the enemy ID
+      let region = '';
+      
+      if (enemyId.startsWith('void-')) {
+        region = 'void';
+      } else if (enemyId.startsWith('asteroid-') || enemyId.includes('asteroid')) {
+        region = 'asteroid';
+      } else if (enemyId.startsWith('blackhole-') || enemyId.includes('blackhole')) {
+        region = 'blackhole';
+      } else if (enemyId.startsWith('supernova-') || enemyId.includes('supernova')) {
+        region = 'supernova';
+      } else if (enemyId.startsWith('habitable-') || enemyId.includes('habitable')) {
+        region = 'habitable';
+      } else {
+        // If no region prefix found, use the legacy system as fallback
+        Logger.warn(
+          LogCategory.COMBAT,
+          `No region prefix found in enemy ID: ${enemyId}, using legacy system`,
+          LogContext.COMBAT
+        );
+        return ENEMY_DEFINITIONS[enemyId];
+      }
+      
+      // Import the appropriate enemies array based on the region
+      let regionEnemies: any[] = [];
+      
+      switch(region) {
+        case 'void':
+          const { VOID_ENEMIES } = require('../content/enemies/voidEnemies');
+          regionEnemies = VOID_ENEMIES;
+          break;
+        case 'asteroid':
+          const { ASTEROID_ENEMIES } = require('../content/enemies/asteroidFieldEnemies');
+          regionEnemies = ASTEROID_ENEMIES;
+          break;
+        case 'blackhole':
+          const { BLACKHOLE_ENEMIES } = require('../content/enemies/blackHoleEnemies');
+          regionEnemies = BLACKHOLE_ENEMIES;
+          break;
+        case 'supernova':
+          const { SUPERNOVA_ENEMIES } = require('../content/enemies/supernovaEnemies');
+          regionEnemies = SUPERNOVA_ENEMIES;
+          break;
+        case 'habitable':
+          const { HABITABLE_ZONE_ENEMIES } = require('../content/enemies/habitableZoneEnemies');
+          regionEnemies = HABITABLE_ZONE_ENEMIES;
+          break;
+      }
+
+      // Find the enemy in the region-specific array
+      const enemy = regionEnemies.find(e => e.id === enemyId);
+      
+      if (!enemy) {
+        Logger.warn(
+          LogCategory.COMBAT,
+          `Enemy ${enemyId} not found in ${region} region enemies`,
+          LogContext.COMBAT
+        );
+        return undefined;
+      }
+      
+      // Convert from the new format to the EnemyDefinition format
+      return this.convertToEnemyDefinition(enemy);
+    } catch (error) {
+      Logger.error(
+        LogCategory.COMBAT,
+        `Error getting enemy definition: ${error}`,
+        LogContext.COMBAT
+      );
+      return undefined;
+    }
+  }
+
+  /**
+   * Convert from the new Enemy format to the EnemyDefinition format
+   */
+  private convertToEnemyDefinition(enemy: any): EnemyDefinition {
+    // Map actions from the new format to action IDs
+    const actionIds = enemy.actions.map((action: any) => {
+      // Generate an action ID based on the action name
+      // This assumes that action names can be converted to IDs by lowercasing and replacing spaces with hyphens
+      const actionId = action.name.toLowerCase().replace(/\s+/g, '-');
+      return actionId;
+    });
+
+    // Convert to EnemyDefinition format
+    return {
+      id: enemy.id,
+      name: enemy.name,
+      description: enemy.description,
+      type: enemy.type || EnemyType.VESSEL, // Default to VESSEL if not specified
+      health: enemy.health,
+      maxHealth: enemy.maxHealth,
+      shield: enemy.shield,
+      maxShield: enemy.maxShield,
+      image: enemy.image,
+      actions: actionIds,
+      loot: enemy.loot || [],
+      regions: [enemy.region], // Convert region string to array
+      difficultyTier: enemy.difficultyTier || 1
+    };
   }
 
   /**

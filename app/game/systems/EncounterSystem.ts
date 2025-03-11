@@ -6,6 +6,7 @@ import {
     StoryEncounter,
     ResourceReward, 
     RegionType, 
+    RegionTypeEnum,
     EncounterChoice,
     Enemy
 } from '../types';
@@ -683,22 +684,22 @@ export class EncounterSystem {
     /**
      * Helper method to convert RegionType to RegionTypeEnum
      */
-    private convertRegionTypeToEnum(regionType: RegionType): any {
+    private convertRegionTypeToEnum(regionType: RegionType): RegionTypeEnum {
         switch (regionType) {
             case 'void':
-                return 'VOID';
+                return RegionTypeEnum.VOID;
             case 'asteroid':
-                return 'ASTEROID_FIELD';
+                return RegionTypeEnum.ASTEROID_FIELD;
             case 'supernova':
-                return 'SUPERNOVA';
+                return RegionTypeEnum.SUPERNOVA;
             case 'blackhole':
-                return 'BLACK_HOLE';
+                return RegionTypeEnum.BLACK_HOLE;
             case 'habitable':
-                return 'HABITABLE_ZONE';
+                return RegionTypeEnum.HABITABLE_ZONE;
             case 'anomaly':
-                return 'ANOMALY';
+                return RegionTypeEnum.ANOMALY;
             default:
-                return 'VOID'; // Default fallback
+                return RegionTypeEnum.VOID; // Default fallback
         }
     }
 } 

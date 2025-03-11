@@ -10,7 +10,7 @@ import { useState, useEffect } from "react"
 import { CombatActionCategory, BattleLogEntry } from "@/app/game/types/combat"
 import { PLAYER_ACTIONS } from "@/app/game/content/combatActions"
 import { useRouter } from "next/navigation"
-import { ENEMY_DEFINITIONS } from "@/app/game/content/enemies"
+// Remove direct imports since we'll use dynamic imports like the EncounterSystem does
 
 // Enemy type
 interface Enemy {
@@ -104,8 +104,46 @@ export default function BattlePage() {
   const enemyShield = state.combat?.enemyStats?.shield || 0
   const enemyMaxShield = state.combat?.enemyStats?.maxShield || 50
   
-  // Get enemy details from definitions or use placeholder
-  const enemyDef = ENEMY_DEFINITIONS[enemyId]
+  // Find enemy definition from the appropriate region-specific array
+  const findEnemyDefinition = (id: string) => {
+    try {
+      // Try to determine which region this enemy belongs to based on its ID
+      if (id.startsWith('void-')) {
+        const { VOID_ENEMIES } = require('@/app/game/content/enemies/voidEnemies');
+        return VOID_ENEMIES.find((e: any) => e.id === id);
+      } else if (id.startsWith('asteroid-')) {
+        const { ASTEROID_ENEMIES } = require('@/app/game/content/enemies/asteroidFieldEnemies');
+        return ASTEROID_ENEMIES.find((e: any) => e.id === id);
+      } else if (id.startsWith('blackhole-')) {
+        const { BLACKHOLE_ENEMIES } = require('@/app/game/content/enemies/blackHoleEnemies');
+        return BLACKHOLE_ENEMIES.find((e: any) => e.id === id);
+      } else if (id.startsWith('supernova-')) {
+        const { SUPERNOVA_ENEMIES } = require('@/app/game/content/enemies/supernovaEnemies');
+        return SUPERNOVA_ENEMIES.find((e: any) => e.id === id);
+      } else if (id.startsWith('habitable-')) {
+        const { HABITABLE_ZONE_ENEMIES } = require('@/app/game/content/enemies/habitableZoneEnemies');
+        return HABITABLE_ZONE_ENEMIES.find((e: any) => e.id === id);
+      }
+      
+      // If we can't determine the region from the ID, log a warning
+      Logger.warn(
+        LogCategory.COMBAT,
+        `Could not determine region for enemy ID: ${id}`,
+        LogContext.COMBAT
+      );
+      
+      return undefined;
+    } catch (error) {
+      Logger.error(
+        LogCategory.COMBAT,
+        `Error finding enemy definition: ${error}`,
+        LogContext.COMBAT
+      );
+      return undefined;
+    }
+  }
+  
+  const enemyDef = findEnemyDefinition(enemyId);
   
   // For display purposes - if we don't have enemy details, use placeholder
   const enemy = {

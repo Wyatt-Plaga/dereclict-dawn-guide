@@ -43,6 +43,24 @@ export const ENEMY_DEFINITIONS: Record<string, EnemyDefinition> = {
     regions: [RegionType.VOID],
     difficultyTier: 1
   },
+  'void-defense-turret': {
+    id: 'void-defense-turret',
+    name: 'Automated Defense Turret',
+    description: 'A defensive weapon that broke free from its mounting during a station catastrophe. Now drifting freely, its targeting systems activate whenever it detects movement.',
+    type: EnemyType.STATION,
+    health: 30,
+    maxHealth: 30,
+    shield: 15,
+    maxShield: 15,
+    image: '/enemies/void/defense-turret.png',
+    actions: ['laser-fire', 'power-surge'],
+    loot: [
+      { type: 'energy', amount: 8 },
+      { type: 'scrap', amount: 12 }
+    ],
+    regions: [RegionType.VOID],
+    difficultyTier: 1
+  },
   
   // Black Hole Enemies
   'gravity-warper': {
