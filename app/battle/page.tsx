@@ -1,12 +1,12 @@
 "use client"
 
-import { Shield, Zap, Wrench, Cpu, AlertTriangle, ChevronDown, ChevronUp, Scan, ZapOff, Search, Compass } from "lucide-react"
+import { Shield, Zap, Wrench, Cpu, AlertTriangle, ChevronDown, ChevronUp, Scan, ZapOff, Search } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/app/game/hooks/useGame"
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
 import { Progress } from "@/components/ui/progress"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { CombatActionCategory, BattleLogEntry } from "@/app/game/types/combat"
 import { PLAYER_ACTIONS } from "@/app/game/content/combatActions"
 import { useRouter } from "next/navigation"
@@ -24,6 +24,23 @@ interface Enemy {
   image: string;
   weakness: 'shield' | 'weapon' | 'repair' | 'countermeasure';
 }
+
+// Damage effect component
+const DamageEffect = ({ target }: { target: 'player' | 'enemy' }) => {
+  const [visible, setVisible] = useState(true);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setVisible(false);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  return visible ? (
+    <div className={`absolute inset-0 pointer-events-none ${target === 'player' ? 'bg-red-500/20' : 'bg-blue-500/20'} animate-pulse z-10`}></div>
+  ) : null;
+};
 
 export default function BattlePage() {
   const { state, dispatch } = useGame()
@@ -103,6 +120,39 @@ export default function BattlePage() {
   const enemyMaxHealth = state.combat?.enemyStats?.maxHealth || 100
   const enemyShield = state.combat?.enemyStats?.shield || 0
   const enemyMaxShield = state.combat?.enemyStats?.maxShield || 50
+  
+  // Track the latest enemy action for prominent display
+  const [latestEnemyAction, setLatestEnemyAction] = useState<{
+    text: string;
+    timestamp: number;
+    fadeOut: boolean;
+  } | null>(null);
+  
+  // Monitor battle log for new enemy actions
+  useEffect(() => {
+    if (!state.combat?.battleLog?.length) return;
+    
+    // Get the most recent log entry
+    const latestEntry = [...state.combat.battleLog].reverse().find(entry => entry.type === 'ENEMY');
+    
+    if (latestEntry && (!latestEnemyAction || latestEntry.timestamp > latestEnemyAction.timestamp)) {
+      // New enemy action found
+      setLatestEnemyAction({
+        text: latestEntry.text,
+        timestamp: latestEntry.timestamp,
+        fadeOut: false
+      });
+      
+      // Set up fade-out effect after 5 seconds
+      const timer = setTimeout(() => {
+        setLatestEnemyAction(current => 
+          current ? { ...current, fadeOut: true } : null
+        );
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [state.combat?.battleLog, latestEnemyAction]);
   
   // Find enemy definition from the appropriate region-specific array
   const findEnemyDefinition = (id: string) => {
@@ -206,6 +256,35 @@ export default function BattlePage() {
   const actionError = state.combat?.lastActionResult?.success === false ? 
     state.combat.lastActionResult.message : null
   
+  // Track damage effects
+  const [showPlayerDamageEffect, setShowPlayerDamageEffect] = useState(false);
+  const [showEnemyDamageEffect, setShowEnemyDamageEffect] = useState(false);
+  const playerHealthRef = useRef(shipHealth);
+  const enemyHealthRef = useRef(enemyHealth);
+  
+  // Check for damage to show effects
+  useEffect(() => {
+    // Check for player taking damage
+    if (shipHealth < playerHealthRef.current) {
+      setShowPlayerDamageEffect(true);
+      const timer = setTimeout(() => setShowPlayerDamageEffect(false), 600);
+      return () => clearTimeout(timer);
+    }
+    
+    playerHealthRef.current = shipHealth;
+  }, [shipHealth]);
+  
+  // Check for enemy taking damage
+  useEffect(() => {
+    if (enemyHealth < enemyHealthRef.current) {
+      setShowEnemyDamageEffect(true);
+      const timer = setTimeout(() => setShowEnemyDamageEffect(false), 600);
+      return () => clearTimeout(timer);
+    }
+    
+    enemyHealthRef.current = enemyHealth;
+  }, [enemyHealth]);
+  
   return (
     <GameLoader>
       <main className="flex min-h-screen flex-col">
@@ -234,7 +313,8 @@ export default function BattlePage() {
             {/* Battle status */}
             <div className="grid md:grid-cols-2 gap-6 mb-8">
               {/* Ship status */}
-              <div className="system-panel p-4 flex flex-col">
+              <div className="system-panel p-4 flex flex-col relative">
+                {showPlayerDamageEffect && <DamageEffect target="player" />}
                 <div>
                   <h2 className="text-lg font-medium mb-3">Dawn Status</h2>
                   
@@ -278,11 +358,29 @@ export default function BattlePage() {
               </div>
               
               {/* Enemy status */}
-              <div className="system-panel p-4 flex flex-col">
+              <div className="system-panel p-4 flex flex-col relative">
+                {showEnemyDamageEffect && <DamageEffect target="enemy" />}
                 <div>
                   <h2 className="text-lg font-medium mb-2">{enemy.name}</h2>
                   <p className="text-sm text-muted-foreground">{enemy.description}</p>
                 </div>
+                
+                {/* Latest enemy action display - add before the shield/hull metrics */}
+                {latestEnemyAction && (
+                  <div 
+                    className={`mt-4 p-3 border border-red-700/50 bg-red-900/20 rounded transition-opacity duration-500 ${
+                      latestEnemyAction.fadeOut ? 'opacity-50' : 'opacity-100'
+                    }`}
+                  >
+                    <div className="flex items-start">
+                      <AlertTriangle className="h-5 w-5 text-red-400 mr-2 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h3 className="text-red-400 text-sm font-bold mb-1">Enemy Action</h3>
+                        <p className="text-sm">{latestEnemyAction.text}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Push shield and hull to bottom with auto margin */}
                 <div className="mt-auto">
