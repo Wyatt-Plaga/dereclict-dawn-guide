@@ -1,5 +1,5 @@
 import { Enemy } from '../../types';
-import { v4 as uuidv4 } from 'uuid';
+
 
 /**
  * Enemies for the Supernova region
@@ -15,7 +15,7 @@ import { v4 as uuidv4 } from 'uuid';
 // =====================
 
 export const RADIATION_WRAITH: Enemy = {
-    id: uuidv4(),
+    id: 'supernova-radiation-wraith',
     name: 'Radiation Wraith',
     description: 'An energetic anomaly formed from the supernova\'s intense radiation, now drifting through the debris seeking energy to consume. It appears as a shimmering, translucent specter of light and ionized particles.',
     maxHealth: 80,
@@ -55,7 +55,7 @@ export const RADIATION_WRAITH: Enemy = {
 };
 
 export const SCAVENGER_DRONE: Enemy = {
-    id: uuidv4(),
+    id: 'supernova-scavenger-drone',
     name: 'Scavenger Drone',
     description: 'An automated salvage unit still following ancient programming, harvesting materials from the ruins and attacking anything it perceives as competition for limited resources.',
     maxHealth: 70,
@@ -93,7 +93,7 @@ export const SCAVENGER_DRONE: Enemy = {
 };
 
 export const DERELICT_GUARDIAN: Enemy = {
-    id: uuidv4(),
+    id: 'supernova-derelict-guardian',
     name: 'Derelict Guardian',
     description: 'A damaged defense platform that survived the cataclysm, now malfunctioning and attacking any ships it detects. Its programming corrupted, it believes it still protects a civilization long gone.',
     maxHealth: 90,
@@ -135,7 +135,7 @@ export const DERELICT_GUARDIAN: Enemy = {
 // =====================
 
 export const FUSED_CONSTRUCT: Enemy = {
-    id: uuidv4(),
+    id: 'supernova-fused-construct',
     name: 'Fused Construct',
     description: 'A mass of technology and organic matter merged during the supernova, now animated by residual energy. Parts of buildings, machines, and possibly even life forms move with disturbing coordination.',
     maxHealth: 110,
@@ -173,7 +173,7 @@ export const FUSED_CONSTRUCT: Enemy = {
 };
 
 export const STELLAR_SHARD: Enemy = {
-    id: uuidv4(),
+    id: 'supernova-stellar-shard',
     name: 'Stellar Shard',
     description: 'A fragment of the star\'s photosphere that retained coherence, pulsing with dangerous energy discharges. It glows with the light of a small sun, temperature fluctuating wildly.',
     maxHealth: 100,
@@ -211,7 +211,7 @@ export const STELLAR_SHARD: Enemy = {
 };
 
 export const AUTOMATED_DEFENDER: Enemy = {
-    id: uuidv4(),
+    id: 'supernova-automated-defender',
     name: 'Automated Defender',
     description: 'A military vessel\'s AI core that survived the blast, now piloting what remains of its hull to defend territory that no longer exists. Its form is asymmetrical and partially destroyed, yet still deadly.',
     maxHealth: 130,
@@ -253,7 +253,7 @@ export const AUTOMATED_DEFENDER: Enemy = {
 // =====================
 
 export const QUANTUM_ABERRATION: Enemy = {
-    id: uuidv4(),
+    id: 'supernova-quantum-aberration',
     name: 'Quantum Aberration',
     description: 'Entity formed from matter compressed to quantum uncertainty, phasing in and out of normal space. Its boundaries are unclear, seeming to exist in multiple states simultaneously.',
     maxHealth: 150,
@@ -291,7 +291,7 @@ export const QUANTUM_ABERRATION: Enemy = {
 };
 
 export const TEMPORAL_ECHO: Enemy = {
-    id: uuidv4(),
+    id: 'supernova-temporal-echo',
     name: 'Temporal Echo',
     description: 'Manifestation of the star system\'s final moments, replaying in an endless loop and lashing out at intruders. It appears as a shimmering distortion containing fragments of destroyed worlds.',
     maxHealth: 140,
@@ -329,7 +329,7 @@ export const TEMPORAL_ECHO: Enemy = {
 };
 
 export const GRAVITY_MANIPULATOR: Enemy = {
-    id: uuidv4(),
+    id: 'supernova-gravity-manipulator',
     name: 'Gravity Manipulator',
     description: 'Advanced military weapon torn free from its controls, harnessing the neutron star\'s gravity for devastating attacks. Its structure warps the space around it, making it difficult to perceive clearly.',
     maxHealth: 160,
@@ -371,7 +371,7 @@ export const GRAVITY_MANIPULATOR: Enemy = {
 // =====================
 
 export const STELLAR_PHOENIX: Enemy = {
-    id: uuidv4(),
+    id: 'supernova-stellar-phoenix-boss',
     name: 'Stellar Phoenix',
     description: 'A sentient manifestation of the supernova itself, composed of stellar matter and the collective consciousness of billions who perished in the cataclysm. It exists in a constant cycle of death and rebirth.',
     maxHealth: 300,

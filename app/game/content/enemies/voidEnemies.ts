@@ -1,5 +1,4 @@
 import { Enemy } from '../../types';
-import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Enemy definitions for the Void region
@@ -13,7 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 export const VOID_ENEMIES: Enemy[] = [
     // Basic enemies
     {
-        id: uuidv4(),
+        id: 'void-service-bot',
         name: 'Malfunctioning Service Bot',
         description: 'A simple maintenance robot left adrift when its station was abandoned. Years of radiation exposure have corrupted its basic programming, causing it to attack any vessel it encounters.',
         maxHealth: 25,
@@ -45,7 +44,7 @@ export const VOID_ENEMIES: Enemy[] = [
         ]
     },
     {
-        id: uuidv4(),
+        id: 'void-excavator',
         name: 'Derelict Excavator',
         description: 'A hulking piece of industrial equipment abandoned when its asteroid mining operation shut down. Its power cells should have died decades ago, but something keeps it partially functioning.',
         maxHealth: 40,
@@ -75,7 +74,7 @@ export const VOID_ENEMIES: Enemy[] = [
         ]
     },
     {
-        id: uuidv4(),
+        id: 'void-radiation-cluster',
         name: 'Radiation Cluster',
         description: 'A pocket of concentrated radiation, possibly the result of a reactor breach from a long-destroyed vessel. It drifts through space, interacting unpredictably with ship systems.',
         maxHealth: 20,
@@ -105,7 +104,7 @@ export const VOID_ENEMIES: Enemy[] = [
         ]
     },
     {
-        id: uuidv4(),
+        id: 'void-sentry-turret',
         name: 'Abandoned Sentry Turret',
         description: 'A defensive turret from a forgotten outpost, still adhering to protocols long since obsolete. Its targeting systems are damaged, causing it to fire at anything that moves.',
         maxHealth: 30,
@@ -137,7 +136,7 @@ export const VOID_ENEMIES: Enemy[] = [
     
     // Boss enemy
     {
-        id: uuidv4(),
+        id: 'void-forgotten-monitor-boss',
         name: 'The Forgotten Monitor',
         description: 'A massive derelict station that once served as an observation post at the edge of charted space. Long abandoned, its systems have decayed into a semi-functional state of paranoid defense protocols and corrupted data.',
         maxHealth: 100,
@@ -184,7 +183,7 @@ export const VOID_ENEMIES: Enemy[] = [
         ]
     },
     {
-        id: uuidv4(),
+        id: 'void-defense-turret',
         name: 'Automated Defense Turret',
         description: 'A defensive weapon that broke free from its mounting during a station catastrophe. Now drifting freely, its targeting systems activate whenever it detects movement.',
         maxHealth: 30,
@@ -216,7 +215,7 @@ export const VOID_ENEMIES: Enemy[] = [
         ]
     },
     {
-        id: uuidv4(),
+        id: 'void-mining-drone',
         name: 'Derelict Mining Drone',
         description: 'Once part of a resource extraction operation, this drone continues to follow its programming to collect valuable materials - now identifying spacecraft as viable targets.',
         maxHealth: 35,

@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import { Enemy, EnemyAction } from '../../types';
 
 /**
@@ -6,8 +5,8 @@ import { Enemy, EnemyAction } from '../../types';
  *
  * Organized by subregions:
  * 1. Mining Frontier - Former resource extraction zones
- * 2. Dense Cluster - Areas with high asteroid concentration
- * 3. Settlement Ruins - Remains of asteroid bases and habitats
+ * 2. Resource Processing Hub - Areas for processing extracted materials
+ * 3. Core Extraction Zone - Critical mining areas with valuable resources
  */
 
 // =====================
@@ -16,7 +15,7 @@ import { Enemy, EnemyAction } from '../../types';
 
 export const MINING_FRONTIER_ENEMIES: Enemy[] = [
     {
-        id: uuidv4(),
+        id: 'asteroid-mining-drone',
         name: 'Mining Drone',
         description: 'A small automated mining unit with basic defensive capabilities. Originally designed for resource extraction, these units have been left on autonomous mode for too long and now treat all ships as intruders.',
         health: 30,
@@ -48,7 +47,7 @@ export const MINING_FRONTIER_ENEMIES: Enemy[] = [
         ]
     },
     {
-        id: uuidv4(),
+        id: 'asteroid-scavenger-ship',
         name: 'Scavenger Ship',
         description: 'A cobbled-together vessel operated by desperate miners or pirates. These ships survive by salvaging abandoned equipment and attacking vulnerable targets.',
         health: 45,
@@ -78,7 +77,7 @@ export const MINING_FRONTIER_ENEMIES: Enemy[] = [
         ]
     },
     {
-        id: uuidv4(),
+        id: 'asteroid-security-skiff',
         name: 'Corporate Security Skiff',
         description: 'A light patrol vessel enforcing mining claims for major corporations. Fast and well-armed, but lightly armored.',
         health: 40,
@@ -132,7 +131,7 @@ export const SETTLEMENT_RUINS_ENEMIES: Enemy[] = [
  */
 export const PROCESSING_HUB_ENEMIES: Enemy[] = [
     {
-        id: uuidv4(),
+        id: 'asteroid-mining-barge',
         name: 'Heavy Mining Barge',
         description: 'A massive industrial vessel designed to harvest and process asteroids. Though slow, its industrial equipment has been weaponized to devastating effect.',
         health: 65,
@@ -162,7 +161,7 @@ export const PROCESSING_HUB_ENEMIES: Enemy[] = [
         ]
     },
     {
-        id: uuidv4(),
+        id: 'asteroid-processing-sentinel',
         name: 'Processing Sentinel',
         description: 'An automated security unit designed to protect valuable processing facilities. Armed with repurposed industrial equipment.',
         health: 55,
@@ -192,7 +191,7 @@ export const PROCESSING_HUB_ENEMIES: Enemy[] = [
         ]
     },
     {
-        id: uuidv4(),
+        id: 'asteroid-automated-harvester',
         name: 'Automated Harvester',
         description: 'A large collection platform that strips resources from asteroids. Its collection systems can easily tear through ship hulls.',
         health: 60,
@@ -228,7 +227,7 @@ export const PROCESSING_HUB_ENEMIES: Enemy[] = [
  */
 export const EXTRACTION_ZONE_ENEMIES: Enemy[] = [
     {
-        id: uuidv4(),
+        id: 'asteroid-mining-excavator',
         name: 'Mining Excavator',
         description: 'A massive drilling platform capable of boring through the densest asteroids. Its reinforced hull and powerful engines make it a formidable opponent.',
         health: 80,
@@ -258,7 +257,7 @@ export const EXTRACTION_ZONE_ENEMIES: Enemy[] = [
         ]
     },
     {
-        id: uuidv4(),
+        id: 'asteroid-security-battleframe',
         name: 'Security Battleframe',
         description: 'Elite corporate security unit equipped with military-grade weapons and armor. Deployed to protect the corporation\'s most valuable assets.',
         health: 75,
@@ -288,7 +287,7 @@ export const EXTRACTION_ZONE_ENEMIES: Enemy[] = [
         ]
     },
     {
-        id: uuidv4(),
+        id: 'asteroid-extractor-boss',
         name: 'The Extractor',
         description: 'A modified mining superstructure with experimental technology designed to extract rare materials. Its systems have been enhanced with artifacts recovered from the asteroid belt.',
         health: 120,
@@ -330,10 +329,8 @@ export const EXTRACTION_ZONE_ENEMIES: Enemy[] = [
 ];
 
 // Combined enemy array for the asteroid field region
-export const ASTEROID_ENEMIES: Enemy[] = [
+export const ASTEROID_FIELD_ENEMIES: Enemy[] = [
     ...MINING_FRONTIER_ENEMIES,
-    ...DENSE_CLUSTER_ENEMIES,
-    ...SETTLEMENT_RUINS_ENEMIES,
     ...PROCESSING_HUB_ENEMIES,
     ...EXTRACTION_ZONE_ENEMIES
 ];

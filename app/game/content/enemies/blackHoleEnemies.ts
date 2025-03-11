@@ -1,5 +1,4 @@
 import { Enemy } from '../../types';
-import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Enemies for the Black Hole region
@@ -15,7 +14,7 @@ import { v4 as uuidv4 } from 'uuid';
 // =====================
 
 export const WARPED_RESEARCH_VESSEL: Enemy = {
-    id: uuidv4(),
+    id: 'blackhole-warped-research-vessel',
     name: 'Warped Research Vessel',
     description: 'Once a scientific vessel, now twisted by extreme gravitational forces. Its hull has stretched in impossible ways, and its systems operate on altered physical principles.',
     maxHealth: 75,
@@ -55,7 +54,7 @@ export const WARPED_RESEARCH_VESSEL: Enemy = {
 };
 
 export const RADIATION_PHANTOM: Enemy = {
-    id: uuidv4(),
+    id: 'blackhole-radiation-phantom',
     name: 'Radiation Phantom',
     description: 'A mysterious entity composed of ionized particles and exotic radiation. It flickers in and out of conventional detection, appearing as a vaguely humanoid shape.',
     maxHealth: 60,
@@ -93,7 +92,7 @@ export const RADIATION_PHANTOM: Enemy = {
 };
 
 export const GRAVITY_PROBE: Enemy = {
-    id: uuidv4(),
+    id: 'blackhole-gravity-probe',
     name: 'Gravity Probe',
     description: 'An automated research device designed to measure gravitational anomalies. Its programming has been corrupted by proximity to the black hole, now perceiving all other objects as threats.',
     maxHealth: 50,
@@ -135,7 +134,7 @@ export const GRAVITY_PROBE: Enemy = {
 // =====================
 
 export const TWISTED_FRAME_STRUCTURE: Enemy = {
-    id: uuidv4(),
+    id: 'blackhole-twisted-frame',
     name: 'Twisted Frame Structure',
     description: 'The remnants of a space station caught in the ergosphere\'s frame dragging effect. Its structure is perpetually rotating and folding through higher dimensions.',
     maxHealth: 100,
@@ -173,7 +172,7 @@ export const TWISTED_FRAME_STRUCTURE: Enemy = {
 };
 
 export const TIME_DILATED_OBSERVER: Enemy = {
-    id: uuidv4(),
+    id: 'blackhole-time-dilated-observer',
     name: 'Time-Dilated Observer',
     description: 'A research drone experiencing extreme time dilation. It perceives events at a different rate than normal space-time, allowing it to react to attacks before they occur.',
     maxHealth: 80,
@@ -211,7 +210,7 @@ export const TIME_DILATED_OBSERVER: Enemy = {
 };
 
 export const PHASE_SHIFTED_CONSTRUCT: Enemy = {
-    id: uuidv4(),
+    id: 'blackhole-phase-shifted-construct',
     name: 'Phase-Shifted Construct',
     description: 'An artificial structure existing partially in our dimension and partially in others, appearing as a constantly shifting geometric impossibility.',
     maxHealth: 120,
@@ -253,7 +252,7 @@ export const PHASE_SHIFTED_CONSTRUCT: Enemy = {
 // =====================
 
 export const SINGULARITY_GUARDIAN: Enemy = {
-    id: uuidv4(),
+    id: 'blackhole-singularity-guardian',
     name: 'Singularity Guardian',
     description: 'An entity composed of ultra-dense matter that orbits just beyond the event horizon. It appears to purposefully protect the black hole from intruders.',
     maxHealth: 150,
@@ -291,7 +290,7 @@ export const SINGULARITY_GUARDIAN: Enemy = {
 };
 
 export const REALITY_FRACTURE: Enemy = {
-    id: uuidv4(),
+    id: 'blackhole-reality-fracture',
     name: 'Reality Fracture',
     description: 'Not truly an entity but a tear in the fabric of space-time that behaves with apparent intelligence. It appears as a jagged line of absolute darkness that splits and reconnects unpredictably.',
     maxHealth: 130,
@@ -333,7 +332,7 @@ export const REALITY_FRACTURE: Enemy = {
 // =====================
 
 export const SINGULARITY_ECHO: Enemy = {
-    id: uuidv4(),
+    id: 'blackhole-singularity-echo-boss',
     name: 'The Singularity\'s Echo',
     description: 'A perfect reflection of your own ship, twisted by the black hole\'s influence. It anticipates your actions and counters with impossible precision, as if it knows what you\'ll do before you do.',
     maxHealth: 250,
