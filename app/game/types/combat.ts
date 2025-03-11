@@ -16,7 +16,8 @@ export enum RegionType {
   BLACK_HOLE = 'blackhole',
   ASTEROID_FIELD = 'asteroid',
   HABITABLE_ZONE = 'habitable',
-  SUPERNOVA = 'supernova'
+  SUPERNOVA = 'supernova',
+  ANOMALY = 'anomaly'
 }
 
 // Type compatibility check to ensure our enum values match the string union type
@@ -146,6 +147,8 @@ export interface EnemyDefinition {
   loot: EnemyLoot[];
   image?: string;
   regions?: RegionType[];
+  subRegion?: string;  // Optional subregion within a region
+  isBoss?: boolean;    // Whether this is a boss enemy
   difficultyTier?: number;
 }
 

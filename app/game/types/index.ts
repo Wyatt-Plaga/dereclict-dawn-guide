@@ -5,7 +5,19 @@
 /**
  * Region Types
  */
-export type RegionType = 'void' | 'nebula' | 'asteroid' | 'supernova' | 'blackhole' | 'habitable' | 'anomaly';
+export type RegionType = 'void' | 'asteroid' | 'supernova' | 'blackhole' | 'habitable' | 'anomaly';
+
+/**
+ * Region Type Enum (for backward compatibility)
+ */
+export enum RegionTypeEnum {
+    VOID = 'void',
+    ASTEROID_FIELD = 'asteroid',
+    SUPERNOVA = 'supernova',
+    BLACK_HOLE = 'blackhole',
+    HABITABLE_ZONE = 'habitable',
+    ANOMALY = 'anomaly'
+}
 
 /**
  * Log Categories
@@ -146,6 +158,7 @@ export interface BaseEncounter {
     title: string;
     description: string;
     region: RegionType;
+    enemyId?: string | null; // ID of the enemy for combat encounters
 }
 
 export interface EmptyEncounter extends BaseEncounter {
@@ -167,6 +180,12 @@ export interface EncounterChoice {
         resources?: ResourceReward[];
         text: string;
         continuesToNextEncounter?: boolean;
+        combat?: {
+            enemyId?: string;       // Specific enemy to encounter
+            enemyRegion?: string;   // Random enemy from region
+            enemySubRegion?: string; // Random enemy from subregion
+            isBoss?: boolean;       // Whether this is a boss encounter
+        };
     };
 }
 
@@ -215,6 +234,10 @@ export interface Enemy {
   lastAttackTime: number; // Last time the enemy attacked
   actions: EnemyAction[];
   region: RegionType;
+  subRegion?: string; // Optional subregion identifier
+  isBoss?: boolean;   // Whether this is a boss enemy
+  introTitle?: string; // Title to display when encountering this enemy
+  introDescription?: string; // Description to display when encountering this enemy
 }
 
 /**
@@ -234,6 +257,7 @@ export interface CombatState {
   active: boolean;
   currentEnemy: string | null;
   currentRegion: string | null;
+  currentSubRegion?: string | null; // Track the subregion where combat is taking place
   turn: number;
   encounterCompleted: boolean;
   outcome?: 'victory' | 'defeat' | 'retreat';
@@ -311,6 +335,7 @@ export interface GameState {
      */
     navigation: {
         currentRegion: RegionType;
+        currentSubRegion?: string; // Optional subregion within the current region
         completedRegions: RegionType[];
     };
 
@@ -397,6 +422,7 @@ export const initialGameState: GameState = {
     },
     navigation: {
         currentRegion: 'void',
+        currentSubRegion: undefined,
         completedRegions: []
     },
     encounters: {
@@ -407,6 +433,7 @@ export const initialGameState: GameState = {
         active: false,
         currentEnemy: null,
         currentRegion: null,
+        currentSubRegion: null,
         turn: 0,
         encounterCompleted: false,
         playerStats: {

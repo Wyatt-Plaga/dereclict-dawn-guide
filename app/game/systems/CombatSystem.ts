@@ -44,9 +44,10 @@ export class CombatSystem {
     this.eventBus.on('combatEncounterTriggered', (data: { 
       state: GameState, 
       enemyId: string, 
-      regionId: RegionType 
+      regionId: RegionType,
+      subRegionId?: string  // Add optional subRegion parameter
     }) => {
-      this.startCombatEncounter(data.state, data.enemyId, data.regionId);
+      this.startCombatEncounter(data.state, data.enemyId, data.regionId, data.subRegionId);
     });
 
     // Add more event listeners as needed
@@ -108,10 +109,10 @@ export class CombatSystem {
   /**
    * Start a combat encounter
    */
-  startCombatEncounter(state: GameState, enemyId: string, regionId: RegionType): void {
+  startCombatEncounter(state: GameState, enemyId: string, regionId: RegionType, subRegionId?: string): void {
     Logger.info(
       LogCategory.COMBAT,
-      `Starting combat with enemy ${enemyId} in region ${regionId}`,
+      `Starting combat with enemy ${enemyId} in region ${regionId}${subRegionId ? `, subregion ${subRegionId}` : ''}`,
       LogContext.COMBAT
     );
 
@@ -123,6 +124,33 @@ export class CombatSystem {
         LogContext.COMBAT
       );
       return;
+    }
+
+    // If enemy has a subregion but none was provided in the call, use the enemy's subregion
+    if (enemy.subRegion && !subRegionId) {
+      subRegionId = enemy.subRegion;
+      Logger.info(
+        LogCategory.COMBAT,
+        `No subregion provided, using enemy's subregion: ${subRegionId}`,
+        LogContext.COMBAT
+      );
+    }
+    
+    // Log if enemy has a subregion and it matches the current combat subregion
+    if (enemy.subRegion && subRegionId) {
+      if (enemy.subRegion === subRegionId) {
+        Logger.info(
+          LogCategory.COMBAT,
+          `Enemy ${enemy.name} (${enemyId}) is from the appropriate subregion: ${enemy.subRegion}`,
+          LogContext.COMBAT
+        );
+      } else {
+        Logger.warn(
+          LogCategory.COMBAT,
+          `Enemy ${enemy.name} (${enemyId}) is from subregion ${enemy.subRegion} but combat is in subregion ${subRegionId}`,
+          LogContext.COMBAT
+        );
+      }
     }
 
     // Check if combat state is undefined and initialize it
@@ -157,6 +185,7 @@ export class CombatSystem {
         encounterCompleted: false,
         currentEnemy: null,
         currentRegion: null,
+        currentSubRegion: null,
         enemyIntentions: null,
         rewards: {
           energy: 0,
@@ -167,13 +196,31 @@ export class CombatSystem {
       };
     }
 
-    // Initialize combat state
+    // Set up combat with the selected enemy
     state.combat.active = true;
+    state.combat.encounterCompleted = false;
+    state.combat.turn = 1;
     state.combat.currentEnemy = enemyId;
     state.combat.currentRegion = regionId;
-    state.combat.turn = 1;
-    state.combat.encounterCompleted = false;
-    state.combat.outcome = undefined;
+    state.combat.currentSubRegion = subRegionId || null; // Store the subregion
+    
+    // Add initial battle log entry with region and subregion information
+    this.addBattleLog(state, {
+      id: uuidv4(),
+      text: `Combat initiated with ${enemy.name} in ${regionId}${subRegionId ? `, subregion ${subRegionId}` : ''}`,
+      type: 'SYSTEM',
+      timestamp: Date.now()
+    });
+    
+    // If enemy is a boss, add a special log entry
+    if (enemy.isBoss) {
+      this.addBattleLog(state, {
+        id: uuidv4(),
+        text: `Warning: ${enemy.name} is a powerful boss enemy! Prepare for a challenging battle.`,
+        type: 'SYSTEM',
+        timestamp: Date.now()
+      });
+    }
     
     // Reset stats
     state.combat.enemyStats = {
@@ -715,9 +762,13 @@ export class CombatSystem {
    * Add entry to battle log
    */
   private addBattleLog(state: GameState, entry: BattleLogEntry): void {
+    // Add the entry to the battle log
     state.combat.battleLog.push(entry);
     
-    // Keep log size manageable (max 50 entries)
+    // We no longer need this since we're adding region/subregion info directly in startCombatEncounter
+    // This removes the redundant subregion log entry
+    
+    // Limit battle log size to prevent it from growing too large
     if (state.combat.battleLog.length > 50) {
       state.combat.battleLog = state.combat.battleLog.slice(-50);
     }

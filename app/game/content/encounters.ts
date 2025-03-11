@@ -3,142 +3,168 @@
  * Contains region-specific encounter probabilities and flavor text
  */
 
-import { RegionType, ResourceReward, StoryEncounter } from '../types';
+import { RegionTypeEnum, ResourceReward, StoryEncounter } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Chances of getting encounters in different regions
  */
 export const REGION_ENCOUNTER_CHANCES: Record<string, { combat: number, empty: number, narrative: number }> = {
-    [RegionType.VOID]: { combat: 0.5, empty: 0.2, narrative: 0.3 },
-    [RegionType.BLACK_HOLE]: { combat: 0.6, empty: 0.1, narrative: 0.3 },
-    [RegionType.ASTEROID_FIELD]: { combat: 0.5, empty: 0.2, narrative: 0.3 },
-    [RegionType.HABITABLE_ZONE]: { combat: 0.4, empty: 0.3, narrative: 0.3 },
-    [RegionType.SUPERNOVA]: { combat: 0.7, empty: 0.1, narrative: 0.2 }
+    [RegionTypeEnum.VOID]: { combat: 0.5, empty: 0.2, narrative: 0.3 },
+    [RegionTypeEnum.BLACK_HOLE]: { combat: 0.6, empty: 0.1, narrative: 0.3 },
+    [RegionTypeEnum.ASTEROID_FIELD]: { combat: 0.5, empty: 0.2, narrative: 0.3 },
+    [RegionTypeEnum.HABITABLE_ZONE]: { combat: 0.4, empty: 0.3, narrative: 0.3 },
+    [RegionTypeEnum.SUPERNOVA]: { combat: 0.7, empty: 0.1, narrative: 0.2 }
 };
 
 /**
  * Empty encounter titles by region
  */
-export const EMPTY_ENCOUNTER_TITLES: Record<RegionType, string[]> = {
+export const EMPTY_ENCOUNTER_TITLES: Record<RegionTypeEnum, string[]> = {
     'void': [
         "Silent Vacuum",
-        "Empty Expanse",
-        "Quiet Sector",
-        "Interstellar Drift",
-        "Cosmic Silence"
+        "Empty Space",
+        "Stellar Void",
+        "Deep Space",
+        "Quiet Sector"
     ],
     'blackhole': [
+        "Gravitational Anomaly",
+        "Light's End",
         "Event Horizon",
-        "Gravity Well",
-        "Spacetime Distortion",
-        "Singularity's Edge",
-        "Temporal Anomaly"
+        "Space-Time Distortion",
+        "Singularity"
     ],
     'asteroid': [
-        "Rocky Passage",
-        "Mineral Wealth",
-        "Silent Stones",
-        "Debris Field",
+        "Drifting Rocks",
+        "Mineral Field",
+        "Debris Cluster",
+        "Resource Belt",
         "Floating Giants"
     ],
     'habitable': [
         "Stellar Garden",
         "Life-Bearing Zone",
         "Planetary Sanctuary",
-        "Eden Sector",
-        "Verdant Orbit"
+        "Temperate System",
+        "Goldilocks Orbit"
     ],
     'supernova': [
         "Stellar Remnant",
-        "Cosmic Furnace",
-        "Star's Grave",
-        "Fusion Aftermath",
-        "Stellar Ash"
+        "Energy Cascade",
+        "Radiation Cloud",
+        "Shattered Star",
+        "Cosmic Explosion"
+    ],
+    'anomaly': [
+        "Quantum Distortion",
+        "Reality Fracture",
+        "Dimensional Rift",
+        "Strange Phenomenon",
+        "Unknown Manifestation"
     ]
 };
 
 /**
  * Empty encounter descriptions by region
  */
-export const EMPTY_ENCOUNTER_DESCRIPTIONS: Record<RegionType, string[]> = {
+export const EMPTY_ENCOUNTER_DESCRIPTIONS: Record<RegionTypeEnum, string[]> = {
     'void': [
         "Your ship drifts through an unremarkable sector of space. Sensors indicate nothing of significance in the vicinity.",
-        "The emptiness of space stretches out in all directions. This sector appears to be devoid of noteworthy phenomena.",
-        "A quiet region where little happens. The background radiation is slightly higher than normal, but otherwise unremarkable.",
-        "Stars glitter distantly as you traverse this empty section of void. The sensors remain quiet, detecting no threats or opportunities."
+        "The emptiness of space stretches in all directions. This region appears to be devoid of any notable features.",
+        "A quiet section of void space. There are no celestial bodies or phenomena of interest within scanning range.",
+        "This area of space contains nothing but distant stars. Your sensors detect no immediate points of interest.",
+        "You've entered a region of empty space. According to your navigation system, there are no significant objects nearby."
     ],
     'blackhole': [
-        "Your ship skirts the edge of the black hole's influence, where light bends and time dilates perceptibly.",
-        "The accretion disk glows with intense radiation as matter spirals toward the event horizon, creating a hypnotic visual display.",
-        "Spacetime warps around the massive gravitational well, creating strange visual distortions that challenge perception.",
-        "Light bends eerily around the black hole, creating phantom images of distant stars and galaxies as you carefully maintain a safe distance."
+        "The gravitational pull of a distant black hole warps the surrounding space, but you maintain a safe distance.",
+        "Your sensors detect the telltale signs of a black hole in this region, though it poses no immediate threat at this distance.",
+        "Light bends strangely in this region due to the presence of a massive singularity nearby. Your navigation systems compensate automatically.",
+        "The black hole's accretion disk glows faintly in the distance, a beautiful yet deadly cosmic phenomenon.",
+        "Space itself seems to curve around you, a reminder of the massive gravitational force of the black hole in this region."
     ],
     'asteroid': [
-        "Your ship navigates through a field of tumbling space rocks. Some appear to contain valuable minerals worth investigating.",
-        "Several large asteroids float peacefully in this sector. Long-range scanners detect metal deposits in some of them.",
-        "A collection of space rocks tumble slowly through the void. They appear to be the remnants of a larger celestial body.",
+        "Your ship navigates through a sparse section of the asteroid field. The nearby rocks pose no immediate threat.",
+        "A relatively clear path through the asteroid field. Your sensors detect potential mining opportunities in the vicinity.",
+        "This area of the asteroid belt is less dense than others, allowing for safer passage.",
+        "Small rocky bodies drift lazily around your ship. None are on a collision course or contain particularly valuable minerals.",
         "The ship's navigation system plots a safe course through the densely packed rocks, identifying potential mining opportunities."
     ],
     'habitable': [
         "The gentle light of a stable star bathes nearby planets with perfect conditions for life to flourish.",
         "Lush green and blue worlds orbit at the perfect distance from their star, teeming with ecological diversity.",
         "Your scanners detect multiple planets with oxygen-rich atmospheres and abundant water in this stable stellar zone.",
-        "The conditions here are perfect for life - planets orbit in the sweet spot between too hot and too cold, with atmospheres perfect for organic development."
+        "This system contains planets in the habitable zone, where conditions are just right for supporting complex life forms.",
+        "A series of planets orbit within the life-supporting band around a stable star, showcasing a variety of biomes and ecosystems."
     ],
     'supernova': [
-        "The shattered remains of a once-mighty star spread across this sector, still glowing with residual energy.",
-        "Waves of superheated gas and exotic particles wash over your shields as you navigate through the stellar graveyard.",
-        "The aftermath of stellar death surrounds your ship, beautiful yet deadly with radiation and gravitational anomalies.",
-        "Brilliant colors illuminate the cosmos where the star exploded, leaving behind a nebula of stellar debris and intense energy."
+        "Waves of stellar material from a recent supernova wash through this region, creating beautiful luminescent patterns.",
+        "The aftermath of a stellar explosion has filled this area with superheated gas and radiation. Your shields provide adequate protection.",
+        "This region bears the marks of a star that violently ended its life, scattering its elements across hundreds of light years.",
+        "The supernova remnant glows with an eerie beauty, as radiation interacts with the ship's shields creating a spectacular light show.",
+        "Sensors detect unusual element formations created in the extreme heat and pressure of the supernova that shaped this region."
+    ],
+    'anomaly': [
+        "Reality seems to fluctuate in this strange region. Standard physics calculations require constant recalibration.",
+        "Your sensors detect quantum irregularities that defy conventional analysis. This region appears to operate under altered physical laws.",
+        "The fabric of spacetime exhibits unusual properties here. Navigation systems report occasional unexplainable readings.",
+        "This sector represents a true anomaly - phenomena observed here have no explanation in current scientific understanding.",
+        "Your ship's systems register periodic fluctuations in background radiation and gravitational constants unique to this region."
     ]
 };
 
 /**
  * Empty encounter messages by region - more detailed and atmospheric
  */
-export const EMPTY_ENCOUNTER_MESSAGES: Record<RegionType, string[]> = {
+export const EMPTY_ENCOUNTER_MESSAGES: Record<RegionTypeEnum, string[]> = {
     'void': [
         "The void is quiet. You find nothing of particular interest, but the empty space gives the crew a moment to reflect on their journey.",
-        "Empty space stretches in all directions. The stars seem distant and cold, yet there's a strange comfort in the solitude.",
-        "Your sensors detect no anomalies in this sector. The ship's systems hum quietly as you drift through the vacuum.",
-        "The ship's chronometer ticks steadily as you pass through this unremarkable region. Sometimes, uneventful moments are a blessing.",
-        "Complete silence fills the bridge as you gaze out at the stars. In this moment of peace, the mission's purpose feels renewed."
+        "Stars twinkle in the distance, but this area of space is otherwise unremarkable. The ship's systems run a routine diagnostic during the calm passage.",
+        "The emptiness of space surrounds you. No contacts on sensors, no anomalous readings. Just the gentle hum of the ship's systems as you drift through the void.",
+        "This region of space is particularly empty, even by void standards. The crew takes the opportunity to perform maintenance on systems that cannot be serviced during more eventful encounters.",
+        "An unremarkable patch of vacuum. The navigator updates the star charts with minor corrections based on the clear view of distant constellations."
     ],
     'blackhole': [
-        "Time slows perceptibly as you navigate near the event horizon. Your sensors struggle to make sense of the warped physics.",
-        "The black hole's gravitational pull tugs gently at your ship, requiring constant course corrections to maintain a safe orbit.",
-        "Strange quantum fluctuations appear on your sensors. The black hole's gravity well distorts space into impossible geometries.",
-        "The accretion disk of the black hole glows with ethereal beauty, matter spiraling inward toward the event horizon in a cosmic light show.",
-        "Your ship's AI reports unusual mathematical patterns in the space-time distortions surrounding you. There seems to be an order to the chaos."
+        "The black hole's gravity well distorts your sensors, but your algorithms compensate automatically. The phenomenon remains at a safe distance.",
+        "Time dilation effects become noticeable as you skirt the edges of the black hole's influence. The crew reports experiencing the passage of time slightly differently throughout the ship.",
+        "The accretion disk of the black hole provides a spectacular view. The matter spiraling into oblivion releases energy that your sensors collect valuable data on.",
+        "Light bends around you in impossible ways, creating mirror images of distant stars. Your navigation system uses these gravitational lensing effects to refine its positioning algorithms.",
+        "The immense gravity of the black hole tugs gently at your ship, but poses no danger at this distance. The engineering team observes how the structural integrity field responds to the gravitational gradients."
     ],
     'asteroid': [
-        "You navigate between floating rocks of various sizes. They tumble silently in the void, ancient witnesses to the solar system's formation.",
-        "A small asteroid passes harmlessly by your ship. Surface scans reveal a composition rich in rare elements and minerals.",
-        "Your scanners detect valuable minerals in nearby asteroids. With more time, this area could yield substantial mining returns.",
-        "The asteroid field is sparse enough to navigate safely, yet dense enough to shield you from long-range scans. A good place to catch your breath.",
+        "The ship weaves effortlessly between floating rocks. Your navigation system identifies several asteroids with unusual mineral compositions, though none valuable enough to warrant stopping.",
+        "A peaceful section of the asteroid field where rocks drift serenely through the void. The occasional ping of micro-debris against your shields is the only indication of the potential dangers lurking elsewhere in the field.",
+        "Your sensors map the surrounding asteroids, adding the data to your navigational charts. This information may prove useful for future journeys through this sector.",
+        "The surrounding asteroids tumble slowly through space, some bearing the marks of previous mining operations long abandoned. There is nothing of immediate value here.",
         "Crystalline formations glint on the surface of nearby asteroids, reflecting starlight like a field of cosmic diamonds."
     ],
     'habitable': [
         "Lush planetary bodies orbit in the perfect zone for life to flourish. The vibrant colors of vegetation are visible even from orbit.",
         "A gentle star provides ideal conditions for the planets in this zone. Sensors detect water oceans, oxygen atmospheres, and complex ecosystems.",
         "This region reminds the crew of Earth - temperate worlds orbit at the perfect distance from their star, with conditions ideal for human settlement.",
-        "Scans reveal planets with diverse biospheres - from ocean worlds to forest planets. The conditions here could support colonization efforts.",
-        "The habitable planets in this zone appear untouched by advanced civilization, preserving pristine ecosystems that evolved in perfect isolation."
+        "Your biological sensors detect a rich diversity of life forms on several planets in this habitable zone. Each world represents a unique evolutionary path.",
+        "The perfect balance of stellar radiation and planetary conditions has created a haven for life forms in this region. Several crew members request permission to record the breathtaking views."
     ],
     'supernova': [
-        "The shockwave of the supernova has long passed, but the region still teems with radiation and exotic particles.",
-        "What was once a massive star is now a brilliant nebula of gas and dust, gradually cooling and dispersing into the void.",
-        "The sensors register intense radiation and magnetic fields - the aftereffects of stellar death that will linger for millennia.",
-        "Elements forged in the heart of the supernova float through space - the building blocks of future planets and perhaps even life.",
-        "The supernova remnant glows in spectacular colors, illuminating the surrounding space with the final legacy of a dead star."
+        "The ship passes through a cloud of stellar material, the remnants of a star that exploded centuries ago. Your shields shimmer as they deflect the radiation.",
+        "Brilliant colors wash over your viewports as light interacts with the supernova remnant. Sensors record unusual element formations created in the stellar explosion.",
+        "The energy released by the supernova still resonates through this region, creating waves of radiation that your ship's systems carefully monitor and shield against.",
+        "Heavy elements, forged in the heart of the stellar explosion, drift through this region. Some are so rare they can only be created in the extreme conditions of a supernova.",
+        "Your ship passes through a region where time seems condensed - the birth, life, and violent death of a star all evidenced in the surrounding cosmic debris."
+    ],
+    'anomaly': [
+        "Reality itself seems uncertain in this region. Quantum fluctuations cause minor systems to behave unpredictably, though critical ship functions remain stable.",
+        "The laws of physics appear to bend in subtle ways here. Crew members report strange sensations and minor hallucinations that the medical team attributes to the region's unusual properties.",
+        "Your sensors detect phenomena that should be impossible according to standard physical models. The science team records everything, eager to analyze the data once you've left this strange place.",
+        "Time and space seem less rigid here. Occasional flashes of what might be parallel realities bleed through, visible for just moments before disappearing.",
+        "This region defies conventional understanding. Energy readings fluctuate without cause, and light sometimes appears to travel along curved paths with no gravitational source to explain it."
     ]
 };
 
 /**
  * Helper function to get a random title for an empty encounter
  */
-export function getRandomEmptyEncounterTitle(region: RegionType): string {
+export function getRandomEmptyEncounterTitle(region: RegionTypeEnum): string {
     const titles = EMPTY_ENCOUNTER_TITLES[region];
     return titles[Math.floor(Math.random() * titles.length)];
 }
@@ -146,7 +172,7 @@ export function getRandomEmptyEncounterTitle(region: RegionType): string {
 /**
  * Helper function to get a random description for an empty encounter
  */
-export function getRandomEmptyEncounterDescription(region: RegionType): string {
+export function getRandomEmptyEncounterDescription(region: RegionTypeEnum): string {
     const descriptions = EMPTY_ENCOUNTER_DESCRIPTIONS[region];
     return descriptions[Math.floor(Math.random() * descriptions.length)];
 }
@@ -154,7 +180,7 @@ export function getRandomEmptyEncounterDescription(region: RegionType): string {
 /**
  * Helper function to get a random message for an empty encounter
  */
-export function getRandomEmptyEncounterMessage(region: RegionType): string {
+export function getRandomEmptyEncounterMessage(region: RegionTypeEnum): string {
     const messages = EMPTY_ENCOUNTER_MESSAGES[region];
     return messages[Math.floor(Math.random() * messages.length)];
 }
@@ -162,7 +188,7 @@ export function getRandomEmptyEncounterMessage(region: RegionType): string {
 /**
  * Helper function to generate a resource reward appropriate for the region
  */
-export function generateEmptyEncounterRewards(region: RegionType): ResourceReward[] {
+export function generateEmptyEncounterRewards(region: RegionTypeEnum): ResourceReward[] {
     const rewards: ResourceReward[] = [];
     
     // Define resource messages by type and region
@@ -253,7 +279,7 @@ export function generateEmptyEncounterRewards(region: RegionType): ResourceRewar
     
     // Different regions provide different resources and amounts
     switch(region) {
-        case RegionType.VOID:
+        case RegionTypeEnum.VOID:
             if (Math.random() < 0.3) {
                 rewards.push({ 
                     type: 'energy', 
@@ -262,7 +288,7 @@ export function generateEmptyEncounterRewards(region: RegionType): ResourceRewar
                 });
             }
             break;
-        case RegionType.BLACK_HOLE:
+        case RegionTypeEnum.BLACK_HOLE:
             if (Math.random() < 0.7) {
                 rewards.push({ 
                     type: 'insight', 
@@ -285,7 +311,7 @@ export function generateEmptyEncounterRewards(region: RegionType): ResourceRewar
                 });
             }
             break;
-        case RegionType.ASTEROID_FIELD:
+        case RegionTypeEnum.ASTEROID_FIELD:
             if (Math.random() < 0.5) {
                 rewards.push({ 
                     type: 'scrap', 
@@ -301,7 +327,7 @@ export function generateEmptyEncounterRewards(region: RegionType): ResourceRewar
                 });
             }
             break;
-        case RegionType.HABITABLE_ZONE:
+        case RegionTypeEnum.HABITABLE_ZONE:
             if (Math.random() < 0.6) {
                 rewards.push({ 
                     type: 'insight', 
@@ -324,7 +350,7 @@ export function generateEmptyEncounterRewards(region: RegionType): ResourceRewar
                 });
             }
             break;
-        case RegionType.SUPERNOVA:
+        case RegionTypeEnum.SUPERNOVA:
             if (Math.random() < 0.7) {
                 rewards.push({ 
                     type: 'insight', 
@@ -355,7 +381,7 @@ export function generateEmptyEncounterRewards(region: RegionType): ResourceRewar
 /**
  * Story encounter data organized by region
  */
-export const STORY_ENCOUNTERS: Record<RegionType, StoryEncounter[]> = {
+export const STORY_ENCOUNTERS: Record<RegionTypeEnum, StoryEncounter[]> = {
     'void': [
         {
             id: uuidv4(),
@@ -387,125 +413,6 @@ export const STORY_ENCOUNTERS: Record<RegionType, StoryEncounter[]> = {
                     outcome: {
                         resources: [{ type: 'insight', amount: 10, message: 'The detailed analysis yielded valuable data.' }],
                         text: 'Your thorough scan reveals that the signal is emanating from an old emergency beacon. While there doesn\'t appear to be anything of physical value, the data you extract from the beacon provides useful insights about this region of space.',
-                        continuesToNextEncounter: true
-                    }
-                }
-            ]
-        }
-    ],
-    'nebula': [
-        {
-            id: uuidv4(),
-            type: 'story',
-            title: 'Luminous Anomaly',
-            description: 'As you traverse the nebula, you encounter a pulsating area of unusual luminosity. Your sensors indicate high energy readings, but also potential radiation hazards.',
-            region: 'nebula',
-            choices: [
-                {
-                    id: uuidv4(),
-                    text: 'Collect energy samples',
-                    outcome: {
-                        resources: [{ type: 'energy', amount: 25, message: 'The energy collection was successful despite the risks.' }],
-                        text: 'You carefully navigate to the edge of the luminous area and extend your collection arrays. Despite some minor radiation exposure to your outer hull, you successfully harvest a significant amount of energy.',
-                        continuesToNextEncounter: true
-                    }
-                },
-                {
-                    id: uuidv4(),
-                    text: 'Study from a safe distance',
-                    outcome: {
-                        resources: [{ type: 'insight', amount: 15, message: 'The phenomenon yielded valuable scientific data.' }],
-                        text: 'You maintain a safe distance while conducting detailed scans of the phenomenon. The data collected will be valuable for understanding nebula dynamics and potentially identifying similar energy-rich regions in the future.',
-                        continuesToNextEncounter: true
-                    }
-                },
-                {
-                    id: uuidv4(),
-                    text: 'Plot a course around the anomaly',
-                    outcome: {
-                        text: 'You decide that the potential risks outweigh any benefits and carefully navigate around the luminous area. While you gain no immediate resources, your cautious approach ensures the safety of your crew and vessel.',
-                        continuesToNextEncounter: true
-                    }
-                }
-            ]
-        }
-    ],
-    'asteroid': [
-        {
-            id: uuidv4(),
-            type: 'story',
-            title: 'Mining Operation Remnants',
-            description: 'You come across what appears to be an abandoned mining operation on a medium-sized asteroid. Equipment has been left behind, though it\'s unclear how long ago the site was abandoned.',
-            region: 'asteroid',
-            choices: [
-                {
-                    id: uuidv4(),
-                    text: 'Salvage the mining equipment',
-                    outcome: {
-                        resources: [{ type: 'scrap', amount: 30, message: 'The abandoned equipment provided significant salvage materials.' }],
-                        text: 'You dock with the asteroid and send a team to dismantle and retrieve the abandoned mining equipment. It\'s old but still valuable as scrap material that can be repurposed for your ship\'s needs.',
-                        continuesToNextEncounter: true
-                    }
-                },
-                {
-                    id: uuidv4(),
-                    text: 'Look for any remaining mineral deposits',
-                    outcome: {
-                        resources: [
-                            { type: 'energy', amount: 10, message: 'You found some energy crystals in the deeper tunnels.' },
-                            { type: 'scrap', amount: 5, message: 'You also collected some loose metal fragments.' }
-                        ],
-                        text: 'You explore the mining tunnels and discover that while most valuable deposits were extracted, the miners missed some smaller veins deeper in the asteroid. You spend some time extracting what remains before continuing your journey.',
-                        continuesToNextEncounter: true
-                    }
-                },
-                {
-                    id: uuidv4(),
-                    text: 'Search for clues about what happened to the miners',
-                    outcome: {
-                        resources: [{ type: 'insight', amount: 20, message: 'The logs contained valuable information about this sector.' }],
-                        text: 'You find the operations center and manage to recover some of the site logs. It appears the operation was abandoned due to corporate bankruptcy rather than any danger. The navigation and survey data you recover provides valuable insights about this asteroid field.',
-                        continuesToNextEncounter: true
-                    }
-                }
-            ]
-        }
-    ],
-    'deepspace': [
-        {
-            id: uuidv4(),
-            type: 'story',
-            title: 'Derelict Research Vessel',
-            description: 'Your long-range sensors detect a drifting vessel in the void of deep space. Initial scans indicate it\'s a research vessel that lost power several years ago. There are no life signs aboard.',
-            region: 'deepspace',
-            choices: [
-                {
-                    id: uuidv4(),
-                    text: 'Board the vessel to search for valuable technology',
-                    outcome: {
-                        resources: [
-                            { type: 'scrap', amount: 20, message: 'You salvaged useful components from the ship systems.' },
-                            { type: 'insight', amount: 15, message: 'The research data was partially recoverable.' }
-                        ],
-                        text: 'Your boarding party explores the derelict vessel, finding it in surprisingly good condition despite years of abandonment. You manage to salvage some advanced components and partial research data before returning to your ship and continuing your journey.',
-                        continuesToNextEncounter: true
-                    }
-                },
-                {
-                    id: uuidv4(),
-                    text: 'Attempt to remotely access their computer systems',
-                    outcome: {
-                        resources: [{ type: 'insight', amount: 30, message: 'You successfully extracted the complete research database.' }],
-                        text: 'Rather than risking a boarding operation, you establish a remote connection to the vessel\'s systems. After bypassing several security measures, you manage to download their complete research database, which contains valuable scientific insights.',
-                        continuesToNextEncounter: true
-                    }
-                },
-                {
-                    id: uuidv4(),
-                    text: 'Tow the vessel to the nearest station for a salvage bounty',
-                    outcome: {
-                        resources: [{ type: 'energy', amount: -10, message: 'The towing operation consumed some energy reserves.' }],
-                        text: 'You decide to attach tow cables and bring the vessel to the nearest station for a proper salvage operation. Unfortunately, the nearest station is farther than expected, and the towing operation consumes some of your energy reserves without immediate compensation.',
                         continuesToNextEncounter: true
                     }
                 }
@@ -552,11 +459,130 @@ export const STORY_ENCOUNTERS: Record<RegionType, StoryEncounter[]> = {
                 }
             ]
         }
-    ]
+    ],
+    'asteroid': [
+        {
+            id: uuidv4(),
+            type: 'story',
+            title: 'Mining Outpost',
+            description: 'You discover an abandoned mining outpost attached to a large asteroid. The facility appears to have been evacuated in a hurry, with equipment left running and personal belongings scattered about.',
+            region: 'asteroid',
+            choices: [
+                {
+                    id: uuidv4(),
+                    text: 'Salvage the mining equipment',
+                    outcome: {
+                        resources: [{ type: 'scrap', amount: 30, message: 'The abandoned equipment provided significant salvage materials.' }],
+                        text: 'You dock with the asteroid and send a team to dismantle and retrieve the abandoned mining equipment. It\'s old but still valuable as scrap material that can be repurposed for your ship\'s needs.',
+                        continuesToNextEncounter: true
+                    }
+                },
+                {
+                    id: uuidv4(),
+                    text: 'Look for any remaining mineral deposits',
+                    outcome: {
+                        resources: [
+                            { type: 'energy', amount: 10, message: 'You found some energy crystals in the deeper tunnels.' },
+                            { type: 'scrap', amount: 5, message: 'You also collected some loose metal fragments.' }
+                        ],
+                        text: 'You explore the mining tunnels and discover that while most valuable deposits were extracted, the miners missed some smaller veins deeper in the asteroid. You spend some time extracting what remains before continuing your journey.',
+                        continuesToNextEncounter: true
+                    }
+                },
+                {
+                    id: uuidv4(),
+                    text: 'Search for clues about what happened to the miners',
+                    outcome: {
+                        resources: [{ type: 'insight', amount: 20, message: 'The logs contained valuable information about this sector.' }],
+                        text: 'You find the operations center and manage to recover some of the site logs. It appears the operation was abandoned due to corporate bankruptcy rather than any danger. The navigation and survey data you recover provides valuable insights about this asteroid field.',
+                        continuesToNextEncounter: true
+                    }
+                }
+            ]
+        }
+    ],
+    'habitable': [
+        {
+            id: uuidv4(),
+            type: 'story',
+            title: 'Pirate Outpost',
+            description: 'You detect a small outpost hidden in the orbit of a habitable moon. The settlement appears to be a haven for space pirates and smugglers, using the nearby planet as cover from authorities.',
+            region: 'habitable',
+            choices: [
+                {
+                    id: uuidv4(),
+                    text: 'Approach openly for trade',
+                    outcome: {
+                        resources: [
+                            { type: 'scrap', amount: 15, message: 'You acquired rare materials through unconventional trade channels.' },
+                            { type: 'energy', amount: -10, message: 'The pirates demanded energy cells as part of the deal.' }
+                        ],
+                        text: 'You signal your peaceful intentions and are granted permission to dock. The pirates are suspicious but willing to trade. You acquire useful materials, though at the cost of some energy cells they demanded as payment.',
+                        continuesToNextEncounter: true
+                    }
+                },
+                {
+                    id: uuidv4(),
+                    text: 'Infiltrate covertly to gather intelligence',
+                    outcome: {
+                        resources: [{ type: 'insight', amount: 25, message: 'The stolen navigational data reveals valuable route information.' }],
+                        text: 'You send a small team disguised as traders to infiltrate the outpost. They return with stolen navigational data containing information about secret routes and the locations of other pirate strongholds in the sector.',
+                        continuesToNextEncounter: true
+                    }
+                },
+                {
+                    id: uuidv4(),
+                    text: 'Avoid the outpost entirely',
+                    outcome: {
+                        text: 'You decide the risk of engaging with pirates outweighs any potential benefits. You alter your course to give the outpost a wide berth, using the habitable moon\'s gravity to slingshot away from the area quickly and efficiently.',
+                        continuesToNextEncounter: true
+                    }
+                }
+            ]
+        }
+    ],
+    'supernova': [
+        {
+            id: uuidv4(),
+            type: 'story',
+            title: 'Stellar Remnant',
+            description: 'The remnants of a supernova glow in the distance, a testament to the violent end of a star.',
+            region: 'supernova',
+            choices: [
+                {
+                    id: uuidv4(),
+                    text: 'Collect energy samples',
+                    outcome: {
+                        resources: [{ type: 'energy', amount: 25, message: 'The energy collection was successful despite the risks.' }],
+                        text: 'You carefully navigate to the edge of the glowing region and extend your collection arrays. Despite some minor radiation exposure to your outer hull, you successfully harvest a significant amount of energy.',
+                        continuesToNextEncounter: true
+                    }
+                },
+                {
+                    id: uuidv4(),
+                    text: 'Study from a safe distance',
+                    outcome: {
+                        resources: [{ type: 'insight', amount: 15, message: 'The phenomenon yielded valuable scientific data.' }],
+                        text: 'You maintain a safe distance while conducting detailed scans of the phenomenon. The data collected will be valuable for understanding nebula dynamics and potentially identifying similar energy-rich regions in the future.',
+                        continuesToNextEncounter: true
+                    }
+                },
+                {
+                    id: uuidv4(),
+                    text: 'Plot a course around the anomaly',
+                    outcome: {
+                        text: 'You decide that the potential risks outweigh any benefits and carefully navigate around the glowing region. While you gain no immediate resources, your cautious approach ensures the safety of your crew and vessel.',
+                        continuesToNextEncounter: true
+                    }
+                }
+            ]
+        }
+    ],
+    'anomaly': []  // Empty for now as requested
 };
 
 // Helper function to get a generic fallback encounter for regions without specific content
-export function getGenericStoryEncounter(region: RegionType): StoryEncounter {
+export function getGenericStoryEncounter(region: RegionTypeEnum): StoryEncounter {
     return {
         id: uuidv4(),
         type: 'story',

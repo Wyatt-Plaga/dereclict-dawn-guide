@@ -1,4 +1,5 @@
 import { RegionDefinition, RegionType } from '../types/combat';
+import { RegionTypeEnum } from '../types';
 
 /**
  * Region Definitions
