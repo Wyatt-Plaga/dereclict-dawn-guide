@@ -1,23 +1,9 @@
+import { RegionType, StatusEffectInstance, ActionResult } from './combat';
+import { EnemyDefinition as Enemy } from './combat';
+
 /**
  * Core game state type definitions
  */
-
-/**
- * Region Types
- */
-export type RegionType = 'void' | 'asteroid' | 'supernova' | 'blackhole' | 'habitable' | 'anomaly';
-
-/**
- * Region Type Enum (for backward compatibility)
- */
-export enum RegionTypeEnum {
-    VOID = 'void',
-    ASTEROID_FIELD = 'asteroid',
-    SUPERNOVA = 'supernova',
-    BLACK_HOLE = 'blackhole',
-    HABITABLE_ZONE = 'habitable',
-    ANOMALY = 'anomaly'
-}
 
 /**
  * Log Categories
@@ -208,47 +194,6 @@ export interface EncounterHistory {
  */
 
 /**
- * Enemy Action interface
- */
-export interface EnemyAction {
-  name: string;
-  description: string;
-  damage: number;
-  target: 'health' | 'shield';
-  probability: number;
-}
-
-/**
- * Enemy interface for the region-specific enemy format
- */
-export interface Enemy {
-  id: string;
-  name: string;
-  description: string;
-  health: number;
-  maxHealth: number;
-  shield: number;
-  maxShield: number;
-  image: string;
-  attackDelay: number;
-  lastAttackTime: number;
-  region: string;
-  subRegion?: string;
-  isBoss?: boolean;
-  difficultyTier?: number;
-  introTitle?: string;
-  introDescription?: string;
-  actions: {
-    name: string;
-    damage: number;
-    description: string;
-    target: 'health' | 'shield';
-    probability: number;
-  }[];
-  loot?: { type: string; amount: number; probability?: number }[];
-}
-
-/**
  * Battle Log Entry interface
  */
 export interface BattleLogEntry {
@@ -274,19 +219,19 @@ export interface CombatState {
     maxHealth: number;
     shield: number;
     maxShield: number;
-    statusEffects: any[];
+    statusEffects: StatusEffectInstance[];
   };
   enemyStats: {
     health: number;
     maxHealth: number;
     shield: number;
     maxShield: number;
-    statusEffects: any[];
+    statusEffects: StatusEffectInstance[];
   };
   battleLog: BattleLogEntry[];
   availableActions: string[];
   cooldowns: Record<string, number>;
-  lastActionResult?: any;
+  lastActionResult?: ActionResult | undefined | null;
   rewards?: {
     energy: number;
     insight: number;
@@ -429,7 +374,7 @@ export const initialGameState: GameState = {
         unread: []
     },
     navigation: {
-        currentRegion: 'void',
+        currentRegion: RegionType.VOID,
         currentSubRegion: undefined,
         completedRegions: []
     },

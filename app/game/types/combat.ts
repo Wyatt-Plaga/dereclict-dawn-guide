@@ -4,8 +4,6 @@
  * This file contains all the type definitions for the combat system.
  */
 
-import { RegionType as GameRegionType } from './index';
-
 /**
  * Region Types
  * 
@@ -19,10 +17,6 @@ export enum RegionType {
   SUPERNOVA = 'supernova',
   ANOMALY = 'anomaly'
 }
-
-// Type compatibility check to ensure our enum values match the string union type
-// This will cause a compile error if they don't match
-type EnsureRegionTypeCompatibility = GameRegionType extends typeof RegionType[keyof typeof RegionType] ? true : false;
 
 /**
  * Combat Action Categories
@@ -155,7 +149,7 @@ export interface EnemyDefinition {
   maxHealth: number;
   shield: number;
   maxShield: number;
-  actions: string[];
+  actions: RegionEnemyAction[];
   loot: EnemyLoot[];
   image?: string;
   regions?: RegionType[];

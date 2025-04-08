@@ -1,27 +1,36 @@
 import React from 'react';
 import { Sword } from 'lucide-react';
 import { BaseEncounter } from '@/app/game/types';
+import { RegionType } from '@/app/game/types/combat';
 
 interface CombatEncounterContentProps {
   encounter: BaseEncounter;
 }
 
 const CombatEncounterContent: React.FC<CombatEncounterContentProps> = ({ encounter }) => {
+  const hoverShadowClass = 
+    encounter.region === RegionType.VOID ? 'hover:shadow-slate-800/30' :
+    encounter.region === RegionType.ASTEROID_FIELD ? 'hover:shadow-amber-800/30' :
+    encounter.region === RegionType.SUPERNOVA ? 'hover:shadow-red-800/30' :
+    encounter.region === RegionType.BLACK_HOLE ? 'hover:shadow-zinc-800/30' :
+    encounter.region === RegionType.HABITABLE_ZONE ? 'hover:shadow-emerald-800/30' :
+    encounter.region === RegionType.ANOMALY ? 'hover:shadow-purple-800/30' :
+    'hover:shadow-slate-800/30';
+
+  const textColorClass = 
+    encounter.region === RegionType.VOID ? 'text-slate-200' :
+    encounter.region === RegionType.ASTEROID_FIELD ? 'text-amber-100' :
+    encounter.region === RegionType.SUPERNOVA ? 'text-red-200' :
+    encounter.region === RegionType.BLACK_HOLE ? 'text-zinc-200' :
+    encounter.region === RegionType.HABITABLE_ZONE ? 'text-emerald-100' :
+    encounter.region === RegionType.ANOMALY ? 'text-purple-200' :
+    'text-slate-200';
+
   return (
-    <div className={`mb-8 system-panel p-6 transition-all duration-300 hover:shadow-md ${
-      encounter.region === 'void' ? 'hover:shadow-slate-800/30' :
-      encounter.region === 'nebula' ? 'hover:shadow-indigo-800/30' :
-      encounter.region === 'asteroid' ? 'hover:shadow-amber-800/30' :
-      encounter.region === 'deepspace' ? 'hover:shadow-blue-800/30' :
-      encounter.region === 'blackhole' ? 'hover:shadow-zinc-800/30' : 'hover:shadow-slate-800/30'
-    }`}>
-      <p className={`text-xl mb-4 leading-relaxed ${
-        encounter.region === 'void' ? 'text-slate-200' :
-        encounter.region === 'nebula' ? 'text-indigo-200' :
-        encounter.region === 'asteroid' ? 'text-amber-100' :
-        encounter.region === 'deepspace' ? 'text-blue-200' :
-        encounter.region === 'blackhole' ? 'text-zinc-200' : 'text-slate-200'
-      }`}>{encounter.description}</p>
+    <div className={`mb-8 system-panel p-6 transition-all duration-300 hover:shadow-md ${hoverShadowClass}`}>
+      <p className={`text-xl mb-4 leading-relaxed ${textColorClass}`}>
+        {encounter.description}
+      </p>
       
       {/* Special message for combat encounters */}
       <div className="mt-6 border-t border-accent/30 pt-4">

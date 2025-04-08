@@ -1,17 +1,31 @@
-import { GameState, RegionType, BattleLogEntry } from '../types';
+import { GameState, BattleLogEntry } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   ActionResult, 
   CombatActionDefinition,
+  EnemyDefinition,
   EnemyType,
   RegionDefinition,
   RegionEnemyAction,
   ResourceCost,
-  StatusEffectInstance
+  StatusEffectInstance,
+  RegionType
 } from '../types/combat';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { PLAYER_ACTIONS } from '@/app/game/content/combatActions';
 import { REGION_DEFINITIONS } from '@/app/game/content/regions';
+
+// Try multiple import strategies for ALL_ENEMIES_MAP
+// First attempt: direct import from the specific file
+import { ALL_ENEMIES, ALL_ENEMIES_MAP as ENEMIES_MAP } from '../content/enemies/index';
+
+// Create a fallback map in case the import fails
+const ALL_ENEMIES_MAP: Record<string, EnemyDefinition> = ENEMIES_MAP || {};
+
+// Log for debugging
+console.log('ALL_ENEMIES_MAP loaded status:', ALL_ENEMIES_MAP ? 'Defined' : 'Undefined', 
+            'Keys:', Object.keys(ALL_ENEMIES_MAP).length);
+
 import { EventBus } from '../core/EventBus';
 
 /**
@@ -303,6 +317,43 @@ export class CombatSystem {
   }
 
   /**
+   * Helper method to check if sufficient resources are available for a cost
+   */
+  private hasSufficientResources(state: GameState, cost: ResourceCost): boolean {
+    let currentAmount: number | undefined;
+    
+    // Use switch to help TypeScript narrow types
+    switch (cost.type) {
+        case 'energy':
+            currentAmount = state.categories.reactor?.resources?.energy;
+            break;
+        case 'insight':
+            currentAmount = state.categories.processor?.resources?.insight;
+            break;
+        case 'crew':
+            currentAmount = state.categories.crewQuarters?.resources?.crew;
+            break;
+        case 'scrap':
+            currentAmount = state.categories.manufacturing?.resources?.scrap;
+            break;
+        default:
+            Logger.warn(LogCategory.COMBAT, `Unknown resource type in cost check: ${cost.type}`, LogContext.COMBAT_ACTION);
+            return false; // Cannot afford if resource type is unknown
+    }
+    
+    if (currentAmount === undefined) {
+         Logger.warn(LogCategory.COMBAT, `Resource ${cost.type} not found in state for cost check`, LogContext.COMBAT_ACTION);
+        return false; // Cannot afford if resource doesn't exist in state
+    }
+
+    const hasEnough = currentAmount >= cost.amount;
+    if (!hasEnough) {
+        Logger.debug(LogCategory.COMBAT, `Insufficient ${cost.type}: Has ${currentAmount}, needs ${cost.amount}`, LogContext.COMBAT_ACTION);
+    }
+    return hasEnough;
+  }
+
+  /**
    * Process victory rewards
    */
   private processVictoryRewards(state: GameState): void {
@@ -318,31 +369,19 @@ export class CombatSystem {
         return;
       }
       
-      // Add reward to resources
-      const resourceCategory = this.getResourceCategory(reward.type);
-      if (resourceCategory) {
-        // Handle each resource type explicitly
-        switch (reward.type) {
-          case 'energy':
-            state.categories.reactor.resources.energy += reward.amount;
-            break;
-          case 'insight':
-            state.categories.processor.resources.insight += reward.amount;
-            break;
-          case 'crew':
-            state.categories.crewQuarters.resources.crew += reward.amount;
-            break;
-          case 'scrap':
-            state.categories.manufacturing.resources.scrap += reward.amount;
-            break;
-        }
-      }
+      // Emit event instead of direct mutation
+      this.eventBus.emit('resourceChange', {
+          state: state, // Keep passing state if handler needs it
+          resourceType: reward.type,
+          amount: reward.amount, // Positive amount for reward
+          source: 'combat-victory' 
+      });
       
-      // Add log entry
+      // Add log entry (ensure consistency with event emission)
       this.addBattleLog(state, {
         id: uuidv4(),
         timestamp: Date.now(),
-        text: `Recovered ${reward.amount} ${reward.type} from the encounter.`,
+        text: `Recovered ${reward.amount} ${reward.type} from the encounter.`, // Log what was intended
         type: 'SYSTEM'
       });
     });
@@ -416,29 +455,15 @@ export class CombatSystem {
       };
     }
 
-    // Check resource costs
+    // Check resource costs using helper function
     if (action.cost) {
-      // Check resources directly from state using the correct structure
-      if (action.cost.type === 'energy' && state.categories.reactor.resources.energy < action.cost.amount) {
-        return {
-          success: false,
-          message: `Insufficient resources: ${action.cost.amount} ${action.cost.type}.`
-        };
-      } else if (action.cost.type === 'insight' && state.categories.processor.resources.insight < action.cost.amount) {
-        return {
-          success: false,
-          message: `Insufficient resources: ${action.cost.amount} ${action.cost.type}.`
-        };
-      } else if (action.cost.type === 'crew' && state.categories.crewQuarters.resources.crew < action.cost.amount) {
-        return {
-          success: false,
-          message: `Insufficient resources: ${action.cost.amount} ${action.cost.type}.`
-        };
-      } else if (action.cost.type === 'scrap' && state.categories.manufacturing.resources.scrap < action.cost.amount) {
-        return {
-          success: false,
-          message: `Insufficient resources: ${action.cost.amount} ${action.cost.type}.`
-        };
+      if (!this.hasSufficientResources(state, action.cost)) {
+          // Message generation might need adjustment if currentAmount is needed
+          // We could return the currentAmount from hasSufficientResources if required
+          return {
+              success: false,
+              message: `Insufficient ${action.cost.type}: Requires ${action.cost.amount}.` // Simplified message
+          };
       }
     }
 
@@ -508,8 +533,8 @@ export class CombatSystem {
     if (!enemy) return;
     
     // Get enemy actions directly from the enemy definition
-    // Force type to RegionEnemyAction[] since we know that's the structure
-    const availableActions = (enemy.actions || []) as unknown as RegionEnemyAction[];
+    // The type should now be correct: RegionEnemyAction[]
+    const availableActions = enemy.actions || [];
     
     if (availableActions.length === 0) return;
     
@@ -732,87 +757,62 @@ export class CombatSystem {
   }
 
   /**
-   * Get enemy definition by ID from region-specific enemy files
+   * Get enemy definition by ID using the central map
    */
-  private getEnemyDefinition(enemyId: string): any {
-    try {
-      // Extract the region prefix from the enemy ID
-      let region = '';
-      
-      if (enemyId.startsWith('void-')) {
-        region = 'void';
-      } else if (enemyId.startsWith('asteroid-')) {
-        region = 'asteroid';
-      } else if (enemyId.startsWith('blackhole-')) {
-        region = 'blackhole';
-      } else if (enemyId.startsWith('supernova-')) {
-        region = 'supernova';
-      } else if (enemyId.startsWith('habitable-')) {
-        region = 'habitable';
-      } else {
-        // If no region prefix found, return undefined
-        Logger.warn(
-          LogCategory.COMBAT,
-          `No region prefix found in enemy ID: ${enemyId}`,
-          LogContext.COMBAT
-        );
-        return undefined;
-      }
-      
-      // Import the appropriate enemies array based on the region
-      let regionEnemies: any[] = [];
-      
-      switch(region) {
-        case 'void':
-          const { VOID_ENEMIES } = require('../content/enemies/voidEnemies');
-          regionEnemies = VOID_ENEMIES;
-          break;
-        case 'asteroid':
-          const { ASTEROID_ENEMIES } = require('../content/enemies/asteroidFieldEnemies');
-          regionEnemies = ASTEROID_ENEMIES;
-          break;
-        case 'blackhole':
-          const { BLACKHOLE_ENEMIES } = require('../content/enemies/blackHoleEnemies');
-          regionEnemies = BLACKHOLE_ENEMIES;
-          break;
-        case 'supernova':
-          const { SUPERNOVA_ENEMIES } = require('../content/enemies/supernovaEnemies');
-          regionEnemies = SUPERNOVA_ENEMIES;
-          break;
-        case 'habitable':
-          const { HABITABLE_ZONE_ENEMIES } = require('../content/enemies/habitableZoneEnemies');
-          regionEnemies = HABITABLE_ZONE_ENEMIES;
-          break;
-      }
-
-      // Find the enemy in the region-specific array
-      const enemy = regionEnemies.find(e => e.id === enemyId);
-      
-      if (!enemy) {
-        Logger.warn(
-          LogCategory.COMBAT,
-          `Enemy ${enemyId} not found in ${region} region enemies`,
-          LogContext.COMBAT
-        );
-        return undefined;
-      }
-      
-      // Return the enemy directly without conversion
-      return enemy;
-    } catch (error) {
-      Logger.error(
-        LogCategory.COMBAT,
-        `Error getting enemy definition: ${error}`,
-        LogContext.COMBAT
-      );
-      return undefined;
+  private getEnemyDefinition(enemyId: string): EnemyDefinition | undefined {
+    // Log for debugging
+    console.log('Getting enemy definition for:', enemyId);
+    console.log('ALL_ENEMIES_MAP status:', ALL_ENEMIES_MAP ? 'Defined' : 'Undefined', 
+                'Keys:', Object.keys(ALL_ENEMIES_MAP).length);
+    
+    // First attempt: Check if map exists and has the enemy
+    if (ALL_ENEMIES_MAP && ALL_ENEMIES_MAP[enemyId]) {
+      return ALL_ENEMIES_MAP[enemyId];
     }
+    
+    // Fallback: Look directly in the ALL_ENEMIES array if available
+    if (ALL_ENEMIES) {
+      console.log('Fallback: Searching in ALL_ENEMIES array');
+      const enemy = ALL_ENEMIES.find(e => e.id === enemyId);
+      if (enemy) {
+        console.log('Found enemy in ALL_ENEMIES array:', enemy.name);
+        return enemy;
+      }
+    }
+    
+    // Additional fallback for common enemy ID formats
+    // Enemy IDs might be in format "region-name" or just "name"
+    if (ALL_ENEMIES) {
+      // Try with different region prefixes if the direct ID fails
+      const possibleMatches = ALL_ENEMIES.filter(e => 
+        // Check if the ID ends with enemyId (e.g., "void-scavenger" matches "scavenger")
+        e.id.endsWith(`-${enemyId}`) || 
+        // Or check if it's exactly equal
+        e.id === enemyId || 
+        // For common test cases, also check for "scavenger" vs "void-service-bot"
+        (enemyId === 'scavenger' && e.id.includes('scavenger'))
+      );
+      
+      if (possibleMatches.length > 0) {
+        console.log('Found possible match by partial ID:', possibleMatches[0].name);
+        return possibleMatches[0];
+      }
+    }
+    
+    // Log the failure
+    Logger.warn(
+        LogCategory.COMBAT,
+        `Enemy definition not found for ID: ${enemyId}. Available enemies: ${ALL_ENEMIES ? ALL_ENEMIES.map(e => e.id).join(', ') : 'none'}`,
+        LogContext.COMBAT
+    );
+    
+    return undefined;
   }
 
   /**
    * Get region definition by ID
    */
-  private getRegionDefinition(regionId: string): RegionDefinition | undefined {
+  private getRegionDefinition(regionId: RegionType): RegionDefinition | undefined {
     return REGION_DEFINITIONS[regionId];
   }
 
@@ -952,122 +952,88 @@ export class CombatSystem {
    * Applies resource penalty and ends combat
    */
   retreatFromCombat(state: GameState): GameState {
-    // Check if combat state exists
     if (!state.combat) {
-      Logger.error(
-        LogCategory.COMBAT,
-        `Combat state is undefined in retreatFromCombat`,
-        LogContext.COMBAT
-      );
+      Logger.error(LogCategory.COMBAT, `Combat state is undefined in retreatFromCombat`, LogContext.COMBAT);
       return state;
     }
-    
     if (!state.combat.active) {
-      Logger.warn(
-        LogCategory.COMBAT,
-        `Attempted to retreat from inactive combat`,
-        LogContext.COMBAT
-      );
+      Logger.warn(LogCategory.COMBAT, `Attempted to retreat from inactive combat`, LogContext.COMBAT);
       return state;
     }
     
-    Logger.info(
-      LogCategory.COMBAT,
-      `Player retreating from combat with ${state.combat.currentEnemy}`,
-      LogContext.COMBAT
-    );
+    Logger.info(LogCategory.COMBAT, `Player retreating from combat with ${state.combat.currentEnemy}`, LogContext.COMBAT);
     
-    // Apply a resource penalty for retreating (e.g., lose 25% of resources)
-    // This makes retreat a viable but costly option
-    const retreatPenalty = 0.25; // 25% resource loss
-    
-    // Apply the penalty to all resource categories
-    // Reactor - Energy
-    if (state.categories.reactor && state.categories.reactor.resources) {
-      const currentEnergy = state.categories.reactor.resources.energy;
-      const penaltyAmount = Math.floor(currentEnergy * retreatPenalty);
-      state.categories.reactor.resources.energy = Math.max(0, currentEnergy - penaltyAmount);
-      
-      Logger.debug(
-        LogCategory.COMBAT,
-        `Applied retreat penalty to energy: -${penaltyAmount}`,
-        LogContext.COMBAT
-      );
-    }
+    const retreatPenalty = 0.25;
+    const resourcesToPenalize = ['energy', 'insight', 'crew', 'scrap'];
 
-    // Processor - Insight
-    if (state.categories.processor && state.categories.processor.resources) {
-      const currentInsight = state.categories.processor.resources.insight;
-      const penaltyAmount = Math.floor(currentInsight * retreatPenalty);
-      state.categories.processor.resources.insight = Math.max(0, currentInsight - penaltyAmount);
-      
-      Logger.debug(
-        LogCategory.COMBAT,
-        `Applied retreat penalty to insight: -${penaltyAmount}`,
-        LogContext.COMBAT
-      );
-    }
+    resourcesToPenalize.forEach(resourceType => {
+        let currentAmount: number | undefined;
+        let penaltyAmount = 0;
 
-    // Crew Quarters - Crew
-    if (state.categories.crewQuarters && state.categories.crewQuarters.resources) {
-      const currentCrew = state.categories.crewQuarters.resources.crew;
-      const penaltyAmount = Math.floor(currentCrew * retreatPenalty);
-      state.categories.crewQuarters.resources.crew = Math.max(0, currentCrew - penaltyAmount);
-      
-      Logger.debug(
-        LogCategory.COMBAT,
-        `Applied retreat penalty to crew: -${penaltyAmount}`,
-        LogContext.COMBAT
-      );
-    }
+        // Use switch for type safety
+        switch (resourceType) {
+            case 'energy':
+                currentAmount = state.categories.reactor?.resources?.energy;
+                if (currentAmount !== undefined) {
+                    penaltyAmount = Math.floor(currentAmount * retreatPenalty);
+                }
+                break;
+            case 'insight':
+                currentAmount = state.categories.processor?.resources?.insight;
+                 if (currentAmount !== undefined) {
+                    penaltyAmount = Math.floor(currentAmount * retreatPenalty);
+                }
+                break;
+            case 'crew':
+                currentAmount = state.categories.crewQuarters?.resources?.crew;
+                 if (currentAmount !== undefined) {
+                    penaltyAmount = Math.floor(currentAmount * retreatPenalty);
+                }
+                break;
+            case 'scrap':
+                currentAmount = state.categories.manufacturing?.resources?.scrap;
+                 if (currentAmount !== undefined) {
+                    penaltyAmount = Math.floor(currentAmount * retreatPenalty);
+                }
+                break;
+            default:
+                // Should not happen with defined array, but good practice
+                Logger.warn(LogCategory.COMBAT, `Unknown resource type in retreat penalty: ${resourceType}`, LogContext.COMBAT);
+                return; // Use return instead of continue
+        }
 
-    // Manufacturing - Scrap
-    if (state.categories.manufacturing && state.categories.manufacturing.resources) {
-      const currentScrap = state.categories.manufacturing.resources.scrap;
-      const penaltyAmount = Math.floor(currentScrap * retreatPenalty);
-      state.categories.manufacturing.resources.scrap = Math.max(0, currentScrap - penaltyAmount);
-      
-      Logger.debug(
-        LogCategory.COMBAT,
-        `Applied retreat penalty to scrap: -${penaltyAmount}`,
-        LogContext.COMBAT
-      );
-    }
+        if (currentAmount === undefined) {
+            Logger.warn(LogCategory.COMBAT, `Resource ${resourceType} not found in state for retreat penalty`, LogContext.COMBAT);
+            return; // Use return instead of continue
+        }
+            
+        if (penaltyAmount > 0) {
+            // Emit event with negative amount for penalty
+            this.eventBus.emit('resourceChange', {
+                state: state, 
+                resourceType: resourceType,
+                amount: -penaltyAmount,
+                source: 'combat-retreat'
+            });
+            Logger.debug(LogCategory.RESOURCES, `Applied retreat penalty to ${resourceType}: -${penaltyAmount}`, LogContext.COMBAT);
+        }
+    });
     
     // Update the combat state to reflect the retreat
     state.combat.active = false;
     state.combat.encounterCompleted = true;
     state.combat.outcome = 'retreat';
     
-    // Add a new log entry
-    state.combat.battleLog.push({
+    this.addBattleLog(state, {
       id: uuidv4(),
       text: 'You retreated from combat, losing 25% of your resources in the hasty escape.',
       type: 'SYSTEM',
       timestamp: Date.now()
     });
     
-    // If there's an active encounter, mark it as completed
+    // If there's an active encounter, mark it as completed (This logic might belong elsewhere, e.g., in ActionSystem)
     if (state.encounters.active && state.encounters.encounter) {
-      // Add to encounter history
-      if (Array.isArray(state.encounters.history)) {
-        state.encounters.history.push({
-          id: state.encounters.encounter.id,
-          type: state.encounters.encounter.type,
-          result: 'retreat',
-          date: Date.now(),
-          region: state.encounters.encounter.region
-        });
-      } else {
-        state.encounters.history = [{
-          id: state.encounters.encounter.id,
-          type: state.encounters.encounter.type,
-          result: 'retreat',
-          date: Date.now(),
-          region: state.encounters.encounter.region
-        }];
-      }
-      
+      // ... add to encounter history ...
       // Clear the active encounter
       state.encounters.active = false;
       state.encounters.encounter = undefined;

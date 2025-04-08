@@ -3,60 +3,62 @@
  * Contains region-specific encounter probabilities and flavor text
  */
 
-import { RegionTypeEnum, ResourceReward, StoryEncounter } from '../types';
+import { ResourceReward, StoryEncounter } from '../types';
+import { RegionType } from '../types/combat';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Chances of getting encounters in different regions
  */
-export const REGION_ENCOUNTER_CHANCES: Record<string, { combat: number, empty: number, narrative: number }> = {
-    [RegionTypeEnum.VOID]: { combat: 0.5, empty: 0.2, narrative: 0.3 },
-    [RegionTypeEnum.BLACK_HOLE]: { combat: 0.6, empty: 0.1, narrative: 0.3 },
-    [RegionTypeEnum.ASTEROID_FIELD]: { combat: 0.5, empty: 0.2, narrative: 0.3 },
-    [RegionTypeEnum.HABITABLE_ZONE]: { combat: 0.4, empty: 0.3, narrative: 0.3 },
-    [RegionTypeEnum.SUPERNOVA]: { combat: 0.7, empty: 0.1, narrative: 0.2 }
+export const REGION_ENCOUNTER_CHANCES: Record<RegionType, { combat: number, empty: number, narrative: number }> = {
+    [RegionType.VOID]: { combat: 0.5, empty: 0.2, narrative: 0.3 },
+    [RegionType.BLACK_HOLE]: { combat: 0.6, empty: 0.1, narrative: 0.3 },
+    [RegionType.ASTEROID_FIELD]: { combat: 0.5, empty: 0.2, narrative: 0.3 },
+    [RegionType.HABITABLE_ZONE]: { combat: 0.4, empty: 0.3, narrative: 0.3 },
+    [RegionType.SUPERNOVA]: { combat: 0.7, empty: 0.1, narrative: 0.2 },
+    [RegionType.ANOMALY]: { combat: 0.8, empty: 0.1, narrative: 0.1 }
 };
 
 /**
  * Empty encounter titles by region
  */
-export const EMPTY_ENCOUNTER_TITLES: Record<RegionTypeEnum, string[]> = {
-    'void': [
+export const EMPTY_ENCOUNTER_TITLES: Record<RegionType, string[]> = {
+    [RegionType.VOID]: [
         "Silent Vacuum",
         "Empty Space",
         "Stellar Void",
         "Deep Space",
         "Quiet Sector"
     ],
-    'blackhole': [
+    [RegionType.BLACK_HOLE]: [
         "Gravitational Anomaly",
         "Light's End",
         "Event Horizon",
         "Space-Time Distortion",
         "Singularity"
     ],
-    'asteroid': [
+    [RegionType.ASTEROID_FIELD]: [
         "Drifting Rocks",
         "Mineral Field",
         "Debris Cluster",
         "Resource Belt",
         "Floating Giants"
     ],
-    'habitable': [
+    [RegionType.HABITABLE_ZONE]: [
         "Stellar Garden",
         "Life-Bearing Zone",
         "Planetary Sanctuary",
         "Temperate System",
         "Goldilocks Orbit"
     ],
-    'supernova': [
+    [RegionType.SUPERNOVA]: [
         "Stellar Remnant",
         "Energy Cascade",
         "Radiation Cloud",
         "Shattered Star",
         "Cosmic Explosion"
     ],
-    'anomaly': [
+    [RegionType.ANOMALY]: [
         "Quantum Distortion",
         "Reality Fracture",
         "Dimensional Rift",
@@ -68,43 +70,43 @@ export const EMPTY_ENCOUNTER_TITLES: Record<RegionTypeEnum, string[]> = {
 /**
  * Empty encounter descriptions by region
  */
-export const EMPTY_ENCOUNTER_DESCRIPTIONS: Record<RegionTypeEnum, string[]> = {
-    'void': [
+export const EMPTY_ENCOUNTER_DESCRIPTIONS: Record<RegionType, string[]> = {
+    [RegionType.VOID]: [
         "Your ship drifts through an unremarkable sector of space. Sensors indicate nothing of significance in the vicinity.",
         "The emptiness of space stretches in all directions. This region appears to be devoid of any notable features.",
         "A quiet section of void space. There are no celestial bodies or phenomena of interest within scanning range.",
         "This area of space contains nothing but distant stars. Your sensors detect no immediate points of interest.",
         "You've entered a region of empty space. According to your navigation system, there are no significant objects nearby."
     ],
-    'blackhole': [
+    [RegionType.BLACK_HOLE]: [
         "The gravitational pull of a distant black hole warps the surrounding space, but you maintain a safe distance.",
         "Your sensors detect the telltale signs of a black hole in this region, though it poses no immediate threat at this distance.",
         "Light bends strangely in this region due to the presence of a massive singularity nearby. Your navigation systems compensate automatically.",
         "The black hole's accretion disk glows faintly in the distance, a beautiful yet deadly cosmic phenomenon.",
         "Space itself seems to curve around you, a reminder of the massive gravitational force of the black hole in this region."
     ],
-    'asteroid': [
+    [RegionType.ASTEROID_FIELD]: [
         "Your ship navigates through a sparse section of the asteroid field. The nearby rocks pose no immediate threat.",
         "A relatively clear path through the asteroid field. Your sensors detect potential mining opportunities in the vicinity.",
         "This area of the asteroid belt is less dense than others, allowing for safer passage.",
         "Small rocky bodies drift lazily around your ship. None are on a collision course or contain particularly valuable minerals.",
         "The ship's navigation system plots a safe course through the densely packed rocks, identifying potential mining opportunities."
     ],
-    'habitable': [
+    [RegionType.HABITABLE_ZONE]: [
         "The gentle light of a stable star bathes nearby planets with perfect conditions for life to flourish.",
         "Lush green and blue worlds orbit at the perfect distance from their star, teeming with ecological diversity.",
         "Your scanners detect multiple planets with oxygen-rich atmospheres and abundant water in this stable stellar zone.",
         "This system contains planets in the habitable zone, where conditions are just right for supporting complex life forms.",
         "A series of planets orbit within the life-supporting band around a stable star, showcasing a variety of biomes and ecosystems."
     ],
-    'supernova': [
+    [RegionType.SUPERNOVA]: [
         "Waves of stellar material from a recent supernova wash through this region, creating beautiful luminescent patterns.",
         "The aftermath of a stellar explosion has filled this area with superheated gas and radiation. Your shields provide adequate protection.",
         "This region bears the marks of a star that violently ended its life, scattering its elements across hundreds of light years.",
         "The supernova remnant glows with an eerie beauty, as radiation interacts with the ship's shields creating a spectacular light show.",
         "Sensors detect unusual element formations created in the extreme heat and pressure of the supernova that shaped this region."
     ],
-    'anomaly': [
+    [RegionType.ANOMALY]: [
         "Reality seems to fluctuate in this strange region. Standard physics calculations require constant recalibration.",
         "Your sensors detect quantum irregularities that defy conventional analysis. This region appears to operate under altered physical laws.",
         "The fabric of spacetime exhibits unusual properties here. Navigation systems report occasional unexplainable readings.",
@@ -116,43 +118,43 @@ export const EMPTY_ENCOUNTER_DESCRIPTIONS: Record<RegionTypeEnum, string[]> = {
 /**
  * Empty encounter messages by region - more detailed and atmospheric
  */
-export const EMPTY_ENCOUNTER_MESSAGES: Record<RegionTypeEnum, string[]> = {
-    'void': [
+export const EMPTY_ENCOUNTER_MESSAGES: Record<RegionType, string[]> = {
+    [RegionType.VOID]: [
         "The void is quiet. You find nothing of particular interest, but the empty space gives the crew a moment to reflect on their journey.",
         "Stars twinkle in the distance, but this area of space is otherwise unremarkable. The ship's systems run a routine diagnostic during the calm passage.",
         "The emptiness of space surrounds you. No contacts on sensors, no anomalous readings. Just the gentle hum of the ship's systems as you drift through the void.",
         "This region of space is particularly empty, even by void standards. The crew takes the opportunity to perform maintenance on systems that cannot be serviced during more eventful encounters.",
         "An unremarkable patch of vacuum. The navigator updates the star charts with minor corrections based on the clear view of distant constellations."
     ],
-    'blackhole': [
+    [RegionType.BLACK_HOLE]: [
         "The black hole's gravity well distorts your sensors, but your algorithms compensate automatically. The phenomenon remains at a safe distance.",
         "Time dilation effects become noticeable as you skirt the edges of the black hole's influence. The crew reports experiencing the passage of time slightly differently throughout the ship.",
         "The accretion disk of the black hole provides a spectacular view. The matter spiraling into oblivion releases energy that your sensors collect valuable data on.",
         "Light bends around you in impossible ways, creating mirror images of distant stars. Your navigation system uses these gravitational lensing effects to refine its positioning algorithms.",
         "The immense gravity of the black hole tugs gently at your ship, but poses no danger at this distance. The engineering team observes how the structural integrity field responds to the gravitational gradients."
     ],
-    'asteroid': [
+    [RegionType.ASTEROID_FIELD]: [
         "The ship weaves effortlessly between floating rocks. Your navigation system identifies several asteroids with unusual mineral compositions, though none valuable enough to warrant stopping.",
         "A peaceful section of the asteroid field where rocks drift serenely through the void. The occasional ping of micro-debris against your shields is the only indication of the potential dangers lurking elsewhere in the field.",
         "Your sensors map the surrounding asteroids, adding the data to your navigational charts. This information may prove useful for future journeys through this sector.",
         "The surrounding asteroids tumble slowly through space, some bearing the marks of previous mining operations long abandoned. There is nothing of immediate value here.",
         "Crystalline formations glint on the surface of nearby asteroids, reflecting starlight like a field of cosmic diamonds."
     ],
-    'habitable': [
+    [RegionType.HABITABLE_ZONE]: [
         "Lush planetary bodies orbit in the perfect zone for life to flourish. The vibrant colors of vegetation are visible even from orbit.",
         "A gentle star provides ideal conditions for the planets in this zone. Sensors detect water oceans, oxygen atmospheres, and complex ecosystems.",
         "This region reminds the crew of Earth - temperate worlds orbit at the perfect distance from their star, with conditions ideal for human settlement.",
         "Your biological sensors detect a rich diversity of life forms on several planets in this habitable zone. Each world represents a unique evolutionary path.",
         "The perfect balance of stellar radiation and planetary conditions has created a haven for life forms in this region. Several crew members request permission to record the breathtaking views."
     ],
-    'supernova': [
+    [RegionType.SUPERNOVA]: [
         "The ship passes through a cloud of stellar material, the remnants of a star that exploded centuries ago. Your shields shimmer as they deflect the radiation.",
         "Brilliant colors wash over your viewports as light interacts with the supernova remnant. Sensors record unusual element formations created in the stellar explosion.",
         "The energy released by the supernova still resonates through this region, creating waves of radiation that your ship's systems carefully monitor and shield against.",
         "Heavy elements, forged in the heart of the stellar explosion, drift through this region. Some are so rare they can only be created in the extreme conditions of a supernova.",
         "Your ship passes through a region where time seems condensed - the birth, life, and violent death of a star all evidenced in the surrounding cosmic debris."
     ],
-    'anomaly': [
+    [RegionType.ANOMALY]: [
         "Reality itself seems uncertain in this region. Quantum fluctuations cause minor systems to behave unpredictably, though critical ship functions remain stable.",
         "The laws of physics appear to bend in subtle ways here. Crew members report strange sensations and minor hallucinations that the medical team attributes to the region's unusual properties.",
         "Your sensors detect phenomena that should be impossible according to standard physical models. The science team records everything, eager to analyze the data once you've left this strange place.",
@@ -164,7 +166,7 @@ export const EMPTY_ENCOUNTER_MESSAGES: Record<RegionTypeEnum, string[]> = {
 /**
  * Helper function to get a random title for an empty encounter
  */
-export function getRandomEmptyEncounterTitle(region: RegionTypeEnum): string {
+export function getRandomEmptyEncounterTitle(region: RegionType): string {
     const titles = EMPTY_ENCOUNTER_TITLES[region];
     return titles[Math.floor(Math.random() * titles.length)];
 }
@@ -172,7 +174,7 @@ export function getRandomEmptyEncounterTitle(region: RegionTypeEnum): string {
 /**
  * Helper function to get a random description for an empty encounter
  */
-export function getRandomEmptyEncounterDescription(region: RegionTypeEnum): string {
+export function getRandomEmptyEncounterDescription(region: RegionType): string {
     const descriptions = EMPTY_ENCOUNTER_DESCRIPTIONS[region];
     return descriptions[Math.floor(Math.random() * descriptions.length)];
 }
@@ -180,7 +182,7 @@ export function getRandomEmptyEncounterDescription(region: RegionTypeEnum): stri
 /**
  * Helper function to get a random message for an empty encounter
  */
-export function getRandomEmptyEncounterMessage(region: RegionTypeEnum): string {
+export function getRandomEmptyEncounterMessage(region: RegionType): string {
     const messages = EMPTY_ENCOUNTER_MESSAGES[region];
     return messages[Math.floor(Math.random() * messages.length)];
 }
@@ -188,19 +190,19 @@ export function getRandomEmptyEncounterMessage(region: RegionTypeEnum): string {
 /**
  * Helper function to generate a resource reward appropriate for the region
  */
-export function generateEmptyEncounterRewards(region: RegionTypeEnum): ResourceReward[] {
+export function generateEmptyEncounterRewards(region: RegionType): ResourceReward[] {
     const rewards: ResourceReward[] = [];
     
     // Define resource messages by type and region
     const resourceMessages: Record<string, Partial<Record<string, string[]>>> = {
-        void: {
+        [RegionType.VOID]: {
             energy: [
                 "Your sensors detected trace amounts of energy residue, allowing for a small collection.",
                 "The Dawn's energy collectors captured stray particles from the void.",
                 "A small energy fluctuation in the void provided a minor boost to ship systems."
             ],
         },
-        blackhole: {
+        [RegionType.BLACK_HOLE]: {
             insight: [
                 "Observations of the black hole's event horizon provided unprecedented data.",
                 "Gravitational analysis of the singularity granted revolutionary scientific understanding.",
@@ -217,7 +219,7 @@ export function generateEmptyEncounterRewards(region: RegionTypeEnum): ResourceR
                 "Exotic metals compressed by gravitational forces were collected for use."
             ]
         },
-        asteroid: {
+        [RegionType.ASTEROID_FIELD]: {
             scrap: [
                 "Mineral-rich fragments were collected from nearby asteroids.",
                 "The Dawn's automated collectors harvested valuable ore deposits.",
@@ -229,7 +231,7 @@ export function generateEmptyEncounterRewards(region: RegionTypeEnum): ResourceR
                 "The ship's systems absorbed kinetic energy from microimpacts in the field."
             ]
         },
-        habitable: {
+        [RegionType.HABITABLE_ZONE]: {
             insight: [
                 "Scans of diverse planetary ecosystems yielded valuable biological data.",
                 "Analysis of habitable zone atmospheric compositions expanded scientific understanding.",
@@ -246,7 +248,7 @@ export function generateEmptyEncounterRewards(region: RegionTypeEnum): ResourceR
                 "The balanced radiation from the nearby star charged your collectors to capacity."
             ]
         },
-        supernova: {
+        [RegionType.SUPERNOVA]: {
             insight: [
                 "Analysis of the supernova remnant provided valuable astrophysical data.",
                 "The Dawn's scientific instruments recorded rare nuclear processes occurring in the stellar debris.",
@@ -262,11 +264,20 @@ export function generateEmptyEncounterRewards(region: RegionTypeEnum): ResourceR
                 "Rare metals formed during stellar death were added to your material reserves.",
                 "Elements only created in stellar explosions were harvested from the remnant cloud."
             ]
+        },
+        [RegionType.ANOMALY]: {
+            insight: [
+                "Analysis of the anomalous sensor readings provided groundbreaking theoretical insights.",
+                "Fluctuating energy fields unique to this anomaly were partially captured."
+            ],
+            energy: [
+                "Fluctuating energy fields unique to this anomaly were partially captured."
+            ]
         }
     };
 
     // Get a random message for a given resource type and region
-    const getRandomMessage = (region: string, type: string): string => {
+    const getRandomMessage = (region: RegionType, type: string): string => {
         const messagesForRegion = resourceMessages[region] || {};
         const messagesForType = messagesForRegion[type] || [];
         
@@ -279,97 +290,113 @@ export function generateEmptyEncounterRewards(region: RegionTypeEnum): ResourceR
     
     // Different regions provide different resources and amounts
     switch(region) {
-        case RegionTypeEnum.VOID:
+        case RegionType.VOID:
             if (Math.random() < 0.3) {
                 rewards.push({ 
                     type: 'energy', 
                     amount: Math.floor(Math.random() * 5) + 1,
-                    message: getRandomMessage('void', 'energy')
+                    message: getRandomMessage(RegionType.VOID, 'energy')
                 });
             }
             break;
-        case RegionTypeEnum.BLACK_HOLE:
+        case RegionType.BLACK_HOLE:
             if (Math.random() < 0.7) {
                 rewards.push({ 
                     type: 'insight', 
                     amount: Math.floor(Math.random() * 10) + 5,
-                    message: getRandomMessage('blackhole', 'insight')
+                    message: getRandomMessage(RegionType.BLACK_HOLE, 'insight')
                 });
             }
             if (Math.random() < 0.5) {
                 rewards.push({ 
                     type: 'energy', 
                     amount: Math.floor(Math.random() * 15) + 10,
-                    message: getRandomMessage('blackhole', 'energy')
+                    message: getRandomMessage(RegionType.BLACK_HOLE, 'energy')
                 });
             }
             if (Math.random() < 0.3) {
                 rewards.push({ 
                     type: 'scrap', 
                     amount: Math.floor(Math.random() * 10) + 5,
-                    message: getRandomMessage('blackhole', 'scrap')
+                    message: getRandomMessage(RegionType.BLACK_HOLE, 'scrap')
                 });
             }
             break;
-        case RegionTypeEnum.ASTEROID_FIELD:
+        case RegionType.ASTEROID_FIELD:
             if (Math.random() < 0.5) {
                 rewards.push({ 
                     type: 'scrap', 
                     amount: Math.floor(Math.random() * 15) + 5,
-                    message: getRandomMessage('asteroid', 'scrap')
+                    message: getRandomMessage(RegionType.ASTEROID_FIELD, 'scrap')
                 });
             }
             if (Math.random() < 0.3) {
                 rewards.push({ 
                     type: 'energy', 
                     amount: Math.floor(Math.random() * 8) + 3,
-                    message: getRandomMessage('asteroid', 'energy')
+                    message: getRandomMessage(RegionType.ASTEROID_FIELD, 'energy')
                 });
             }
             break;
-        case RegionTypeEnum.HABITABLE_ZONE:
+        case RegionType.HABITABLE_ZONE:
             if (Math.random() < 0.6) {
                 rewards.push({ 
                     type: 'insight', 
                     amount: Math.floor(Math.random() * 5) + 3,
-                    message: getRandomMessage('habitable', 'insight')
+                    message: getRandomMessage(RegionType.HABITABLE_ZONE, 'insight')
                 });
             }
             if (Math.random() < 0.4) {
                 rewards.push({ 
                     type: 'crew', 
                     amount: Math.random() < 0.3 ? 1 : 0,
-                    message: Math.random() < 0.3 ? getRandomMessage('habitable', 'crew') : undefined
+                    message: Math.random() < 0.3 ? getRandomMessage(RegionType.HABITABLE_ZONE, 'crew') : undefined
                 });
             }
             if (Math.random() < 0.3) {
                 rewards.push({ 
                     type: 'energy', 
                     amount: Math.floor(Math.random() * 10) + 5,
-                    message: getRandomMessage('habitable', 'energy')
+                    message: getRandomMessage(RegionType.HABITABLE_ZONE, 'energy')
                 });
             }
             break;
-        case RegionTypeEnum.SUPERNOVA:
+        case RegionType.SUPERNOVA:
             if (Math.random() < 0.7) {
                 rewards.push({ 
                     type: 'insight', 
                     amount: Math.floor(Math.random() * 10) + 5,
-                    message: getRandomMessage('supernova', 'insight')
+                    message: getRandomMessage(RegionType.SUPERNOVA, 'insight')
                 });
             }
             if (Math.random() < 0.5) {
                 rewards.push({ 
                     type: 'energy', 
                     amount: Math.floor(Math.random() * 15) + 10,
-                    message: getRandomMessage('supernova', 'energy')
+                    message: getRandomMessage(RegionType.SUPERNOVA, 'energy')
                 });
             }
             if (Math.random() < 0.3) {
                 rewards.push({ 
                     type: 'scrap', 
                     amount: Math.floor(Math.random() * 10) + 5,
-                    message: getRandomMessage('supernova', 'scrap')
+                    message: getRandomMessage(RegionType.SUPERNOVA, 'scrap')
+                });
+            }
+            break;
+        case RegionType.ANOMALY:
+            if (Math.random() < 0.9) {
+                rewards.push({
+                    type: 'insight',
+                    amount: Math.floor(Math.random() * 15) + 10,
+                    message: getRandomMessage(RegionType.ANOMALY, 'insight')
+                });
+            }
+            if (Math.random() < 0.2) {
+                rewards.push({
+                    type: 'energy',
+                    amount: Math.floor(Math.random() * 10) + 5,
+                    message: getRandomMessage(RegionType.ANOMALY, 'energy')
                 });
             }
             break;
@@ -381,14 +408,14 @@ export function generateEmptyEncounterRewards(region: RegionTypeEnum): ResourceR
 /**
  * Story encounter data organized by region
  */
-export const STORY_ENCOUNTERS: Record<RegionTypeEnum, StoryEncounter[]> = {
-    'void': [
+export const STORY_ENCOUNTERS: Record<RegionType, StoryEncounter[]> = {
+    [RegionType.VOID]: [
         {
             id: uuidv4(),
             type: 'story',
             title: 'Mysterious Signal',
             description: 'Your sensors detect a faint distress signal coming from a nearby debris field. The signal appears to be automated, repeating on an old frequency not commonly used anymore.',
-            region: 'void',
+            region: RegionType.VOID,
             choices: [
                 {
                     id: uuidv4(),
@@ -419,13 +446,13 @@ export const STORY_ENCOUNTERS: Record<RegionTypeEnum, StoryEncounter[]> = {
             ]
         }
     ],
-    'blackhole': [
+    [RegionType.BLACK_HOLE]: [
         {
             id: uuidv4(),
             type: 'story',
             title: 'Gravitational Lens Observatory',
             description: 'You discover the remains of a scientific outpost positioned to use the black hole as a gravitational lens for deep space observation. The facility appears to have been hastily evacuated.',
-            region: 'blackhole',
+            region: RegionType.BLACK_HOLE,
             choices: [
                 {
                     id: uuidv4(),
@@ -460,13 +487,13 @@ export const STORY_ENCOUNTERS: Record<RegionTypeEnum, StoryEncounter[]> = {
             ]
         }
     ],
-    'asteroid': [
+    [RegionType.ASTEROID_FIELD]: [
         {
             id: uuidv4(),
             type: 'story',
             title: 'Mining Outpost',
             description: 'You discover an abandoned mining outpost attached to a large asteroid. The facility appears to have been evacuated in a hurry, with equipment left running and personal belongings scattered about.',
-            region: 'asteroid',
+            region: RegionType.ASTEROID_FIELD,
             choices: [
                 {
                     id: uuidv4(),
@@ -501,13 +528,13 @@ export const STORY_ENCOUNTERS: Record<RegionTypeEnum, StoryEncounter[]> = {
             ]
         }
     ],
-    'habitable': [
+    [RegionType.HABITABLE_ZONE]: [
         {
             id: uuidv4(),
             type: 'story',
             title: 'Pirate Outpost',
             description: 'You detect a small outpost hidden in the orbit of a habitable moon. The settlement appears to be a haven for space pirates and smugglers, using the nearby planet as cover from authorities.',
-            region: 'habitable',
+            region: RegionType.HABITABLE_ZONE,
             choices: [
                 {
                     id: uuidv4(),
@@ -541,13 +568,13 @@ export const STORY_ENCOUNTERS: Record<RegionTypeEnum, StoryEncounter[]> = {
             ]
         }
     ],
-    'supernova': [
+    [RegionType.SUPERNOVA]: [
         {
             id: uuidv4(),
             type: 'story',
             title: 'Stellar Remnant',
             description: 'The remnants of a supernova glow in the distance, a testament to the violent end of a star.',
-            region: 'supernova',
+            region: RegionType.SUPERNOVA,
             choices: [
                 {
                     id: uuidv4(),
@@ -578,11 +605,11 @@ export const STORY_ENCOUNTERS: Record<RegionTypeEnum, StoryEncounter[]> = {
             ]
         }
     ],
-    'anomaly': []  // Empty for now as requested
+    [RegionType.ANOMALY]: []  // Empty for now as requested
 };
 
 // Helper function to get a generic fallback encounter for regions without specific content
-export function getGenericStoryEncounter(region: RegionTypeEnum): StoryEncounter {
+export function getGenericStoryEncounter(region: RegionType): StoryEncounter {
     return {
         id: uuidv4(),
         type: 'story',

@@ -2,82 +2,98 @@
 
 ## Overview
 
-The Combat System is a real-time battle mechanic for Derelict Dawn that allows players to engage with enemies encountered during their journey. The system features cooldown-based actions, resource costs, region-specific enemies, and rewards/penalties that integrate with the game's existing resource management.
+The Combat System is a real-time battle mechanic for Derelict Dawn that allows players to engage with enemies encountered during their journey. The system features cooldown-based player actions, resource costs, region-specific enemies, and rewards/penalties that integrate with the game's existing resource management via the Event Bus.
 
 ## Architecture
 
 The combat system consists of several key components that work together:
 
-1. **`CombatSystem` Class**: The core class responsible for combat mechanics
-2. **Combat-related Types**: Added to the game state to track combat data
-3. **Action System Integration**: Updates to handle combat actions
-4. **Encounter System Integration**: Changes to generate combat encounters
-5. **UI Integration**: Combat actions in the battle page component
+1. **`CombatSystem` Class**: The core class responsible for combat mechanics, loading enemies, processing actions, and handling outcomes.
+2. **Combat-related Types**: Located in `app/game/types/combat.ts`, defining structures like `CombatState`, `EnemyDefinition`, `RegionEnemyAction`, `CombatActionDefinition`, etc.
+3. **Enemy Definitions**: Located in `app/game/content/enemies/`, organized by region (e.g., `voidEnemies.ts`). Each file exports arrays of `EnemyDefinition` objects, which include inline definitions of their actions (`RegionEnemyAction`).
+4. **Enemy Registry**: `app/game/content/enemies/index.ts` imports all regional enemy arrays and creates `ALL_ENEMIES_MAP`, a central lookup map used by `CombatSystem` to load enemy data efficiently.
+5. **Player Actions**: Defined centrally in `app/game/content/combatActions.ts` as `PLAYER_ACTIONS`.
+6. **Action System Integration**: Handles the `COMBAT_ACTION` and `RETREAT_FROM_BATTLE` action types.
+7. **Event Bus Integration**: `CombatSystem` listens for `combatEncounterTriggered` events and emits `resourceChange` events for costs, rewards, and penalties.
+8. **UI Integration**: Combat UI components (e.g., `app/battle/page.tsx`) interact with the system by dispatching actions.
 
 ## Key Components
 
-### 1. CombatSystem Class
+### 1. CombatSystem Class (`app/game/systems/CombatSystem.ts`)
 
-Located at `app/game/systems/CombatSystem.ts`, this class manages all combat-related functionality:
+Manages all combat-related functionality:
 
-- **Encounter Generation**: Creates region-specific enemy encounters
-- **Combat Flow**: Manages real-time combat with cooldowns
-- **Enemy AI**: Processes enemy turns and action selection
-- **Combat Resolution**: Handles victory, defeat, and retreat outcomes
+- **Enemy Loading**: Uses `ALL_ENEMIES_MAP` via `getEnemyDefinition` to retrieve enemy data.
+- **Combat Flow**: Manages turn-based combat logic, player/enemy actions, cooldowns, and status effects.
+- **Resource Handling**: Uses `hasSufficientResources` helper for cost checks. Emits `resourceChange` events for action costs, victory rewards (`processVictoryRewards`), and retreat penalties (`retreatFromCombat`).
+- **Enemy AI**: Processes enemy turns (`performEnemyAction`) and selects actions (`selectEnemyAction`) based on probabilities defined in the enemy's `actions` array.
+- **Combat Resolution**: Handles victory, defeat, and retreat outcomes (`endCombatEncounter`).
 
 Key methods include:
-- `generateCombatEncounter`: Creates enemies based on the current region
-- `initCombat`: Sets up the combat state when entering battle
-- `processCombatAction`: Handles player actions during combat
-- `endCombat`: Applies rewards or penalties when combat ends
+- `startCombatEncounter`: Initializes the combat state based on an incoming event.
+- `performCombatAction`: Handles player actions, checks costs/cooldowns, applies effects, and triggers the enemy turn.
+- `performEnemyAction`: Selects and applies an enemy action based on its definition.
+- `endCombatEncounter`: Finalizes combat, applies rewards/penalties via events.
+- `retreatFromCombat`: Handles the retreat action and applies resource penalties via events.
 
-### 2. Combat State Integration
+### 2. Combat State Integration (`app/game/types/index.ts`)
 
-The Combat System extends the game state with:
+The `CombatState` interface within the main `GameState`:
 
 ```typescript
-// Combat State interface
+// Located in app/game/types/index.ts
 export interface CombatState {
-  inCombat: boolean;
-  currentEnemy?: Enemy;
-  shipHealth: number;
-  maxShipHealth: number;
-  shipShield: number;
-  maxShipShield: number;
+  active: boolean;
+  currentEnemy: string | null; // ID of the current enemy
+  currentRegion: RegionType | null; // Use RegionType enum
+  currentSubRegion?: string | null; 
+  turn: number;
+  encounterCompleted: boolean;
+  outcome?: 'victory' | 'defeat' | 'retreat';
+  playerStats: {
+    health: number;
+    maxHealth: number;
+    shield: number;
+    maxShield: number;
+    statusEffects: StatusEffectInstance[]; // Use specific type
+  };
+  enemyStats: {
+    health: number;
+    maxHealth: number;
+    shield: number;
+    maxShield: number;
+    statusEffects: StatusEffectInstance[]; // Use specific type
+  };
   battleLog: BattleLogEntry[];
-  combatTurn: number;
-  lastPlayerActionTime: number;
-  cooldowns: Record<string, number>; // Action name -> timestamp when available
+  availableActions: string[]; // IDs of player actions
+  cooldowns: Record<string, number>; // Action ID -> turns remaining
+  lastActionResult?: ActionResult; // Use specific type
+  rewards?: { // Perhaps remove if rewards handled solely by events?
+    energy: number;
+    insight: number;
+    crew: number;
+    scrap: number;
+  };
+  enemyIntentions: any | null; // Consider defining a type
 }
 ```
+*(Note: The documented interface reflects the actual structure in `index.ts`, which might differ slightly from the older version shown previously in this file).*
 
-### 3. Enemies and Actions
+### 3. Enemies and Actions (`app/game/types/combat.ts`, `app/game/content/enemies/`)
 
-Enemies are region-specific and have different attributes and action patterns:
+Enemies (`EnemyDefinition`) are defined in regional files (e.g., `voidEnemies.ts`) and loaded via `ALL_ENEMIES_MAP`. Enemy actions are defined *inline* within each `EnemyDefinition`:
 
 ```typescript
-// Enemy interface
-export interface Enemy {
+// Enemy Definition (in types/combat.ts)
+export interface EnemyDefinition {
   id: string;
-  name: string;
-  description: string;
-  health: number;
-  maxHealth: number;
-  shield: number;
-  maxShield: number;
-  image: string;
-  attackDelay: number; // Time in ms between enemy attacks
-  lastAttackTime: number; // Last time the enemy attacked
-  actions: EnemyAction[];
-  region: RegionType;
+  // ... other properties (name, health, shield, loot, etc.)
+  actions: RegionEnemyAction[]; // Array of action objects
+  // ...
 }
-```
 
-Enemy actions are defined with:
-
-```typescript
-// Enemy Action interface
-export interface EnemyAction {
+// Inline Enemy Action (in types/combat.ts)
+export interface RegionEnemyAction {
   name: string;
   description: string;
   damage: number;
@@ -86,116 +102,66 @@ export interface EnemyAction {
 }
 ```
 
-### 4. Combat Actions
+### 4. Player Combat Actions (`app/game/content/combatActions.ts`)
 
-The system implements several combat actions, each with:
-- Resource costs
-- Cooldown periods
-- Effects on the enemy or player ship
+Player actions (`CombatActionDefinition`) are defined centrally in `PLAYER_ACTIONS` with:
+- Resource costs (`ResourceCost`)
+- Cooldown periods (turns)
+- Effects (damage, shield/hull repair, status effects)
 
-Main combat actions include:
+*(The table showing specific actions might be outdated, refer to the `PLAYER_ACTIONS` object in the code for current details).*
 
-| Action | Resource Cost | Cooldown | Effect |
-|--------|---------------|----------|--------|
-| Raise Shields | 10 Energy | 8s | +15 Ship Shield |
-| Plasma Cannon | 15 Scrap | 5s | 20 Damage to Enemy |
-| Missile Barrage | 25 Scrap | 10s | 30 Damage (bypasses shields) |
-| Hull Repair | 2 Crew | 12s | +15 Ship Health |
-| Shield Recharge | 3 Crew | 10s | +20 Ship Shield |
-| System Bypass | 4 Crew | 20s | Reduces all cooldowns by 50% |
-| Sabotage | 8 Insight | 15s | Enemy loses a turn |
-| Scan | 5 Insight | 7s | Reveals enemy information |
-| Find Weakness | 12 Insight | 18s | Deals 15 damage to enemy |
-| Sensor Overload | 10 Insight | 20s | Disables enemy shields |
+### 5. Logging Integration (`app/utils/logger.ts`)
 
-### 5. Logging Integration
-
-The combat system integrates with the game's logging system by adding:
-
-```typescript
-// Added to LogCategory
-COMBAT = 'combat'         // Combat system
-
-// Added to LogContext
-COMBAT = 'combat'         // Combat interactions
-```
+The combat system uses `LogCategory.COMBAT` and `LogContext.COMBAT` / `LogContext.COMBAT_ACTION` for relevant logging statements.
 
 ### 6. Action System Integration
 
-The ActionSystem was updated to handle two new action types:
+The `ActionSystem` processes `COMBAT_ACTION` (payload: `{ actionId: string }`) and `RETREAT_FROM_BATTLE` actions, delegating them to the `CombatSystem`.
 
-```typescript
-// Combat Action
-export interface CombatAction extends GameAction {
-  type: 'COMBAT_ACTION';
-  payload: {
-    actionType: string;
-  };
-}
+### 7. Encounter System Integration
 
-// Retreat From Battle Action
-export interface RetreatFromBattleAction extends GameAction {
-  type: 'RETREAT_FROM_BATTLE';
-}
-```
-
-### 7. Encounter Generation
-
-Combat encounters are generated based on region probabilities:
-
-```typescript
-// Region-specific encounter chances
-export const REGION_ENCOUNTER_CHANCES: Record<RegionType, { combat: number, empty: number, narrative: number }> = {
-  'void': { combat: 0.1, empty: 0.7, narrative: 0.2 },
-  'nebula': { combat: 0.3, empty: 0.5, narrative: 0.2 },
-  'asteroid': { combat: 0.5, empty: 0.3, narrative: 0.2 },
-  'deepspace': { combat: 0.7, empty: 0.2, narrative: 0.1 },
-  'blackhole': { combat: 0.9, empty: 0.05, narrative: 0.05 }
-};
-```
+The `EncounterSystem` can generate `combat` type encounters or trigger combat via `StoryEncounter` choices. It emits a `combatEncounterTriggered` event with `{ state, enemyId, regionId, subRegionId }` payload, which the `CombatSystem` listens for to initiate battles via `startCombatEncounter`.
 
 ## Combat Flow
 
-1. **Encounter Generation**:
-   - Combat encounters are generated based on region probabilities
-   - When a combat encounter is selected, the EncounterSystem calls CombatSystem.initCombat()
-
-2. **Combat Initialization**:
-   - Sets up the combat state with ship and enemy properties
-   - Initializes the battle log with initial entries
-   - Sets all action cooldowns to 0 (ready to use)
-
-3. **Combat Actions**:
-   - Player selects actions from the UI
-   - Game dispatches 'COMBAT_ACTION' with actionType
-   - CombatSystem checks resource cost and cooldown before applying
-   - Action results are logged to the battle log
-
-4. **Enemy Turn**:
-   - Enemies attack after their attackDelay period
-   - Actions are selected based on probability weights
-   - Damage is applied to player shields or hull
-
-5. **Combat Resolution**:
-   - Victory: When enemy health reaches 0
-     - Player receives resource rewards
-     - Combat is added to encounter history
-   - Defeat: When player ship health reaches 0
-     - Player loses all resources 
-     - Combat is added to encounter history
-   - Retreat: When player chooses to retreat
-     - Player loses 25% of all resources
-     - Combat is added to encounter history
+1. **Encounter Trigger**: `EncounterSystem` emits `combatEncounterTriggered` event.
+2. **Combat Initialization**: `CombatSystem` listener calls `startCombatEncounter`, setting up `CombatState` using data from `ALL_ENEMIES_MAP`.
+3. **Player Turn**:
+    - Player selects action via UI.
+    - `ActionSystem` dispatches `COMBAT_ACTION`.
+    - `CombatSystem.performCombatAction` is called:
+        - Checks cooldowns.
+        - Checks resources using `hasSufficientResources`.
+        - Emits `resourceChange` event for cost.
+        - Applies action effects (`applyActionEffects`).
+        - Logs result to `battleLog`.
+        - Checks for enemy defeat.
+        - Calls `performEnemyAction`.
+        - Checks for player defeat.
+        - Increments turn, reduces cooldowns, processes status effects.
+4. **Enemy Turn** (`performEnemyAction`):
+    - Selects action from enemy's `actions` array based on probability (`selectEnemyAction`).
+    - Applies damage/effects to player.
+    - Logs result to `battleLog`.
+    - Checks for player defeat.
+5. **Combat Resolution** (`endCombatEncounter`):
+    - Triggered by player/enemy health reaching 0 or retreat action.
+    - Sets outcome (`victory`, `defeat`, `retreat`).
+    - **Victory**: Calls `processVictoryRewards` which emits `resourceChange` events for loot.
+    - **Defeat**: (Currently no specific penalty applied via events in `endCombatEncounter`).
+    - **Retreat**: Handled by `retreatFromCombat`, which emits `resourceChange` events for penalties before calling `endCombatEncounter`.
+    - Sets `combat.active` to false.
 
 ## Integration with Game Systems
 
 The combat system is integrated with:
 
-1. **GameSystemManager**: Added CombatSystem and set up proper initialization
-2. **EncounterSystem**: Updated to generate and handle combat encounters
-3. **ActionSystem**: Extended to process combat actions and retreat
-4. **Resource System**: Combat actions consume and generate resources
-5. **Logging System**: Added combat categories and contexts for logging
+1. **GameSystemManager**: (Assumed) Instantiates `CombatSystem` and likely passes the `EventBus`.
+2. **EncounterSystem**: Triggers combat via the `combatEncounterTriggered` event.
+3. **ActionSystem**: Processes player combat/retreat actions.
+4. **Resource System**: (Indirectly via Event Bus) Handles `resourceChange` events emitted by `CombatSystem` for costs, rewards, and penalties.
+5. **Logging System**: Uses specific categories/contexts.
 
 ## Future Enhancements
 

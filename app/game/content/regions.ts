@@ -1,5 +1,4 @@
 import { RegionDefinition, RegionType } from '../types/combat';
-import { RegionTypeEnum } from '../types';
 
 /**
  * Region Definitions
@@ -13,8 +12,8 @@ export const REGION_DEFINITIONS: Record<string, RegionDefinition> = {
     description: 'The empty vacuum of space surrounds the Dawn. Long-range sensors detect potential areas of interest, but encounters are rare in this desolate region.',
     type: RegionType.VOID,
     enemyProbabilities: [
-      { enemyId: 'scavenger', weight: 3 },
-      { enemyId: 'patrol-drone', weight: 2 }
+      { enemyId: 'void-service-bot', weight: 3 },
+      { enemyId: 'void-defense-turret', weight: 2 }
     ],
     encounterChance: 0.4 // 40% chance of encounter when jumping
   },
@@ -25,9 +24,9 @@ export const REGION_DEFINITIONS: Record<string, RegionDefinition> = {
     description: 'An immense gravitational anomaly that warps space and time around it. The darkness at its center devours everything, but the accretion disk glows with intense radiation and exotic particles.',
     type: RegionType.BLACK_HOLE,
     enemyProbabilities: [
-      { enemyId: 'gravity-warper', weight: 3 },
-      { enemyId: 'time-fragment', weight: 2 },
-      { enemyId: 'scavenger', weight: 1 }
+      { enemyId: 'blackhole-warped-research-vessel', weight: 3 },
+      { enemyId: 'blackhole-radiation-phantom', weight: 2 },
+      { enemyId: 'blackhole-gravity-probe', weight: 1 }
     ],
     encounterChance: 0.6 // 60% chance of encounter when jumping
   },
@@ -38,9 +37,9 @@ export const REGION_DEFINITIONS: Record<string, RegionDefinition> = {
     description: 'A dense field of rocky debris from a destroyed planet. Navigation is challenging, but the asteroids are rich in minerals and abandoned mining equipment.',
     type: RegionType.ASTEROID_FIELD,
     enemyProbabilities: [
-      { enemyId: 'mining-rig', weight: 3 },
-      { enemyId: 'asteroid-hive', weight: 2 },
-      { enemyId: 'scavenger', weight: 1 }
+      { enemyId: 'asteroid-mining-drone', weight: 3 },
+      { enemyId: 'asteroid-scavenger-ship', weight: 2 },
+      { enemyId: 'asteroid-security-skiff', weight: 1 }
     ],
     encounterChance: 0.7 // 70% chance of encounter when jumping
   },
@@ -51,8 +50,8 @@ export const REGION_DEFINITIONS: Record<string, RegionDefinition> = {
     description: 'A region of space at the perfect distance from a stable star, where conditions might support life. Lush planets and moons orbit in this zone, with potential for colonization and resource harvesting.',
     type: RegionType.HABITABLE_ZONE,
     enemyProbabilities: [
-      { enemyId: 'planetary-defense', weight: 3 },
-      { enemyId: 'bio-construct', weight: 2 }
+      { enemyId: 'habitable-security-drone', weight: 3 },
+      { enemyId: 'habitable-atmospheric-predator', weight: 2 }
     ],
     encounterChance: 0.5 // 50% chance of encounter when jumping
   },
@@ -63,8 +62,8 @@ export const REGION_DEFINITIONS: Record<string, RegionDefinition> = {
     description: 'The remains of a massive star that went supernova centuries ago. The area is filled with exotic matter and dangerous anomalies, but also valuable resources.',
     type: RegionType.SUPERNOVA,
     enemyProbabilities: [
-      { enemyId: 'solar-remnant', weight: 3 },
-      { enemyId: 'guardian-construct', weight: 1 }
+      { enemyId: 'supernova-radiation-wraith', weight: 3 },
+      { enemyId: 'supernova-derelict-guardian', weight: 1 }
     ],
     encounterChance: 0.8 // 80% chance of encounter when jumping
   }
