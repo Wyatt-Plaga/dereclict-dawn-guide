@@ -1,51 +1,44 @@
 "use client"
 
 import { NavBar } from "@/components/ui/navbar"
-import { Compass, Rocket } from "lucide-react"
+import { Compass, Rocket, Skull } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/app/game/hooks/useGame"
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
 import { useRouter } from "next/navigation"
+import { REGION_DEFINITIONS } from "@/app/game/content/regions"
+import { RegionType } from "@/app/game/types/combat"
 
-// Region types
-interface Region {
-  id: string;
-  name: string;
-  description: string;
-}
+// Region type removed, using definitions directly
 
 export default function NavigationPage() {
   const { state, dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
   const router = useRouter()
   
-  // Log component render
   Logger.debug(
     LogCategory.UI,
     `Rendering NavigationPage`,
     LogContext.UI_RENDER
   )
   
-  // Current region is hardcoded to Void for now
-  const currentRegion: Region = {
-    id: 'void',
-    name: 'Void of Space',
-    description: 'The empty vacuum of space surrounds the Dawn. Long-range sensors detect potential areas of interest.'
-  }
+  // Get current region info from state and definitions
+  const currentRegionId = state.navigation.currentRegion;
+  const currentRegion = REGION_DEFINITIONS[currentRegionId];
   
-  // Dispatch INITIATE_JUMP action and navigate to encounter page
+  // Get boss progress
+  const currentProgress = state.navigation.regionProgress[currentRegionId] || 0;
+  const bossThreshold = currentRegion?.bossDefeatThreshold || 0; // Default to 0 if undefined
+  const showBossProgress = currentRegion && bossThreshold > 0; // Only show if there is a threshold
+
   const initiateJump = () => {
     Logger.info(
       LogCategory.ACTIONS, 
       'Initiating jump sequence', 
       LogContext.NONE
     );
-    
-    // Dispatch the action to generate an encounter
     dispatch({ type: 'INITIATE_JUMP' });
-    
-    // Give a small delay to ensure the state is updated before navigating
     setTimeout(() => {
       router.push('/encounter');
     }, 100);
@@ -64,11 +57,22 @@ export default function NavigationPage() {
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-3">
                 <Compass className="h-5 w-5 text-chart-1" />
-                <h2 className="text-lg font-medium">Current Location: {currentRegion.name}</h2>
+                <h2 className="text-lg font-medium">Current Location: {currentRegion?.name || 'Unknown Region'}</h2>
               </div>
               <p className="text-muted-foreground">
-                {currentRegion.description}
+                {currentRegion?.description || 'No description available.'}
               </p>
+              {/* Boss Progress Display */}
+              {showBossProgress && (
+                <div className="mt-4 pt-4 border-t border-accent/20 flex items-center gap-2 text-sm text-orange-400">
+                  <Skull className="h-4 w-4" />
+                  <span>Boss Encounter Progress: {currentProgress} / {bossThreshold}</span>
+                  {/* Optional: Add a progress bar */}
+                  {/* <div className="w-full bg-orange-900/50 rounded-full h-1.5 ml-2">
+                    <div className="bg-orange-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, (currentProgress / bossThreshold) * 100)}%` }}></div>
+                  </div> */}
+                </div>
+              )}
             </div>
             
             {/* Ship status - moved above ship controls */}

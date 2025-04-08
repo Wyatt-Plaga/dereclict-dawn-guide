@@ -332,6 +332,13 @@ export class GameEngine {
         
         // Replace current state with saved state
         this.state = saveData.state;
+
+        // ** Add migration/check for missing regionProgress **
+        if (this.state && this.state.navigation && !this.state.navigation.regionProgress) {
+            Logger.warn(LogCategory.ENGINE, "Loaded state missing navigation.regionProgress, initializing to {}.", LogContext.SAVE_LOAD);
+            this.state.navigation.regionProgress = {};
+        }
+        // ** End migration check **
         
         // Cache the newly loaded state
         cacheState(this.state);

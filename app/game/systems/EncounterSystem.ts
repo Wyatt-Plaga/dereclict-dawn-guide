@@ -42,25 +42,37 @@ export class EncounterSystem {
         const region = state.navigation.currentRegion;
         console.log(`Generating encounter for region: ${region}`);
         
-        // Get encounter chances for the current region
         const regionTypeProbs = ENCOUNTER_TYPE_PROBABILITIES[region] || 
-            { default: { combat: 0.3, empty: 0.5, narrative: 0.2 } }; // Fallback values if region not found
-        const encounterChances = regionTypeProbs.default; // Use default probabilities for now
+            { default: { combat: 0.3, empty: 0.5, narrative: 0.2 } }; // Fallback
+        const encounterChances = regionTypeProbs.default;
         
-        // Generate a random value to determine encounter type
         const randomValue = Math.random();
         
-        // Determine the type of encounter based on region probabilities
+        let encounter: BaseEncounter | null = null;
+
         if (randomValue < encounterChances.combat) {
-            // Combat encounter
-            return this.generateCombatEncounter(region, state);
+            // Attempt Combat encounter
+            encounter = this.generateCombatEncounter(region, state);
         } else if (randomValue < encounterChances.combat + encounterChances.empty) {
-            // Empty encounter
-            return this.generateEmptyEncounter(region);
+            // Attempt Empty encounter
+            encounter = this.generateEmptyEncounter(region);
         } else {
-            // Narrative/story encounter
-            return this.generateStoryEncounter(region);
+            // Attempt Narrative/story encounter
+            encounter = this.generateStoryEncounter(region, state);
+            // If no unique story encounter is available, fall back to empty
+            if (encounter === null) {
+                Logger.debug(LogCategory.ACTIONS, "No unique story encounter available, falling back to empty.", LogContext.NONE);
+                encounter = this.generateEmptyEncounter(region);
+            }
         }
+        
+        // Final fallback if something unexpected happened (shouldn't occur with current logic)
+        if (encounter === null) {
+             Logger.error(LogCategory.ACTIONS, "Failed to generate any encounter type, defaulting to generic empty.", LogContext.NONE);
+             encounter = this.generateEmptyEncounter(RegionType.VOID); // Or some generic fallback
+        }
+        
+        return encounter;
     }
     
     /**
@@ -82,19 +94,40 @@ export class EncounterSystem {
     }
     
     /**
-     * Generate a story encounter with choices
+     * Generate a story encounter with choices, ensuring uniqueness
      */
-    private generateStoryEncounter(region: RegionType): StoryEncounter {
-        const regionEncounters = STORY_ENCOUNTERS[region];
+    private generateStoryEncounter(region: RegionType, state: GameState): StoryEncounter | null {
+        const allRegionEncounters = STORY_ENCOUNTERS[region];
         
-        if (!regionEncounters || regionEncounters.length === 0) {
-            return getGenericStoryEncounter(region);
+        if (!allRegionEncounters || allRegionEncounters.length === 0) {
+            // No story encounters defined for this region at all
+            return getGenericStoryEncounter(region); // Or return null if generic shouldn't be unique?
+        }
+
+        // Get IDs of completed story encounters from history
+        const completedStoryIds = new Set(
+            state.encounters.history
+                .filter(entry => entry.type === 'story')
+                .map(entry => entry.id)
+        );
+
+        // Filter out already completed encounters
+        const availableEncounters = allRegionEncounters.filter(
+            encounter => !completedStoryIds.has(encounter.id)
+        );
+        
+        if (availableEncounters.length === 0) {
+            // No unique story encounters left for this region
+            Logger.info(LogCategory.ACTIONS, `No unique story encounters remaining for region: ${region}.`, LogContext.NONE);
+            return null; // Indicate no story encounter available
         }
         
-        const randomIndex = Math.floor(Math.random() * regionEncounters.length);
-        
-        // Deep clone and ensure the region type is preserved correctly
-        const clonedEncounter = JSON.parse(JSON.stringify(regionEncounters[randomIndex])) as StoryEncounter;
+        // Select a random encounter from the available unique ones
+        const randomIndex = Math.floor(Math.random() * availableEncounters.length);
+        const selectedEncounter = availableEncounters[randomIndex];
+
+        // Deep clone before returning
+        const clonedEncounter = JSON.parse(JSON.stringify(selectedEncounter)) as StoryEncounter;
         return clonedEncounter;
     }
     

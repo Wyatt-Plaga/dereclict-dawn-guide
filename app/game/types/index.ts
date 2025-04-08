@@ -297,6 +297,7 @@ export interface GameState {
         currentRegion: RegionType;
         currentSubRegion?: string; // Optional subregion within the current region
         completedRegions: RegionType[];
+        regionProgress: Record<string, number>; // Added: Tracks progress towards boss within each region
     };
 
     /**
@@ -383,7 +384,8 @@ export const initialGameState: GameState = {
     navigation: {
         currentRegion: RegionType.VOID,
         currentSubRegion: undefined,
-        completedRegions: []
+        completedRegions: [],
+        regionProgress: {} // Initialize as empty object
     },
     encounters: {
         active: false,
