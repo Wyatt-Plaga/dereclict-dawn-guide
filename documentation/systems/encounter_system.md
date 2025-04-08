@@ -24,9 +24,10 @@ The Encounter System consists of several key components:
     - `generateEncounter(state: GameState)`: Creates a new encounter based on current region
     - `generateEmptyEncounter(region: RegionType)`: Generates empty encounters with region-specific content
     - `generateStoryEncounter(region: RegionType)`: Creates narrative encounters with player choices
-    - `generateCombatEncounter(region: string)`: Builds combat encounters with region-specific enemies
-    - `applyRewards(state: GameState, rewards: ResourceReward[])`: Grants resources from encounters
-    - `completeEncounter(state: GameState, choiceId?: string)`: Finalizes encounters and applies outcomes
+    - `generateCombatEncounter(region: RegionType, state?: GameState)`: Builds combat encounters, using `generateEnemyForRegion` for enemy selection.
+    - `generateEnemyForRegion(region: RegionType, subRegion?: string, isBoss?: boolean)`: Selects an appropriate enemy ID based on region, subregion, and boss status using weighted probabilities derived from `EnemyDefinition.spawnLocations` in `ALL_ENEMIES_LIST`.
+    - `applyRewards(state: GameState, rewards: ResourceReward[])`: Grants resources from encounters via the EventBus.
+    - `completeEncounter(state: GameState, choiceId?: string)`: Finalizes encounters, applies outcomes, and potentially triggers combat via the EventBus.
 
 ### Key Interfaces
 - `BaseEncounter`: Core interface containing shared encounter properties
@@ -61,13 +62,15 @@ The Encounter System consists of several key components:
 ```typescript
 generateEncounter(state: GameState): BaseEncounter {
     const region = state.navigation.currentRegion;
-    const encounterChances = REGION_ENCOUNTER_CHANCES[region] || 
-        { combat: 0.3, empty: 0.5, narrative: 0.2 };
+    // Use ENCOUNTER_TYPE_PROBABILITIES from encounterConfig.ts
+    const regionTypeProbs = ENCOUNTER_TYPE_PROBABILITIES[region] || 
+        { default: { combat: 0.3, empty: 0.5, narrative: 0.2 } }; // Fallback
+    const encounterChances = regionTypeProbs.default;
     
     const randomValue = Math.random();
     
     if (randomValue < encounterChances.combat) {
-        return this.generateCombatEncounter(region);
+        return this.generateCombatEncounter(region, state);
     } else if (randomValue < encounterChances.combat + encounterChances.empty) {
         return this.generateEmptyEncounter(region);
     } else {
@@ -112,25 +115,28 @@ applyRewards(state: GameState, rewards: ResourceReward[]): GameState {
 
 ### Combat Initialization
 ```typescript
-// Within completeEncounter method
-if (encounter.type === 'combat') {
-    const combatEncounter = encounter as BaseEncounter;
-    const regionId = combatEncounter.region;
-    const enemyId = this.generateRandomEnemyForRegion(regionId);
+// Within completeEncounter method, when triggering combat
+// (either from story choice or a direct combat encounter)
+
+// 1. Determine enemyId using generateEnemyForRegion or pre-defined ID
+const enemyId = /* ... logic to get enemyId ... */ ;
+const regionId = /* ... logic to get regionId from encounter.validLocations ... */ ;
+const subRegionId = /* ... logic to get subRegionId ... */ ;
+
+// 2. Emit event to Combat System
+if (enemyId) {
+    this.eventBus.emit('combatEncounterTriggered', {
+        state: state,
+        enemyId: enemyId,
+        regionId: regionId, 
+        subRegionId: subRegionId
+        // ... other relevant source info ...
+    });
     
-    if (enemyId) {
-        this.eventBus.emit('combatEncounterTriggered', {
-            state: state,
-            enemyId: enemyId,
-            regionId: regionId
-        });
-        
-        state.encounters.active = false;
-        state.encounters.encounter = undefined;
-        state.combat.active = true;
-        
-        // History management...
-    }
+    // 3. Update game state (encounter inactive, combat active)
+    state.encounters.active = false;
+    state.encounters.encounter = undefined;
+    state.combat.active = true;
 }
 ```
 
@@ -179,79 +185,16 @@ The Encounter System is presented to the player through several React components
 
 The Encounter System is configured through several content definition files:
 
-1. **REGION_ENCOUNTER_CHANCES**: Defines the probability of each encounter type per region
-   ```typescript
-   {
-     'void': { combat: 0.5, empty: 0.05, narrative: 0.45 },
-     'nebula': { combat: 0.3, empty: 0.5, narrative: 0.2 },
-     // Additional regions...
-   }
-   ```
+1. **`app/game/content/encounterConfig.ts`**: Defines the probability of each encounter *type* (combat, narrative, empty) per region using `ENCOUNTER_TYPE_PROBABILITIES`. (Currently set to roughly equal probabilities for testing).
 
-2. **STORY_ENCOUNTERS**: Pre-defined story encounters for each region
-   - Each region has an array of encounters with choices and outcomes
+2. **`app/game/content/encounters/*.ts`**: Contains pre-defined `StoryEncounter` definitions for each region, including choices and outcomes.
 
-3. **Region Definitions**: Enemy probabilities for combat encounters
-   ```typescript
-   {
-     enemyProbabilities: [
-       { enemyId: 'scout_drone', weight: 70 },
-       { enemyId: 'hunter_vessel', weight: 30 }
-     ]
-   }
-   ```
+3. **`app/game/content/enemies/*.ts`**: Defines individual `EnemyDefinition` objects. The `spawnLocations` array within each definition dictates where and how often (via `weight`) that enemy can appear in *random* combat encounters generated by `generateEnemyForRegion`.
 
-4. **Empty Encounter Content**: Region-specific flavor text and rewards
-   - Titles, descriptions, messages, and reward probabilities are defined per region
+4. **`app/game/content/encounters.ts`**: Provides region-specific flavor text (titles, descriptions, messages) and reward generation logic (`generateEmptyEncounterRewards`) for empty encounters.
 
 ## Examples
 
 ### Generating a New Encounter
 
-```typescript
-// Typically called when the player explores a new location
-const newEncounter = encounterSystem.generateEncounter(gameState);
-gameState.encounters.active = true;
-gameState.encounters.encounter = newEncounter;
 ```
-
-### Completing a Story Encounter
-
-```typescript
-// Called when a player selects a choice in a story encounter
-dispatch({
-  type: 'MAKE_STORY_CHOICE',
-  payload: {
-    choiceId: selectedChoice
-  }
-});
-
-// This triggers the completeEncounter method in the EncounterSystem
-```
-
-### Initiating Combat
-
-```typescript
-// Within the EncounterSystem's completeEncounter method
-this.eventBus.emit('combatEncounterTriggered', {
-  state: state,
-  enemyId: enemyId,
-  regionId: regionId
-});
-
-state.encounters.active = false;
-state.encounters.encounter = undefined;
-state.combat.active = true;
-```
-
-## Future Considerations
-
-1. **Encounter Persistence**: Implement mechanisms to save encounter state during game saves
-2. **Encounter Chains**: Allow for sequential encounters that tell a larger story
-3. **Player-influenced Probabilities**: Adjust encounter chances based on player choices or resource levels
-4. **Dynamic Story Content**: Generate encounters procedurally based on game state
-5. **Encounter Cooldowns**: Prevent repeated encounters of the same type
-6. **Difficulty Scaling**: Adjust combat encounters based on player progression
-7. **Special Encounter Types**: Add rare encounters with unique mechanics
-8. **Reputation System**: Track player choices to influence future encounters
-9. **Resource-triggered Encounters**: Special encounters based on resource thresholds 

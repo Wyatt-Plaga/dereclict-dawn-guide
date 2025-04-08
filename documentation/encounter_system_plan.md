@@ -21,19 +21,20 @@ This document outlines the implementation plan for Derelict Dawn Guide's encount
 interface GameState {
   // Existing properties
   
-  // Navigation state
   navigation: {
-    currentRegion: string;
-    completedRegions: string[];
-    regionsData: Record<string, RegionData>;
+    currentRegion: RegionType; // Use enum type
+    currentSubRegion?: string;
+    completedRegions: RegionType[]; // Use enum type
+    // regionsData might be replaced by REGION_DEFINITIONS import if static
   };
   
-  // Encounter state
   encounters: {
     active: boolean;
-    encounter?: CombatEncounter | StoryEncounter | EmptyEncounter;
+    encounter?: BaseEncounter; // BaseEncounter holds shared properties
     history: EncounterHistory[];
   };
+
+  combat: CombatState; // Combat state managed separately
   
   // Metrics for balancing
   metrics: {
@@ -49,23 +50,27 @@ interface GameState {
 #### 1.2 Encounter Types
 
 ```typescript
+interface LocationConstraint { // Structure for defining valid locations
+    regionId: string; 
+    subRegionId?: string;
+}
+
 interface BaseEncounter {
   id: string;
   type: 'combat' | 'story' | 'empty';
   title: string;
   description: string;
-  region: string; // 'void', 'nebula', etc.
+  validLocations: LocationConstraint[]; // Replaced region string
+  enemyId?: string | null; // For specific combat triggers
 }
 
-interface CombatEncounter extends BaseEncounter {
-  type: 'combat';
-  enemy: Enemy;
-  combatState: CombatState;
-}
+// CombatEncounter is now just a BaseEncounter with type 'combat'
+// The CombatSystem manages the detailed combat state
 
 interface StoryEncounter extends BaseEncounter {
   type: 'story';
   choices: EncounterChoice[];
+  message?: string;
 }
 
 interface EmptyEncounter extends BaseEncounter {
@@ -104,9 +109,9 @@ interface CombatLogEntry {
 interface EncounterHistory {
   type: 'combat' | 'story' | 'empty';
   id: string;
-  result: 'victory' | 'defeat' | 'retreat' | string; // choice ID for stories
+  result: string; // Outcome or choice ID
   date: number; // timestamp
-  region: string;
+  region: RegionType; // Store the region enum value
 }
 ```
 
@@ -118,83 +123,36 @@ This new system will be responsible for generating and managing encounters:
 
 ```typescript
 class EncounterSystem {
-  // Generate encounters based on region
-  generateEncounter(region: string): CombatEncounter | StoryEncounter | EmptyEncounter {
-    const { encounterChance, combatRatio } = REGION_ENCOUNTER_CHANCES[region];
+  // Generate encounters based on region type probabilities
+  generateEncounter(state: GameState): BaseEncounter {
+    const region = state.navigation.currentRegion;
+    // Use ENCOUNTER_TYPE_PROBABILITIES from encounterConfig.ts
+    const regionTypeProbs = ENCOUNTER_TYPE_PROBABILITIES[region] || 
+        { default: { combat: 0.3, empty: 0.5, narrative: 0.2 } }; // Fallback
+    const encounterChances = regionTypeProbs.default;
     
-    // First determine if an interesting encounter happens at all
-    if (Math.random() >= encounterChance) {
-      // Generate empty encounter
-      return this.generateEmptyEncounter(region);
-    }
+    const randomValue = Math.random();
     
-    // Then determine if it's combat or story
-    const isCombat = Math.random() < combatRatio;
-    
-    if (isCombat) {
-      return this.generateCombatEncounter(region);
+    if (randomValue < encounterChances.combat) {
+        return this.generateCombatEncounter(region, state);
+    } else if (randomValue < encounterChances.combat + encounterChances.empty) {
+        return this.generateEmptyEncounter(region);
     } else {
-      return this.generateStoryEncounter(region);
+        return this.generateStoryEncounter(region);
     }
   }
   
-  // Generate a combat encounter
-  generateCombatEncounter(region: string): CombatEncounter {
-    // Implementation details
+  // Generate a combat encounter (returns BaseEncounter)
+  generateCombatEncounter(region: RegionType, state?: GameState): BaseEncounter {
+    // ... uses generateEnemyForRegion ...
   }
   
-  // Generate a story encounter
-  generateStoryEncounter(region: string): StoryEncounter {
-    // Implementation details
+  // Selects an enemy based on region/subRegion/isBoss using ALL_ENEMIES_LIST
+  generateEnemyForRegion(region: RegionType, subRegion?: string, isBoss?: boolean): string | undefined {
+    // ... filters ALL_ENEMIES_LIST based on EnemyDefinition.spawnLocations ...
   }
-  
-  // Generate an empty encounter
-  generateEmptyEncounter(region: string): EmptyEncounter {
-    // Implementation details
-  }
-  
-  // Process combat actions
-  processCombatAction(state: GameState, action: string): void {
-    // Implementation details
-  }
-  
-  // Process story choices
-  processStoryChoice(state: GameState, choiceId: string): void {
-    // Implementation details
-  }
-  
-  // Process empty encounter completion
-  processEmptyEncounterCompletion(state: GameState): void {
-    // Implementation details
-  }
-  
-  // Check if combat has ended
-  checkCombatEnd(state: GameState): boolean {
-    // Implementation details
-  }
-  
-  // Apply rewards from encounters
-  applyRewards(state: GameState, rewards: ResourceReward[]): void {
-    // Implementation details
-  }
-  
-  // Handle region completion
-  completeRegion(state: GameState, region: string): void {
-    // If not already completed, add to completed regions
-    if (!state.navigation.completedRegions.includes(region)) {
-      state.navigation.completedRegions.push(region);
-      
-      // Check if all main regions are complete to unlock anomaly
-      const mainRegions = ['void', 'nebula', 'blackhole', 'supernova', 'habitable'];
-      const completedMainRegions = mainRegions.filter(r => 
-        state.navigation.completedRegions.includes(r)
-      );
-      
-      if (completedMainRegions.length === mainRegions.length) {
-        // Unlock anomaly region logic
-      }
-    }
-  }
+
+  // ... other methods (generateStory, generateEmpty, processChoice, applyRewards etc.) ...
 }
 ```
 
@@ -234,7 +192,7 @@ class ActionSystem {
     const region = state.navigation.currentRegion;
     
     // Generate encounter
-    const encounter = this.encounterSystem.generateEncounter(region);
+    const encounter = this.encounterSystem.generateEncounter(state);
     
     // Update state
     state.encounters.active = true;
@@ -476,68 +434,20 @@ function EmptyPanel({ encounter, dispatch }) {
 Define content tables for each region:
 
 ```typescript
-const REGION_ENCOUNTER_CHANCES = {
-  void: { encounterChance: 0.6, combatRatio: 0.7 },
-  nebula: { encounterChance: 0.75, combatRatio: 0.8 },
-  blackhole: { encounterChance: 0.85, combatRatio: 0.9 },
-  supernova: { encounterChance: 0.8, combatRatio: 0.85 },
-  habitable: { encounterChance: 0.7, combatRatio: 0.6 },
-  anomaly: { encounterChance: 1.0, combatRatio: 0.5 },
+// Example from app/game/content/encounterConfig.ts
+export const ENCOUNTER_TYPE_PROBABILITIES: Record<string, { 
+    default: { combat: number; narrative: number; empty: number; }; 
+    // ... optional subregion overrides ...
+}> = {
+  'void': { default: { combat: 0.33, narrative: 0.34, empty: 0.33 } }, // Example: Equal distribution
+  // ... other regions ...
 };
 
-const REGION_ENEMIES = {
-  void: [
-    { 
-      id: 'void_scout', 
-      name: 'Void Scout', 
-      description: 'A small autonomous probe that patrols the emptiness of space.',
-      health: 30, 
-      damage: 5, 
-      weakness: 'shield', 
-      image: '/enemy-void.png' 
-    },
-    // More enemies
-  ],
-  // Other regions
-};
+// Story Encounters defined in app/game/content/encounters/*.ts
 
-const REGION_STORIES = {
-  void: [
-    {
-      id: 'void_distress',
-      title: 'Distress Signal',
-      description: 'You detect a faint distress signal from a nearby derelict vessel...',
-      choices: [
-        { 
-          id: 'investigate', 
-          text: 'Investigate signal', 
-          outcomes: { 
-            resources: [{ type: 'scrap', amount: 15 }],
-            text: 'You find valuable scrap materials among the wreckage.' 
-          } 
-        },
-        { 
-          id: 'ignore', 
-          text: 'Ignore and continue', 
-          outcomes: { 
-            text: 'You continue on your journey, leaving the signal behind.' 
-          } 
-        }
-      ]
-    },
-    // More stories
-  ],
-  // Other regions
-};
+// Enemy Spawn Logic defined in app/game/content/enemies/*.ts within EnemyDefinition.spawnLocations
 
-const EMPTY_ENCOUNTER_MESSAGES = {
-  void: [
-    "You navigate through the emptiness of space, finding nothing of note.",
-    "The sensors detect only distant stars and cosmic background radiation.",
-    "The ship passes through a region of particularly empty space."
-  ],
-  // Other regions
-};
+// Empty Encounter Text/Rewards defined in app/game/content/encounters.ts
 ```
 
 ## Implementation Phases

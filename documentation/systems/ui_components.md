@@ -100,24 +100,53 @@ The UI component architecture follows these key principles:
   };
   ```
 
-- **EncounterDisplay**: Renders different encounter types with appropriate UI
+- **StoryEncounterContent**: Presents narrative choices and outcomes to the player.
+  ```tsx
+  interface StoryEncounterContentProps {
+    encounter: StoryEncounter;
+    onChoiceSelect: (choiceId: string) => void;
+  }
+
+  const StoryEncounterContent: React.FC<StoryEncounterContentProps> = ({ 
+    encounter, 
+    onChoiceSelect 
+  }) => {
+    // ... implementation ...
+  };
+  ```
+
+- **EmptyEncounterContent**: Displays simple encounters, including flavor text and potential resource rewards. The "Discovered Resources" header is only shown if resources are actually awarded.
+  ```tsx
+  interface EmptyEncounterContentProps {
+    encounter: EmptyEncounter;
+  }
+
+  const EmptyEncounterContent: React.FC<EmptyEncounterContentProps> = ({ encounter }) => {
+    const hasRewards = encounter.resources && encounter.resources.length > 0;
+    // ... implementation ...
+    return (
+      // ... JSX structure ...
+      {hasRewards ? (
+        // Render header and ResourceRewardsList
+      ) : (
+        // Render quote/message without header
+      )}
+      // ...
+    );
+  };
+  ```
+
+- **EncounterDisplay**: Renders the appropriate content component (`CombatEncounterContent`, `StoryEncounterContent`, `EmptyEncounterContent`) based on the active encounter type. Passes necessary props like the current region.
   ```tsx
   interface EncounterDisplayProps {
     encounter: BaseEncounter;
+    currentRegion: RegionType;
+    onComplete: (choiceId?: string) => void;
   }
 
-  function EncounterDisplay({ encounter }: EncounterDisplayProps) {
+  function EncounterDisplay({ encounter, currentRegion, onComplete }: EncounterDisplayProps) {
+    // ... logic to determine encounter type ...
     // Render different components based on encounter type
-    switch (encounter.type) {
-      case 'combat':
-        return <CombatEncounterContent encounter={encounter} />;
-      case 'story':
-        return <StoryEncounterContent encounter={encounter} />;
-      case 'resource':
-        return <ResourceEncounterContent encounter={encounter} />;
-      default:
-        return <GenericEncounterContent encounter={encounter} />;
-    }
   }
   ```
 
