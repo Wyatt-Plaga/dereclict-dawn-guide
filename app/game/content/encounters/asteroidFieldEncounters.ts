@@ -1,4 +1,4 @@
-import { StoryEncounter } from '../../types';
+import { StoryEncounter } from '@/app/game/types';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -18,7 +18,7 @@ export const ASTEROID_FIELD_ENCOUNTERS: StoryEncounter[] = [
         type: 'story',
         title: 'Abandoned Outpost',
         description: 'You discover a small mining outpost floating amidst the asteroids, its systems on emergency power. The station appears to have been hastily abandoned.',
-        region: 'asteroid',
+        validLocations: [{ regionId: 'asteroid', subRegionId: 'Mining Frontier' }],
         choices: [
             {
                 id: uuidv4(),
@@ -63,7 +63,7 @@ export const ASTEROID_FIELD_ENCOUNTERS: StoryEncounter[] = [
         type: 'story',
         title: 'Claim Dispute',
         description: 'Your sensors detect a standoff between two mining vessels, weapons hot, fighting over a resource-rich asteroid.',
-        region: 'asteroid',
+        validLocations: [{ regionId: 'asteroid', subRegionId: 'Mining Frontier' }],
         choices: [
             {
                 id: uuidv4(),
@@ -109,7 +109,7 @@ export const ASTEROID_FIELD_ENCOUNTERS: StoryEncounter[] = [
         type: 'story',
         title: 'Prospector\'s Discovery',
         description: 'A solitary mining vessel is drilling into an asteroid showing unusual energy signatures. The lone prospector is excited but nervous about their discovery.',
-        region: 'asteroid',
+        validLocations: [{ regionId: 'asteroid', subRegionId: 'Mining Frontier' }],
         choices: [
             {
                 id: uuidv4(),
@@ -159,7 +159,7 @@ export const ASTEROID_FIELD_ENCOUNTERS: StoryEncounter[] = [
         type: 'story',
         title: 'Processing Plant Malfunction',
         description: 'A massive automated processing facility is operating beyond safety parameters, its systems locked in an unusual processing loop.',
-        region: 'asteroid',
+        validLocations: [{ regionId: 'asteroid', subRegionId: 'Resource Processing Hub' }],
         choices: [
             {
                 id: uuidv4(),
@@ -203,7 +203,7 @@ export const ASTEROID_FIELD_ENCOUNTERS: StoryEncounter[] = [
         type: 'story',
         title: 'Researcher\'s Hideout',
         description: 'Hidden within a hollowed asteroid near the processing hub, you find a makeshift laboratory established by a former corporate scientist.',
-        region: 'asteroid',
+        validLocations: [{ regionId: 'asteroid', subRegionId: 'Resource Processing Hub' }],
         choices: [
             {
                 id: uuidv4(),
@@ -247,7 +247,7 @@ export const ASTEROID_FIELD_ENCOUNTERS: StoryEncounter[] = [
         type: 'story',
         title: 'Corporate Archives',
         description: 'A secure data storage facility floats at the hub\'s edge, its low profile suggesting it wasn\'t meant to be noticed.',
-        region: 'asteroid',
+        validLocations: [{ regionId: 'asteroid', subRegionId: 'Resource Processing Hub' }],
         choices: [
             {
                 id: uuidv4(),
@@ -296,7 +296,7 @@ export const ASTEROID_FIELD_ENCOUNTERS: StoryEncounter[] = [
         type: 'story',
         title: 'Deep Core Facility',
         description: 'A massive drilling operation has penetrated unusually deep into a large asteroid. All standard mining protocols have been abandoned.',
-        region: 'asteroid',
+        validLocations: [{ regionId: 'asteroid', subRegionId: 'Core Extraction Zone' }],
         choices: [
             {
                 id: uuidv4(),
@@ -341,7 +341,7 @@ export const ASTEROID_FIELD_ENCOUNTERS: StoryEncounter[] = [
         type: 'story',
         title: 'Corporate Black Site',
         description: 'Hidden among barren asteroids, a heavily guarded research station works with recovered artifacts from throughout the belt.',
-        region: 'asteroid',
+        validLocations: [{ regionId: 'asteroid', subRegionId: 'Core Extraction Zone' }],
         choices: [
             {
                 id: uuidv4(),
@@ -386,7 +386,7 @@ export const ASTEROID_FIELD_ENCOUNTERS: StoryEncounter[] = [
         type: 'story',
         title: 'The Core Nexus',
         description: 'At the gravitational center of the asteroid belt, a massive operation extracts asteroids showing trace energy signatures similar to the artifacts.',
-        region: 'asteroid',
+        validLocations: [{ regionId: 'asteroid', subRegionId: 'Core Extraction Zone' }],
         choices: [
             {
                 id: uuidv4(),

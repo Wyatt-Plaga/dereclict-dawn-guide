@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronRightIcon } from 'lucide-react';
-import { BaseEncounter, EmptyEncounter, StoryEncounter } from '../game/types';
+import { BaseEncounter, EmptyEncounter, StoryEncounter, RegionType } from '../game/types';
 import { useSystemStatus } from "@/components/providers/system-status-provider";
 import { useRouter } from 'next/navigation';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
@@ -14,10 +14,11 @@ import CombatEncounterContent from './encounter/CombatEncounterContent';
 
 interface EncounterDisplayProps {
   encounter: BaseEncounter;
+  currentRegion: RegionType;
   onComplete: (choiceId?: string) => void;
 }
 
-const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComplete }) => {
+const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, currentRegion, onComplete }) => {
   const { shouldFlicker } = useSystemStatus();
   const router = useRouter();
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
@@ -62,14 +63,14 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
   return (
     <div className="relative w-full">
       {/* Region-specific effects */}
-      <RegionEffects region={encounter.region} />
+      <RegionEffects region={currentRegion} />
       
       {/* Main content */}
       <div className="system-panel p-6 mb-6 relative z-10">
         {/* Header with title and region */}
         <EncounterHeader 
           title={encounter.title} 
-          region={encounter.region} 
+          region={currentRegion}
           type={encounter.type} 
         />
         
@@ -86,7 +87,7 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
         )}
         
         {isCombatEncounter && (
-          <CombatEncounterContent encounter={encounter} />
+          <CombatEncounterContent encounter={encounter} currentRegion={currentRegion} />
         )}
         
         {/* Continue button */}

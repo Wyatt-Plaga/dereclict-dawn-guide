@@ -51,24 +51,27 @@ const EmptyEncounterContent: React.FC<EmptyEncounterContentProps> = ({ encounter
       </div>
       
       <div className={`transition-all duration-700 mb-8 ${showRewards ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-        <h2 className="text-xl font-medium mb-4 terminal-text flex items-center gap-2">
-          <AwardIcon className="h-5 w-5 text-chart-1" />
-          Discovered Resources
-        </h2>
-        <div className="system-panel p-6">
-          {hasRewards ? (
-            <ResourceRewardsList 
-              resources={encounter.resources!} 
-              title="" 
-              showAnimation={false}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center py-6">
-              <div className="text-lg text-muted-foreground mb-2">No resources acquired</div>
-              <p className="text-center italic text-sm max-w-lg">{emptyQuote}</p>
+        {hasRewards ? (
+          <>
+            <h2 className="text-xl font-medium mb-4 terminal-text flex items-center gap-2">
+              <AwardIcon className="h-5 w-5 text-chart-1" />
+              Discovered Resources
+            </h2>
+            <div className="system-panel p-6">
+              <ResourceRewardsList 
+                resources={encounter.resources!} 
+                title="" 
+                showAnimation={false}
+              />
             </div>
-          )}
-        </div>
+          </>
+        ) : (
+          <div className="system-panel p-6">
+            <div className="flex flex-col items-center justify-center py-6">
+              <p className="text-center italic text-sm max-w-lg text-muted-foreground">{emptyQuote}</p>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

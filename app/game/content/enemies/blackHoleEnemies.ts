@@ -1,4 +1,4 @@
-import { Enemy } from '../../types';
+import { EnemyDefinition, EnemyType } from '@/app/game/types/combat';
 
 /**
  * Enemies for the Black Hole region
@@ -13,10 +13,11 @@ import { Enemy } from '../../types';
 // Accretion Disk Subregion Enemies
 // =====================
 
-export const WARPED_RESEARCH_VESSEL: Enemy = {
+export const WARPED_RESEARCH_VESSEL: EnemyDefinition = {
     id: 'blackhole-warped-research-vessel',
     name: 'Warped Research Vessel',
     description: 'Once a scientific vessel, now twisted by extreme gravitational forces. Its hull has stretched in impossible ways, and its systems operate on altered physical principles.',
+    type: EnemyType.VESSEL,
     maxHealth: 75,
     health: 75,
     shield: 40,
@@ -24,8 +25,8 @@ export const WARPED_RESEARCH_VESSEL: Enemy = {
     image: '/images/enemies/warped_research_vessel.png',
     attackDelay: 3000,
     lastAttackTime: 0,
-    region: 'blackhole',
-    subRegion: 'Accretion Disk',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'blackhole', subRegionId: 'Accretion Disk', weight: 3 }],
     introTitle: "Gravity's Victim",
     introDescription: "Your sensors struggle to render a coherent image of the object approaching from the swirling matter of the accretion disk. What was once a proud research vessel has been transformed by the black hole's immense gravity into something that defies conventional physics. The Warped Research Vessel's hull stretches and contracts in impossible ways, caught in a perpetual state between existence and annihilation. Its crew, if any remain, must exist in a state beyond human comprehension. The vessel's communications broadcast only distorted fragments: '...time dilation... experiment success... we can see... everything... simultaneously.' The ship's weapon systems, now operating according to altered physical laws, orient toward you with unnatural precision.",
     actions: [
@@ -50,13 +51,15 @@ export const WARPED_RESEARCH_VESSEL: Enemy = {
             target: 'health',
             probability: 0.2
         }
-    ]
+    ],
+    loot: [ { type: 'insight', amount: 10 }, { type: 'scrap', amount: 5 } ]
 };
 
-export const RADIATION_PHANTOM: Enemy = {
+export const RADIATION_PHANTOM: EnemyDefinition = {
     id: 'blackhole-radiation-phantom',
     name: 'Radiation Phantom',
     description: 'A mysterious entity composed of ionized particles and exotic radiation. It flickers in and out of conventional detection, appearing as a vaguely humanoid shape.',
+    type: EnemyType.ANOMALY,
     maxHealth: 60,
     health: 60,
     shield: 25,
@@ -64,8 +67,8 @@ export const RADIATION_PHANTOM: Enemy = {
     image: '/images/enemies/radiation_phantom.png',
     attackDelay: 2500,
     lastAttackTime: 0,
-    region: 'blackhole',
-    subRegion: 'Accretion Disk',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'blackhole', subRegionId: 'Accretion Disk', weight: 2 }],
     actions: [
         {
             name: 'Radiation Surge',
@@ -88,13 +91,15 @@ export const RADIATION_PHANTOM: Enemy = {
             target: 'health',
             probability: 0.3
         }
-    ]
+    ],
+    loot: [ { type: 'energy', amount: 10 } ]
 };
 
-export const GRAVITY_PROBE: Enemy = {
+export const GRAVITY_PROBE: EnemyDefinition = {
     id: 'blackhole-gravity-probe',
     name: 'Gravity Probe',
     description: 'An automated research device designed to measure gravitational anomalies. Its programming has been corrupted by proximity to the black hole, now perceiving all other objects as threats.',
+    type: EnemyType.DRONE,
     maxHealth: 50,
     health: 50,
     shield: 60,
@@ -102,8 +107,8 @@ export const GRAVITY_PROBE: Enemy = {
     image: '/images/enemies/gravity_probe.png',
     attackDelay: 2000,
     lastAttackTime: 0,
-    region: 'blackhole',
-    subRegion: 'Accretion Disk',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'blackhole', subRegionId: 'Accretion Disk', weight: 1 }],
     actions: [
         {
             name: 'Focused Graviton Beam',
@@ -126,17 +131,19 @@ export const GRAVITY_PROBE: Enemy = {
             target: 'shield',
             probability: 0.4
         }
-    ]
+    ],
+    loot: [ { type: 'insight', amount: 5 }, { type: 'scrap', amount: 5 } ]
 };
 
 // =====================
 // Ergosphere Subregion Enemies
 // =====================
 
-export const TWISTED_FRAME_STRUCTURE: Enemy = {
+export const TWISTED_FRAME_STRUCTURE: EnemyDefinition = {
     id: 'blackhole-twisted-frame',
     name: 'Twisted Frame Structure',
     description: 'The remnants of a space station caught in the ergosphere\'s frame dragging effect. Its structure is perpetually rotating and folding through higher dimensions.',
+    type: EnemyType.STATION,
     maxHealth: 100,
     health: 100,
     shield: 70,
@@ -144,8 +151,8 @@ export const TWISTED_FRAME_STRUCTURE: Enemy = {
     image: '/images/enemies/twisted_frame.png',
     attackDelay: 3500,
     lastAttackTime: 0,
-    region: 'blackhole',
-    subRegion: 'Ergosphere',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'blackhole', subRegionId: 'Ergosphere', weight: 2 }],
     actions: [
         {
             name: 'Structural Collapse',
@@ -168,13 +175,15 @@ export const TWISTED_FRAME_STRUCTURE: Enemy = {
             target: 'health',
             probability: 0.3
         }
-    ]
+    ],
+    loot: [ { type: 'scrap', amount: 20 }, { type: 'insight', amount: 5 } ]
 };
 
-export const TIME_DILATED_OBSERVER: Enemy = {
+export const TIME_DILATED_OBSERVER: EnemyDefinition = {
     id: 'blackhole-time-dilated-observer',
     name: 'Time-Dilated Observer',
     description: 'A research drone experiencing extreme time dilation. It perceives events at a different rate than normal space-time, allowing it to react to attacks before they occur.',
+    type: EnemyType.DRONE,
     maxHealth: 80,
     health: 80,
     shield: 90,
@@ -182,8 +191,8 @@ export const TIME_DILATED_OBSERVER: Enemy = {
     image: '/images/enemies/time_dilated_observer.png',
     attackDelay: 4000,
     lastAttackTime: 0,
-    region: 'blackhole',
-    subRegion: 'Ergosphere',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'blackhole', subRegionId: 'Ergosphere', weight: 1 }],
     actions: [
         {
             name: 'Precognitive Evasion',
@@ -206,13 +215,15 @@ export const TIME_DILATED_OBSERVER: Enemy = {
             target: 'health',
             probability: 0.3
         }
-    ]
+    ],
+    loot: [ { type: 'insight', amount: 15 }, { type: 'energy', amount: 5 } ]
 };
 
-export const PHASE_SHIFTED_CONSTRUCT: Enemy = {
+export const PHASE_SHIFTED_CONSTRUCT: EnemyDefinition = {
     id: 'blackhole-phase-shifted-construct',
     name: 'Phase-Shifted Construct',
     description: 'An artificial structure existing partially in our dimension and partially in others, appearing as a constantly shifting geometric impossibility.',
+    type: EnemyType.ANOMALY,
     maxHealth: 120,
     health: 120,
     shield: 50,
@@ -220,8 +231,8 @@ export const PHASE_SHIFTED_CONSTRUCT: Enemy = {
     image: '/images/enemies/phase_shifted_construct.png',
     attackDelay: 3000,
     lastAttackTime: 0,
-    region: 'blackhole',
-    subRegion: 'Ergosphere',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'blackhole', subRegionId: 'Ergosphere', weight: 1 }],
     actions: [
         {
             name: 'Reality Fracture',
@@ -244,26 +255,28 @@ export const PHASE_SHIFTED_CONSTRUCT: Enemy = {
             target: 'health',
             probability: 0.4
         }
-    ]
+    ],
+    loot: [ { type: 'scrap', amount: 10 }, { type: 'insight', amount: 10 } ]
 };
 
 // =====================
 // Event Horizon Subregion Enemies
 // =====================
 
-export const SINGULARITY_GUARDIAN: Enemy = {
+export const SINGULARITY_GUARDIAN: EnemyDefinition = {
     id: 'blackhole-singularity-guardian',
     name: 'Singularity Guardian',
     description: 'An entity composed of ultra-dense matter that orbits just beyond the event horizon. It appears to purposefully protect the black hole from intruders.',
+    type: EnemyType.STATION,
     maxHealth: 150,
     health: 150,
     shield: 100,
     maxShield: 100,
     image: '/images/enemies/singularity_guardian.png',
-    attackDelay: 4000,
+    attackDelay: 3800,
     lastAttackTime: 0,
-    region: 'blackhole',
-    subRegion: 'Event Horizon',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'blackhole', subRegionId: 'Event Horizon', weight: 1 }],
     actions: [
         {
             name: 'Gravitational Lensing',
@@ -286,22 +299,24 @@ export const SINGULARITY_GUARDIAN: Enemy = {
             target: 'shield',
             probability: 0.3
         }
-    ]
+    ],
+    loot: [ { type: 'scrap', amount: 25 }, { type: 'insight', amount: 15 }, { type: 'energy', amount: 10 } ]
 };
 
-export const REALITY_FRACTURE: Enemy = {
+export const REALITY_FRACTURE: EnemyDefinition = {
     id: 'blackhole-reality-fracture',
     name: 'Reality Fracture',
     description: 'Not truly an entity but a tear in the fabric of space-time that behaves with apparent intelligence. It appears as a jagged line of absolute darkness that splits and reconnects unpredictably.',
-    maxHealth: 130,
-    health: 130,
+    type: EnemyType.ANOMALY,
+    maxHealth: 90,
+    health: 90,
     shield: 120,
     maxShield: 120,
     image: '/images/enemies/reality_fracture.png',
-    attackDelay: 3500,
+    attackDelay: 4200,
     lastAttackTime: 0,
-    region: 'blackhole',
-    subRegion: 'Event Horizon',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'blackhole', subRegionId: 'Event Horizon', weight: 1 }],
     actions: [
         {
             name: 'Causal Violation',
@@ -324,28 +339,29 @@ export const REALITY_FRACTURE: Enemy = {
             target: 'health',
             probability: 0.3
         }
-    ]
+    ],
+    loot: [ { type: 'insight', amount: 20 }, { type: 'energy', amount: 15 } ]
 };
 
 // =====================
 // Boss Enemy
 // =====================
 
-export const SINGULARITY_ECHO: Enemy = {
+export const SINGULARITY_ECHO_BOSS: EnemyDefinition = {
     id: 'blackhole-singularity-echo-boss',
-    name: 'The Singularity\'s Echo',
+    name: "Singularity's Echo",
     description: 'A perfect reflection of your own ship, twisted by the black hole\'s influence. It anticipates your actions and counters with impossible precision, as if it knows what you\'ll do before you do.',
-    maxHealth: 250,
-    health: 250,
-    shield: 200,
-    maxShield: 200,
-    image: '/images/enemies/singularity_echo.png',
-    attackDelay: 3000,
+    type: EnemyType.ANOMALY,
+    maxHealth: 200,
+    health: 200,
+    shield: 150,
+    maxShield: 150,
+    image: '/images/enemies/singularity_echo_boss.png',
+    attackDelay: 4500,
     lastAttackTime: 0,
-    region: 'blackhole',
-    subRegion: 'Event Horizon',
     isBoss: true,
-    introTitle: "The Mirror Beyond Time",
+    spawnLocations: [],
+    introTitle: "Heart of Darkness",
     introDescription: "As your ship approaches the event horizon, reality itself seems to fold. The stars behind you stretch and distort, and then—impossibly—your own ship appears before you. The Singularity's Echo, a perfect yet twisted reflection of your vessel, hovers with unnatural stillness against the backdrop of the black hole. This is not mere mimicry; the black hole has created something from another timeline, another possibility of your existence. The Echo's systems pulse with dark energy, and as you watch, it makes adjustments to its defenses that mirror the very thoughts forming in your mind. A cold certainty grips you: this entity exists partially outside normal time, seeing your actions before you make them. This is not just combat—it's a battle against yourself from a reality where you've already lost.",
     actions: [
         {
@@ -376,11 +392,12 @@ export const SINGULARITY_ECHO: Enemy = {
             target: 'health',
             probability: 0.2
         }
-    ]
+    ],
+    loot: [ { type: 'scrap', amount: 60 }, { type: 'energy', amount: 40 }, { type: 'insight', amount: 30 } ]
 };
 
-// Combined export of all Black Hole enemies
-export const BLACKHOLE_ENEMIES: Enemy[] = [
+// Combine all enemies from this region into one export array (optional but good practice)
+export const BLACKHOLE_ENEMIES: EnemyDefinition[] = [
     WARPED_RESEARCH_VESSEL,
     RADIATION_PHANTOM,
     GRAVITY_PROBE,
@@ -389,5 +406,5 @@ export const BLACKHOLE_ENEMIES: Enemy[] = [
     PHASE_SHIFTED_CONSTRUCT,
     SINGULARITY_GUARDIAN,
     REALITY_FRACTURE,
-    SINGULARITY_ECHO
+    SINGULARITY_ECHO_BOSS
 ]; 

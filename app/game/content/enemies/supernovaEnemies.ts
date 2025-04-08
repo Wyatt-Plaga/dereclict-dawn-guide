@@ -1,4 +1,4 @@
-import { Enemy } from '../../types';
+import { EnemyDefinition, EnemyType } from '@/app/game/types/combat';
 
 
 /**
@@ -14,10 +14,11 @@ import { Enemy } from '../../types';
 // Outer Shell Subregion Enemies
 // =====================
 
-export const RADIATION_WRAITH: Enemy = {
+export const RADIATION_WRAITH: EnemyDefinition = {
     id: 'supernova-radiation-wraith',
     name: 'Radiation Wraith',
     description: 'An energetic anomaly formed from the supernova\'s intense radiation, now drifting through the debris seeking energy to consume. It appears as a shimmering, translucent specter of light and ionized particles.',
+    type: EnemyType.ANOMALY,
     maxHealth: 80,
     health: 80,
     shield: 30,
@@ -25,8 +26,8 @@ export const RADIATION_WRAITH: Enemy = {
     image: '/images/enemies/radiation_wraith.png',
     attackDelay: 2500,
     lastAttackTime: 0,
-    region: 'supernova',
-    subRegion: 'Outer Shell',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'supernova', subRegionId: 'Outer Shell', weight: 3 }],
     introTitle: "Luminous Hunter",
     introDescription: "Your ship's radiation sensors spike to dangerous levels as a ghostly luminescence materializes among the stellar debris. The Radiation Wraith – a sentient energy pattern born from the supernova's fury – coalesces before you. Its form shifts constantly, a spectral dance of light and ionized particles that defies conventional physics. What might have once been random cosmic energy has evolved into something with purpose, drawn to your ship's power signature like a predator sensing prey. The wraith's core pulses with increasing intensity as it prepares to feed, its ethereal tendrils reaching toward your vessel with hungry intent.",
     actions: [
@@ -51,13 +52,15 @@ export const RADIATION_WRAITH: Enemy = {
             target: 'health',
             probability: 0.3
         }
-    ]
+    ],
+    loot: [ { type: 'energy', amount: 15 }, { type: 'insight', amount: 5 } ]
 };
 
-export const SCAVENGER_DRONE: Enemy = {
+export const SCAVENGER_DRONE: EnemyDefinition = {
     id: 'supernova-scavenger-drone',
     name: 'Scavenger Drone',
     description: 'An automated salvage unit still following ancient programming, harvesting materials from the ruins and attacking anything it perceives as competition for limited resources.',
+    type: EnemyType.DRONE,
     maxHealth: 70,
     health: 70,
     shield: 40,
@@ -65,8 +68,8 @@ export const SCAVENGER_DRONE: Enemy = {
     image: '/images/enemies/scavenger_drone.png',
     attackDelay: 3000,
     lastAttackTime: 0,
-    region: 'supernova',
-    subRegion: 'Outer Shell',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'supernova', subRegionId: 'Outer Shell', weight: 1 }],
     actions: [
         {
             name: 'Salvage Claw',
@@ -89,13 +92,15 @@ export const SCAVENGER_DRONE: Enemy = {
             target: 'health',
             probability: 0.3
         }
-    ]
+    ],
+    loot: [ { type: 'scrap', amount: 15 }, { type: 'energy', amount: 5 } ]
 };
 
-export const DERELICT_GUARDIAN: Enemy = {
+export const DERELICT_GUARDIAN: EnemyDefinition = {
     id: 'supernova-derelict-guardian',
     name: 'Derelict Guardian',
     description: 'A damaged defense platform that survived the cataclysm, now malfunctioning and attacking any ships it detects. Its programming corrupted, it believes it still protects a civilization long gone.',
+    type: EnemyType.STATION,
     maxHealth: 90,
     health: 90,
     shield: 50,
@@ -103,8 +108,8 @@ export const DERELICT_GUARDIAN: Enemy = {
     image: '/images/enemies/derelict_guardian.png',
     attackDelay: 3500,
     lastAttackTime: 0,
-    region: 'supernova',
-    subRegion: 'Outer Shell',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'supernova', subRegionId: 'Outer Shell', weight: 1 }],
     actions: [
         {
             name: 'Defense Cannon',
@@ -127,17 +132,19 @@ export const DERELICT_GUARDIAN: Enemy = {
             target: 'health',
             probability: 0.3
         }
-    ]
+    ],
+    loot: [ { type: 'scrap', amount: 20 }, { type: 'insight', amount: 8 } ]
 };
 
 // =====================
 // Midfield Ruins Subregion Enemies
 // =====================
 
-export const FUSED_CONSTRUCT: Enemy = {
+export const FUSED_CONSTRUCT: EnemyDefinition = {
     id: 'supernova-fused-construct',
     name: 'Fused Construct',
     description: 'A mass of technology and organic matter merged during the supernova, now animated by residual energy. Parts of buildings, machines, and possibly even life forms move with disturbing coordination.',
+    type: EnemyType.ANOMALY,
     maxHealth: 110,
     health: 110,
     shield: 60,
@@ -145,8 +152,8 @@ export const FUSED_CONSTRUCT: Enemy = {
     image: '/images/enemies/fused_construct.png',
     attackDelay: 3000,
     lastAttackTime: 0,
-    region: 'supernova',
-    subRegion: 'Midfield Ruins',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'supernova', subRegionId: 'Midfield Ruins', weight: 1 }],
     actions: [
         {
             name: 'Amalgam Strike',
@@ -169,13 +176,15 @@ export const FUSED_CONSTRUCT: Enemy = {
             target: 'health',
             probability: 0.3
         }
-    ]
+    ],
+    loot: [ { type: 'scrap', amount: 25 }, { type: 'insight', amount: 10 } ]
 };
 
-export const STELLAR_SHARD: Enemy = {
+export const STELLAR_SHARD: EnemyDefinition = {
     id: 'supernova-stellar-shard',
     name: 'Stellar Shard',
     description: 'A fragment of the star\'s photosphere that retained coherence, pulsing with dangerous energy discharges. It glows with the light of a small sun, temperature fluctuating wildly.',
+    type: EnemyType.ANOMALY,
     maxHealth: 100,
     health: 100,
     shield: 70,
@@ -183,8 +192,8 @@ export const STELLAR_SHARD: Enemy = {
     image: '/images/enemies/stellar_shard.png',
     attackDelay: 3500,
     lastAttackTime: 0,
-    region: 'supernova',
-    subRegion: 'Midfield Ruins',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'supernova', subRegionId: 'Midfield Ruins', weight: 1 }],
     actions: [
         {
             name: 'Plasma Discharge',
@@ -207,13 +216,15 @@ export const STELLAR_SHARD: Enemy = {
             target: 'health',
             probability: 0.3
         }
-    ]
+    ],
+    loot: [ { type: 'energy', amount: 20 }, { type: 'insight', amount: 10 } ]
 };
 
-export const AUTOMATED_DEFENDER: Enemy = {
+export const AUTOMATED_DEFENDER: EnemyDefinition = {
     id: 'supernova-automated-defender',
     name: 'Automated Defender',
     description: 'A military vessel\'s AI core that survived the blast, now piloting what remains of its hull to defend territory that no longer exists. Its form is asymmetrical and partially destroyed, yet still deadly.',
+    type: EnemyType.VESSEL,
     maxHealth: 130,
     health: 130,
     shield: 80,
@@ -221,8 +232,8 @@ export const AUTOMATED_DEFENDER: Enemy = {
     image: '/images/enemies/automated_defender.png',
     attackDelay: 4000,
     lastAttackTime: 0,
-    region: 'supernova',
-    subRegion: 'Midfield Ruins',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'supernova', subRegionId: 'Midfield Ruins', weight: 1 }],
     actions: [
         {
             name: 'Railgun Barrage',
@@ -245,26 +256,28 @@ export const AUTOMATED_DEFENDER: Enemy = {
             target: 'health',
             probability: 0.3
         }
-    ]
+    ],
+    loot: [ { type: 'scrap', amount: 30 }, { type: 'energy', amount: 15 }, { type: 'insight', amount: 5 } ]
 };
 
 // =====================
 // Core Remnant Subregion Enemies
 // =====================
 
-export const QUANTUM_ABERRATION: Enemy = {
+export const QUANTUM_ABERRATION: EnemyDefinition = {
     id: 'supernova-quantum-aberration',
     name: 'Quantum Aberration',
     description: 'Entity formed from matter compressed to quantum uncertainty, phasing in and out of normal space. Its boundaries are unclear, seeming to exist in multiple states simultaneously.',
-    maxHealth: 150,
-    health: 150,
+    type: EnemyType.ANOMALY,
+    maxHealth: 140,
+    health: 140,
     shield: 90,
     maxShield: 90,
     image: '/images/enemies/quantum_aberration.png',
-    attackDelay: 3500,
+    attackDelay: 3200,
     lastAttackTime: 0,
-    region: 'supernova',
-    subRegion: 'Core Remnant',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'supernova', subRegionId: 'Core Remnant', weight: 1 }],
     actions: [
         {
             name: 'Phase Strike',
@@ -287,22 +300,24 @@ export const QUANTUM_ABERRATION: Enemy = {
             target: 'health',
             probability: 0.3
         }
-    ]
+    ],
+    loot: [ { type: 'insight', amount: 25 }, { type: 'energy', amount: 20 } ]
 };
 
-export const TEMPORAL_ECHO: Enemy = {
+export const TEMPORAL_ECHO: EnemyDefinition = {
     id: 'supernova-temporal-echo',
     name: 'Temporal Echo',
     description: 'Manifestation of the star system\'s final moments, replaying in an endless loop and lashing out at intruders. It appears as a shimmering distortion containing fragments of destroyed worlds.',
-    maxHealth: 140,
-    health: 140,
-    shield: 100,
-    maxShield: 100,
+    type: EnemyType.ANOMALY,
+    maxHealth: 120,
+    health: 120,
+    shield: 110,
+    maxShield: 110,
     image: '/images/enemies/temporal_echo.png',
-    attackDelay: 4000,
+    attackDelay: 3600,
     lastAttackTime: 0,
-    region: 'supernova',
-    subRegion: 'Core Remnant',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'supernova', subRegionId: 'Core Remnant', weight: 1 }],
     actions: [
         {
             name: 'Catastrophe Replay',
@@ -325,22 +340,24 @@ export const TEMPORAL_ECHO: Enemy = {
             target: 'health',
             probability: 0.3
         }
-    ]
+    ],
+    loot: [ { type: 'insight', amount: 30 } ]
 };
 
-export const GRAVITY_MANIPULATOR: Enemy = {
+export const GRAVITY_MANIPULATOR: EnemyDefinition = {
     id: 'supernova-gravity-manipulator',
     name: 'Gravity Manipulator',
     description: 'Advanced military weapon torn free from its controls, harnessing the neutron star\'s gravity for devastating attacks. Its structure warps the space around it, making it difficult to perceive clearly.',
+    type: EnemyType.VESSEL,
     maxHealth: 160,
     health: 160,
-    shield: 110,
-    maxShield: 110,
+    shield: 100,
+    maxShield: 100,
     image: '/images/enemies/gravity_manipulator.png',
-    attackDelay: 4500,
+    attackDelay: 4100,
     lastAttackTime: 0,
-    region: 'supernova',
-    subRegion: 'Core Remnant',
+    isBoss: false,
+    spawnLocations: [{ regionId: 'supernova', subRegionId: 'Core Remnant', weight: 1 }],
     actions: [
         {
             name: 'Gravitational Lens',
@@ -363,28 +380,29 @@ export const GRAVITY_MANIPULATOR: Enemy = {
             target: 'health',
             probability: 0.3
         }
-    ]
+    ],
+    loot: [ { type: 'scrap', amount: 35 }, { type: 'energy', amount: 25 } ]
 };
 
 // =====================
 // Boss Enemy
 // =====================
 
-export const STELLAR_PHOENIX: Enemy = {
+export const STELLAR_PHOENIX_BOSS: EnemyDefinition = {
     id: 'supernova-stellar-phoenix-boss',
     name: 'Stellar Phoenix',
     description: 'A sentient manifestation of the supernova itself, composed of stellar matter and the collective consciousness of billions who perished in the cataclysm. It exists in a constant cycle of death and rebirth.',
-    maxHealth: 300,
-    health: 300,
-    shield: 250,
-    maxShield: 250,
-    image: '/images/enemies/stellar_phoenix.png',
-    attackDelay: 3000,
+    type: EnemyType.ANOMALY,
+    maxHealth: 250,
+    health: 250,
+    shield: 120,
+    maxShield: 120,
+    image: '/images/enemies/stellar_phoenix_boss.png',
+    attackDelay: 4800,
     lastAttackTime: 0,
-    region: 'supernova',
-    subRegion: 'Core Remnant',
     isBoss: true,
-    introTitle: "The Star Reborn",
+    spawnLocations: [],
+    introTitle: "Rebirth from Destruction",
     introDescription: "The neutron star at the supernova's core pulses with unnatural rhythm as space itself begins to warp and fold. From this cosmic crucible emerges a being of pure stellar energy – the Stellar Phoenix, a living embodiment of the star's death and rebirth. Its form is magnificent and terrible: a vast, bird-like shape composed of plasma, gravitational forces, and something more – echoes of consciousness from the billions of lives extinguished when the star exploded. The Phoenix's 'wings' span kilometers, trailing stellar matter that burns with the intensity of a newborn sun. As it regards your vessel, you feel not just observed but judged by an intelligence born from cosmic catastrophe. The collective memories of civilizations that died in the supernova now focus their attention on you, and find you wanting. The Phoenix's core brightens to blinding intensity as it prepares to cleanse what it perceives as an impurity in its domain.",
     actions: [
         {
@@ -422,11 +440,12 @@ export const STELLAR_PHOENIX: Enemy = {
             target: 'health',
             probability: 0.1
         }
-    ]
+    ],
+    loot: [ { type: 'scrap', amount: 70 }, { type: 'energy', amount: 50 }, { type: 'insight', amount: 40 } ]
 };
 
-// Combined export of all Supernova enemies
-export const SUPERNOVA_ENEMIES: Enemy[] = [
+// Combine all enemies from this region into one export array
+export const SUPERNOVA_ENEMIES: EnemyDefinition[] = [
     RADIATION_WRAITH,
     SCAVENGER_DRONE,
     DERELICT_GUARDIAN,
@@ -436,5 +455,5 @@ export const SUPERNOVA_ENEMIES: Enemy[] = [
     QUANTUM_ABERRATION,
     TEMPORAL_ECHO,
     GRAVITY_MANIPULATOR,
-    STELLAR_PHOENIX
+    STELLAR_PHOENIX_BOSS
 ]; 

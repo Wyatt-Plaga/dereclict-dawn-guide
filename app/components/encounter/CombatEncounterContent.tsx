@@ -1,29 +1,29 @@
 import React from 'react';
 import { Sword } from 'lucide-react';
-import { BaseEncounter } from '@/app/game/types';
-import { RegionType } from '@/app/game/types/combat';
+import { BaseEncounter, RegionType } from '@/app/game/types';
 
 interface CombatEncounterContentProps {
   encounter: BaseEncounter;
+  currentRegion: RegionType;
 }
 
-const CombatEncounterContent: React.FC<CombatEncounterContentProps> = ({ encounter }) => {
+const CombatEncounterContent: React.FC<CombatEncounterContentProps> = ({ encounter, currentRegion }) => {
   const hoverShadowClass = 
-    encounter.region === RegionType.VOID ? 'hover:shadow-slate-800/30' :
-    encounter.region === RegionType.ASTEROID_FIELD ? 'hover:shadow-amber-800/30' :
-    encounter.region === RegionType.SUPERNOVA ? 'hover:shadow-red-800/30' :
-    encounter.region === RegionType.BLACK_HOLE ? 'hover:shadow-zinc-800/30' :
-    encounter.region === RegionType.HABITABLE_ZONE ? 'hover:shadow-emerald-800/30' :
-    encounter.region === RegionType.ANOMALY ? 'hover:shadow-purple-800/30' :
+    currentRegion === RegionType.VOID ? 'hover:shadow-slate-800/30' :
+    currentRegion === RegionType.ASTEROID_FIELD ? 'hover:shadow-amber-800/30' :
+    currentRegion === RegionType.SUPERNOVA ? 'hover:shadow-red-800/30' :
+    currentRegion === RegionType.BLACK_HOLE ? 'hover:shadow-zinc-800/30' :
+    currentRegion === RegionType.HABITABLE_ZONE ? 'hover:shadow-emerald-800/30' :
+    currentRegion === RegionType.ANOMALY ? 'hover:shadow-purple-800/30' :
     'hover:shadow-slate-800/30';
 
   const textColorClass = 
-    encounter.region === RegionType.VOID ? 'text-slate-200' :
-    encounter.region === RegionType.ASTEROID_FIELD ? 'text-amber-100' :
-    encounter.region === RegionType.SUPERNOVA ? 'text-red-200' :
-    encounter.region === RegionType.BLACK_HOLE ? 'text-zinc-200' :
-    encounter.region === RegionType.HABITABLE_ZONE ? 'text-emerald-100' :
-    encounter.region === RegionType.ANOMALY ? 'text-purple-200' :
+    currentRegion === RegionType.VOID ? 'text-slate-200' :
+    currentRegion === RegionType.ASTEROID_FIELD ? 'text-amber-100' :
+    currentRegion === RegionType.SUPERNOVA ? 'text-red-200' :
+    currentRegion === RegionType.BLACK_HOLE ? 'text-zinc-200' :
+    currentRegion === RegionType.HABITABLE_ZONE ? 'text-emerald-100' :
+    currentRegion === RegionType.ANOMALY ? 'text-purple-200' :
     'text-slate-200';
 
   return (

@@ -1,4 +1,4 @@
-import { Enemy, EnemyAction } from '../../types';
+import { EnemyDefinition, EnemyType } from '@/app/game/types/combat';
 
 /**
  * Enemies for the Asteroid Field region
@@ -13,11 +13,12 @@ import { Enemy, EnemyAction } from '../../types';
 // Mining Frontier Subregion Enemies
 // =====================
 
-export const MINING_FRONTIER_ENEMIES: Enemy[] = [
+export const MINING_FRONTIER_ENEMIES: EnemyDefinition[] = [
     {
         id: 'asteroid-mining-drone',
         name: 'Mining Drone',
         description: 'A small automated mining unit with basic defensive capabilities. Originally designed for resource extraction, these units have been left on autonomous mode for too long and now treat all ships as intruders.',
+        type: EnemyType.DRONE,
         health: 30,
         maxHealth: 30,
         shield: 0,
@@ -25,8 +26,8 @@ export const MINING_FRONTIER_ENEMIES: Enemy[] = [
         image: '/images/enemies/mining-drone.png',
         attackDelay: 3000,
         lastAttackTime: 0,
-        region: 'asteroid',
-        subRegion: 'Mining Frontier',
+        isBoss: false,
+        spawnLocations: [{ regionId: 'asteroid', subRegionId: 'Mining Frontier', weight: 3 }],
         introTitle: "Territorial Machine",
         introDescription: "Your ship's scanner highlights a small, boxy object maneuvering purposefully between asteroid fragments. A Mining Drone - one of thousands once deployed to extract resources from this field - approaches with mechanical precision. Its worn exterior bears the faded logo of a long-defunct corporation, and its sensors sweep your vessel with unblinking evaluation. After centuries of autonomous operation without oversight, its territorial protocols have overridden its original programming. The drone's extraction laser pivots to target your ship, now categorizing you as an unwelcome competitor for 'its' resources.",
         actions: [
@@ -44,12 +45,14 @@ export const MINING_FRONTIER_ENEMIES: Enemy[] = [
                 target: 'health',
                 probability: 0.3
             }
-        ]
+        ],
+        loot: [ { type: 'scrap', amount: 5 } ]
     },
     {
         id: 'asteroid-scavenger-ship',
         name: 'Scavenger Ship',
         description: 'A cobbled-together vessel operated by desperate miners or pirates. These ships survive by salvaging abandoned equipment and attacking vulnerable targets.',
+        type: EnemyType.VESSEL,
         health: 45,
         maxHealth: 45,
         shield: 5,
@@ -57,8 +60,8 @@ export const MINING_FRONTIER_ENEMIES: Enemy[] = [
         image: '/images/enemies/scavenger-ship.png',
         attackDelay: 3500,
         lastAttackTime: 0,
-        region: 'asteroid',
-        subRegion: 'Mining Frontier',
+        isBoss: false,
+        spawnLocations: [{ regionId: 'asteroid', subRegionId: 'Mining Frontier', weight: 2 }],
         actions: [
             {
                 name: 'Scrap Volley',
@@ -74,12 +77,14 @@ export const MINING_FRONTIER_ENEMIES: Enemy[] = [
                 target: 'shield',
                 probability: 0.4
             }
-        ]
+        ],
+        loot: [ { type: 'scrap', amount: 8 }, { type: 'energy', amount: 3, probability: 0.5 } ]
     },
     {
         id: 'asteroid-security-skiff',
         name: 'Corporate Security Skiff',
         description: 'A light patrol vessel enforcing mining claims for major corporations. Fast and well-armed, but lightly armored.',
+        type: EnemyType.VESSEL,
         health: 40,
         maxHealth: 40,
         shield: 10,
@@ -87,8 +92,8 @@ export const MINING_FRONTIER_ENEMIES: Enemy[] = [
         image: '/images/enemies/security-skiff.png',
         attackDelay: 3000,
         lastAttackTime: 0,
-        region: 'asteroid',
-        subRegion: 'Mining Frontier',
+        isBoss: false,
+        spawnLocations: [{ regionId: 'asteroid', subRegionId: 'Mining Frontier', weight: 1 }],
         actions: [
             {
                 name: 'Warning Shot',
@@ -104,7 +109,8 @@ export const MINING_FRONTIER_ENEMIES: Enemy[] = [
                 target: 'shield',
                 probability: 0.5
             }
-        ]
+        ],
+        loot: [ { type: 'scrap', amount: 7 }, { type: 'insight', amount: 3, probability: 0.4 } ]
     }
 ];
 
@@ -112,28 +118,23 @@ export const MINING_FRONTIER_ENEMIES: Enemy[] = [
 // Dense Cluster Subregion Enemies
 // =====================
 
-export const DENSE_CLUSTER_ENEMIES: Enemy[] = [
-    // For all enemies in DENSE_CLUSTER_ENEMIES, add:
-    // subRegion: 'Dense Cluster',
-];
+export const DENSE_CLUSTER_ENEMIES: EnemyDefinition[] = [];
 
 // =====================
 // Settlement Ruins Subregion Enemies
 // =====================
 
-export const SETTLEMENT_RUINS_ENEMIES: Enemy[] = [
-    // For all enemies in SETTLEMENT_RUINS_ENEMIES, add:
-    // subRegion: 'Settlement Ruins',
-];
+export const SETTLEMENT_RUINS_ENEMIES: EnemyDefinition[] = [];
 
 /**
  * Enemies for the Resource Processing Hub subregion of the Asteroid Field
  */
-export const PROCESSING_HUB_ENEMIES: Enemy[] = [
+export const PROCESSING_HUB_ENEMIES: EnemyDefinition[] = [
     {
         id: 'asteroid-mining-barge',
         name: 'Heavy Mining Barge',
         description: 'A massive industrial vessel designed to harvest and process asteroids. Though slow, its industrial equipment has been weaponized to devastating effect.',
+        type: EnemyType.VESSEL,
         health: 65,
         maxHealth: 65,
         shield: 15,
@@ -141,8 +142,8 @@ export const PROCESSING_HUB_ENEMIES: Enemy[] = [
         image: '/images/enemies/mining-barge.png',
         attackDelay: 4000,
         lastAttackTime: 0,
-        region: 'asteroid',
-        subRegion: 'Resource Processing Hub',
+        isBoss: false,
+        spawnLocations: [{ regionId: 'asteroid', subRegionId: 'Resource Processing Hub', weight: 2 }],
         actions: [
             {
                 name: 'Breaker Beam',
@@ -158,12 +159,14 @@ export const PROCESSING_HUB_ENEMIES: Enemy[] = [
                 target: 'shield',
                 probability: 0.3
             }
-        ]
+        ],
+        loot: [ { type: 'scrap', amount: 15 }, { type: 'energy', amount: 5 } ]
     },
     {
         id: 'asteroid-processing-sentinel',
         name: 'Processing Sentinel',
         description: 'An automated security unit designed to protect valuable processing facilities. Armed with repurposed industrial equipment.',
+        type: EnemyType.STATION,
         health: 55,
         maxHealth: 55,
         shield: 20,
@@ -171,8 +174,8 @@ export const PROCESSING_HUB_ENEMIES: Enemy[] = [
         image: '/images/enemies/processing-sentinel.png',
         attackDelay: 3500,
         lastAttackTime: 0,
-        region: 'asteroid',
-        subRegion: 'Resource Processing Hub',
+        isBoss: false,
+        spawnLocations: [{ regionId: 'asteroid', subRegionId: 'Resource Processing Hub', weight: 1 }],
         actions: [
             {
                 name: 'Molten Spray',
@@ -188,12 +191,14 @@ export const PROCESSING_HUB_ENEMIES: Enemy[] = [
                 target: 'shield',
                 probability: 0.4
             }
-        ]
+        ],
+        loot: [ { type: 'scrap', amount: 12 }, { type: 'insight', amount: 8 } ]
     },
     {
         id: 'asteroid-automated-harvester',
         name: 'Automated Harvester',
         description: 'A large collection platform that strips resources from asteroids. Its collection systems can easily tear through ship hulls.',
+        type: EnemyType.DRONE,
         health: 60,
         maxHealth: 60,
         shield: 15,
@@ -201,8 +206,8 @@ export const PROCESSING_HUB_ENEMIES: Enemy[] = [
         image: '/images/enemies/automated-harvester.png',
         attackDelay: 3800,
         lastAttackTime: 0,
-        region: 'asteroid',
-        subRegion: 'Resource Processing Hub',
+        isBoss: false,
+        spawnLocations: [{ regionId: 'asteroid', subRegionId: 'Resource Processing Hub', weight: 1 }],
         actions: [
             {
                 name: 'Collection Array',
@@ -218,18 +223,20 @@ export const PROCESSING_HUB_ENEMIES: Enemy[] = [
                 target: 'health',
                 probability: 0.5
             }
-        ]
+        ],
+        loot: [ { type: 'scrap', amount: 10 }, { type: 'energy', amount: 10 } ]
     }
 ];
 
 /**
  * Enemies for the Core Extraction Zone subregion of the Asteroid Field
  */
-export const EXTRACTION_ZONE_ENEMIES: Enemy[] = [
+export const EXTRACTION_ZONE_ENEMIES: EnemyDefinition[] = [
     {
         id: 'asteroid-mining-excavator',
         name: 'Mining Excavator',
         description: 'A massive drilling platform capable of boring through the densest asteroids. Its reinforced hull and powerful engines make it a formidable opponent.',
+        type: EnemyType.VESSEL,
         health: 80,
         maxHealth: 80,
         shield: 20,
@@ -237,8 +244,8 @@ export const EXTRACTION_ZONE_ENEMIES: Enemy[] = [
         image: '/images/enemies/mining-excavator.png',
         attackDelay: 4000,
         lastAttackTime: 0,
-        region: 'asteroid',
-        subRegion: 'Core Extraction Zone',
+        isBoss: false,
+        spawnLocations: [{ regionId: 'asteroid', subRegionId: 'Core Extraction Zone', weight: 2 }],
         actions: [
             {
                 name: 'Core Drill',
@@ -254,21 +261,23 @@ export const EXTRACTION_ZONE_ENEMIES: Enemy[] = [
                 target: 'shield',
                 probability: 0.4
             }
-        ]
+        ],
+        loot: [ { type: 'scrap', amount: 20 } ]
     },
     {
         id: 'asteroid-security-battleframe',
         name: 'Security Battleframe',
         description: 'Elite corporate security unit equipped with military-grade weapons and armor. Deployed to protect the corporation\'s most valuable assets.',
-        health: 75,
-        maxHealth: 75,
-        shield: 25,
-        maxShield: 25,
+        type: EnemyType.VESSEL,
+        health: 70,
+        maxHealth: 70,
+        shield: 30,
+        maxShield: 30,
         image: '/images/enemies/security-battleframe.png',
-        attackDelay: 3500,
+        attackDelay: 3200,
         lastAttackTime: 0,
-        region: 'asteroid',
-        subRegion: 'Core Extraction Zone',
+        isBoss: false,
+        spawnLocations: [{ regionId: 'asteroid', subRegionId: 'Core Extraction Zone', weight: 1 }],
         actions: [
             {
                 name: 'Enforcement Protocol',
@@ -284,24 +293,23 @@ export const EXTRACTION_ZONE_ENEMIES: Enemy[] = [
                 target: 'shield',
                 probability: 0.3
             }
-        ]
+        ],
+        loot: [ { type: 'scrap', amount: 15 }, { type: 'insight', amount: 5 } ]
     },
     {
         id: 'asteroid-extractor-boss',
-        name: 'The Extractor',
+        name: 'The Core Extractor',
         description: 'A modified mining superstructure with experimental technology designed to extract rare materials. Its systems have been enhanced with artifacts recovered from the asteroid belt.',
-        health: 120,
-        maxHealth: 120,
-        shield: 40,
-        maxShield: 40,
-        image: '/images/enemies/the-extractor.png',
+        type: EnemyType.STATION,
+        health: 150,
+        maxHealth: 150,
+        shield: 50,
+        maxShield: 50,
+        image: '/images/enemies/extractor-boss.png',
         attackDelay: 4500,
         lastAttackTime: 0,
-        region: 'asteroid',
-        subRegion: 'Core Extraction Zone',
         isBoss: true,
-        introTitle: "Monolith of Greed",
-        introDescription: "The asteroid field parts to reveal a colossal industrial structure that dwarfs the surrounding rocks – The Extractor, the pinnacle of pre-collapse mining technology gone rogue. Its frame is a nightmarish fusion of human engineering and alien artifacts recovered from deep within the belt. Massive processing arms extend for kilometers, and at its center, an experimental gravity manipulation core pulses with unnatural energy. Warning signals flood your communications as the behemoth locks onto your ship. 'UNAUTHORIZED ENTITY IN RESOURCE-RICH ZONE. INITIATING EXTRACTION PROTOCOLS.' The superstructure's vast silhouette blots out the stars as its systems reconfigure to process an unexpected new resource – your vessel.",
+        spawnLocations: [],
         actions: [
             {
                 name: 'Gravitational Singularity',
@@ -324,12 +332,13 @@ export const EXTRACTION_ZONE_ENEMIES: Enemy[] = [
                 target: 'shield',
                 probability: 0.3
             }
-        ]
+        ],
+        loot: [ { type: 'scrap', amount: 50 }, { type: 'energy', amount: 25 }, { type: 'insight', amount: 15 } ]
     }
 ];
 
 // Combined enemy array for the asteroid field region
-export const ASTEROID_FIELD_ENEMIES: Enemy[] = [
+export const ASTEROID_FIELD_ENEMIES: EnemyDefinition[] = [
     ...MINING_FRONTIER_ENEMIES,
     ...PROCESSING_HUB_ENEMIES,
     ...EXTRACTION_ZONE_ENEMIES

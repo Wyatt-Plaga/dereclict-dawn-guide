@@ -138,13 +138,20 @@ export interface ManufacturingCategory {
 /**
  * Encounter Types
  */
+
+// Define a common structure for location constraints
+interface LocationConstraint {
+    regionId: string; // Use string for flexibility for now
+    subRegionId?: string;
+}
+
 export interface BaseEncounter {
     id: string;
     type: 'combat' | 'story' | 'empty';
     title: string;
     description: string;
-    region: RegionType;
-    enemyId?: string | null; // ID of the enemy for combat encounters
+    validLocations: LocationConstraint[]; // Added: Where this encounter can occur
+    enemyId?: string | null; // Keep for specific combat triggers
 }
 
 export interface EmptyEncounter extends BaseEncounter {
@@ -415,4 +422,7 @@ export const initialGameState: GameState = {
         },
         enemyIntentions: null
     }
-}; 
+};
+
+// Export RegionType so it can be imported from this index file
+export { RegionType }; 

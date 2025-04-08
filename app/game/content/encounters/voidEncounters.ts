@@ -1,4 +1,4 @@
-import { StoryEncounter } from '../../types';
+import { StoryEncounter } from '@/app/game/types';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -10,7 +10,7 @@ export const VOID_ENCOUNTERS: StoryEncounter[] = [
         type: 'story',
         title: 'Mysterious Signal',
         description: 'Your sensors detect a faint distress signal coming from a nearby debris field. The signal appears to be automated, repeating on an old frequency not commonly used anymore.',
-        region: 'void',
+        validLocations: [{ regionId: 'void' }],
         choices: [
             {
                 id: uuidv4(),
@@ -45,7 +45,7 @@ export const VOID_ENCOUNTERS: StoryEncounter[] = [
         type: 'story',
         title: 'Memory Fragment',
         description: 'As your ship drifts through the void, a dormant subroutine in your core programming suddenly activates. Fragmented memories surface, showing glimpses of Earth and the launch of the Dawn.',
-        region: 'void',
+        validLocations: [{ regionId: 'void' }],
         choices: [
             {
                 id: uuidv4(),
@@ -83,7 +83,7 @@ export const VOID_ENCOUNTERS: StoryEncounter[] = [
         type: 'story',
         title: 'Abandoned Satellite',
         description: 'Your long-range scanners detect an ancient Earth satellite drifting far from its original orbit. It appears to be a pre-cryosleep era communications satellite, somehow intact after all this time.',
-        region: 'void',
+        validLocations: [{ regionId: 'void' }],
         choices: [
             {
                 id: uuidv4(),

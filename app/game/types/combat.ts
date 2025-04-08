@@ -152,10 +152,19 @@ export interface EnemyDefinition {
   actions: RegionEnemyAction[];
   loot: EnemyLoot[];
   image?: string;
-  regions?: RegionType[];
-  subRegion?: string;  // Optional subregion within a region
-  isBoss?: boolean;    // Whether this is a boss enemy
+  isBoss: boolean;
+  spawnLocations: {
+    regionId: string;
+    subRegionId?: string;
+    weight: number;
+  }[];
   difficultyTier?: number;
+  introTitle?: string;
+  introDescription?: string;
+  attackDelay?: number;
+  lastAttackTime?: number;
+  region?: RegionType;
+  subRegion?: string;
 }
 
 /**
@@ -165,14 +174,16 @@ export interface RegionDefinition {
   id: string;
   name: string;
   description: string;
-  type?: RegionType;
-  difficulty?: number;
-  encounterChance: number;
-  enemyProbabilities: {
-    enemyId: string;
-    weight: number;
+  type: RegionType;
+  subRegions?: {
+    id: string;
+    name: string;
+    description: string;
   }[];
+  bossEnemyId: string;
+  bossDefeatThreshold: number;
   resourceModifiers?: Record<string, number>;
+  difficulty?: number;
 }
 
 /**

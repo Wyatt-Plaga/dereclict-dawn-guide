@@ -12,11 +12,14 @@ import {
   getRandomEmptyEncounterMessage, 
   getRandomEmptyEncounterTitle,
   getRandomEmptyEncounterDescription, 
-  generateEmptyEncounterRewards, 
-  REGION_ENCOUNTER_CHANCES,
+  generateEmptyEncounterRewards,
   STORY_ENCOUNTERS,
   getGenericStoryEncounter
 } from '../content/encounters';
+import { 
+    ENCOUNTER_TYPE_PROBABILITIES,
+} from '../content/encounterConfig';
+import { ALL_ENEMIES_LIST, EnemyDefinition } from '../content/enemies/index';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { EventBus } from '../core/EventBus';
 import { REGION_DEFINITIONS } from '../content/regions';
@@ -40,8 +43,9 @@ export class EncounterSystem {
         console.log(`Generating encounter for region: ${region}`);
         
         // Get encounter chances for the current region
-        const encounterChances = REGION_ENCOUNTER_CHANCES[region] || 
-            { combat: 0.3, empty: 0.5, narrative: 0.2 }; // Fallback values if region not found
+        const regionTypeProbs = ENCOUNTER_TYPE_PROBABILITIES[region] || 
+            { default: { combat: 0.3, empty: 0.5, narrative: 0.2 } }; // Fallback values if region not found
+        const encounterChances = regionTypeProbs.default; // Use default probabilities for now
         
         // Generate a random value to determine encounter type
         const randomValue = Math.random();
@@ -71,7 +75,7 @@ export class EncounterSystem {
             type: 'empty',
             title: getRandomEmptyEncounterTitle(region),
             description: getRandomEmptyEncounterDescription(region),
-            region,
+            validLocations: [{ regionId: region }],
             message,
             resources
         };
@@ -91,7 +95,6 @@ export class EncounterSystem {
         
         // Deep clone and ensure the region type is preserved correctly
         const clonedEncounter = JSON.parse(JSON.stringify(regionEncounters[randomIndex])) as StoryEncounter;
-        clonedEncounter.region = region; // Explicitly set the region back to the enum type
         return clonedEncounter;
     }
     
@@ -197,9 +200,11 @@ export class EncounterSystem {
                         
                         if (!enemyId) {
                             // Determine the correct RegionType to pass
+                            // Get region from validLocations instead of encounter.region
+                            const regionIdFromLocation = encounter.validLocations?.[0]?.regionId;
                             const regionToUse: RegionType = combatTrigger.enemyRegion 
                                 ? this.stringToRegionType(combatTrigger.enemyRegion)
-                                : encounter.region;
+                                : regionIdFromLocation ? this.stringToRegionType(regionIdFromLocation) : RegionType.VOID; // Fallback needed
                             
                             const subRegionToUse = combatTrigger.enemySubRegion || state.navigation.currentSubRegion;
                             
@@ -209,12 +214,14 @@ export class EncounterSystem {
                         
                         if (enemyId) {
                             const subRegionToUse = combatTrigger.enemySubRegion || state.navigation.currentSubRegion;
-                            
+                            // Get region from validLocations for event emission
+                            const regionIdForEvent = encounter.validLocations?.[0]?.regionId ?? RegionType.VOID;
+
                             // Ensure combatEncounterTriggered expects RegionType
                             this.eventBus.emit('combatEncounterTriggered', {
                                 state: state,
                                 enemyId: enemyId,
-                                regionId: encounter.region,
+                                regionId: this.stringToRegionType(regionIdForEvent), // Convert string back to enum
                                 subRegionId: subRegionToUse,
                                 sourceEncounterId: encounter.id,
                                 sourceChoiceId: choiceId
@@ -230,7 +237,8 @@ export class EncounterSystem {
                             
                             Logger.info(
                                 LogCategory.COMBAT,
-                                `Combat initiated with enemy: ${enemyId} in region: ${encounter.region}${subRegionToUse ? ', subregion: ' + subRegionToUse : ''}`,
+                                // Get region from validLocations for logging
+                                `Combat initiated with enemy: ${enemyId} in region: ${encounter.validLocations?.[0]?.regionId ?? 'unknown'}${subRegionToUse ? ', subregion: ' + subRegionToUse : ''}`,
                                 LogContext.COMBAT
                             );
                             
@@ -238,7 +246,8 @@ export class EncounterSystem {
                         } else {
                             Logger.error(
                                 LogCategory.COMBAT,
-                                `Failed to generate enemy for region: ${encounter.region}`,
+                                // Get region from validLocations for logging
+                                `Failed to generate enemy for region: ${encounter.validLocations?.[0]?.regionId ?? 'unknown'}`,
                                 LogContext.COMBAT
                             );
                         }
@@ -264,10 +273,11 @@ export class EncounterSystem {
             // Get the combat encounter details
             const combatEncounter = encounter as BaseEncounter;
             
-            // Extract region from the encounter
-            const regionId = combatEncounter.region;
+            // Extract region from validLocations instead
+            const regionIdFromLocation = combatEncounter.validLocations?.[0]?.regionId ?? RegionType.VOID; // Default to VOID if no location
+            const regionId = this.stringToRegionType(regionIdFromLocation);
             
-            // Use the pre-selected enemy if available, otherwise generate one
+            // Use the pre-selected enemy if available, otherwise generate one using the correct regionId
             const enemyId = combatEncounter.enemyId || this.generateRandomEnemyForRegion(regionId);
             
             if (enemyId) {
@@ -275,7 +285,7 @@ export class EncounterSystem {
                 this.eventBus.emit('combatEncounterTriggered', {
                     state: state,
                     enemyId: enemyId,
-                    regionId: regionId,
+                    regionId: regionId, // Use corrected regionId
                     subRegionId: state.navigation.currentSubRegion || undefined
                 });
                 
@@ -289,7 +299,7 @@ export class EncounterSystem {
                 
                 Logger.info(
                     LogCategory.COMBAT,
-                    `Combat initiated with enemy: ${enemyId} in region: ${regionId}`,
+                    `Combat initiated with enemy: ${enemyId} in region: ${regionId}`, // Use corrected regionId
                     LogContext.COMBAT
                 );
                 
@@ -297,7 +307,7 @@ export class EncounterSystem {
             } else {
                 Logger.error(
                     LogCategory.COMBAT,
-                    `Failed to generate enemy for region: ${regionId}`,
+                    `Failed to generate enemy for region: ${regionId}`, // Use corrected regionId
                     LogContext.COMBAT
                 );
             }
@@ -314,89 +324,100 @@ export class EncounterSystem {
     }
 
     /**
-     * Helper method to add an encounter to history
+     * Add encounter result to history
      */
     private addToEncounterHistory(state: GameState, encounter: BaseEncounter, result: string): void {
-        const historyEntry = {
-            id: encounter.id,
+        // Use validLocations for history logging
+        const regionIdForHistory = encounter.validLocations?.[0]?.regionId ?? RegionType.VOID;
+        state.encounters.history.push({
             type: encounter.type,
+            id: encounter.id,
             result: result,
             date: Date.now(),
-            region: encounter.region
-        };
+            region: this.stringToRegionType(regionIdForHistory) // Ensure enum type
+        });
         
-        if (Array.isArray(state.encounters.history)) {
-            state.encounters.history.push(historyEntry);
-        } else {
-            state.encounters.history = [historyEntry];
-        }
+        // Limit history size if needed
+        // if (state.encounters.history.length > 100) { // Example limit
+        //     state.encounters.history.shift();
+        // }
     }
 
     /**
      * Helper function to convert string region to RegionType enum
      * Needed if combatTrigger.enemyRegion is a string
      */
-    private stringToRegionType(regionString: string): RegionType {
-        const regionKey = Object.keys(RegionType).find(key => RegionType[key as keyof typeof RegionType] === regionString);
-        return RegionType[regionKey as keyof typeof RegionType] || RegionType.VOID; // Default to VOID if not found
+    private stringToRegionType(regionId: string): RegionType {
+        // Check if the string is a valid value in the RegionType enum
+        if (Object.values(RegionType).includes(regionId as RegionType)) {
+            return regionId as RegionType;
+        }
+        // Log a warning and return a default if the string is not a valid RegionType
+        // Reverting to ACTIONS category due to persistent linter issues with other categories
+        Logger.warn(LogCategory.ACTIONS, `Invalid regionId string encountered during type conversion: '${regionId}'. Defaulting to VOID.`, LogContext.NONE); 
+        return RegionType.VOID; 
     }
 
     /**
      * Generate an enemy for a specific region and optionally subregion
      */
     generateEnemyForRegion(region: RegionType, subRegion?: string, isBoss?: boolean): string | undefined {
-        Logger.debug(LogCategory.ACTIONS, `Generating enemy for region: ${region}...`, LogContext.NONE);
-        
-        const regionDefinition = REGION_DEFINITIONS[region];
-        if (!regionDefinition) {
-            Logger.warn(LogCategory.ACTIONS, `No region definition found for region: ${region}`, LogContext.NONE);
+        Logger.debug(LogCategory.ACTIONS, `Generating enemy for region: ${region}${subRegion ? ', subRegion: ' + subRegion : ''}${isBoss !== undefined ? ', isBoss: ' + isBoss : ''}`, LogContext.NONE);
+
+        // Define the type for the intermediate spawn info object
+        type PotentialSpawnInfo = { enemyId: string; weight: number };
+
+        // 1. Filter ALL_ENEMIES_LIST based on region, subRegion, and isBoss status
+        const potentialSpawns = ALL_ENEMIES_LIST
+            .map((enemy: EnemyDefinition) => { // Add type for enemy
+                // Find a matching spawn location for the current region/subRegion
+                const matchingSpawn = enemy.spawnLocations.find((loc: { regionId: string; subRegionId?: string; weight: number }) => // Add type for loc
+                    loc.regionId === region &&
+                    (subRegion ? loc.subRegionId === subRegion : true) // Match subRegion if provided
+                );
+
+                // If a match is found AND the boss status matches, return info needed for weighted selection
+                // Default isBoss check to false if the parameter is undefined
+                if (matchingSpawn && enemy.isBoss === (isBoss ?? false)) { 
+                    return {
+                        enemyId: enemy.id,
+                        weight: matchingSpawn.weight
+                    } as PotentialSpawnInfo; // Cast to defined type
+                }
+                return null; // No match for this enemy
+            })
+            .filter((spawn): spawn is PotentialSpawnInfo => spawn !== null); // Use type predicate for filtering
+
+        Logger.debug(LogCategory.ACTIONS, `Found ${potentialSpawns.length} potential enemy spawns matching criteria.`, LogContext.NONE);
+
+        // 2. Handle cases where no enemies match
+        if (potentialSpawns.length === 0) {
+            Logger.warn(LogCategory.ACTIONS, `No matching enemies found for region ${region}${subRegion ? '/' + subRegion : ''}, isBoss: ${isBoss ?? false}`, LogContext.NONE);
             return undefined;
         }
-        
-        let possibleEnemies = regionDefinition.enemyProbabilities;
-        
-        // Filter by subregion if provided
-        if (subRegion) {
-            possibleEnemies = possibleEnemies.filter(enemyProb => {
-                // Requires loading full enemy def to check subRegion, less efficient
-                // Consider adding subRegion to enemyProbabilities if performance is an issue
-                // For now, just check if the probability entry itself matches (assuming format allows)
-                // This part might need adjustment based on how subregions are actually defined in content
-                return (enemyProb as any).subRegion === subRegion || !(enemyProb as any).subRegion; // Allow enemies without specific subregion
-            });
-            Logger.debug(LogCategory.ACTIONS, `Filtered enemies by subRegion ${subRegion}: ${possibleEnemies.length} remaining`, LogContext.NONE);
+
+        // 3. Perform weighted random selection
+        const totalWeight = potentialSpawns.reduce((sum, entry) => sum + entry.weight, 0);
+
+        if (totalWeight <= 0) {
+             Logger.warn(LogCategory.ACTIONS, `Total weight is zero for potential spawns in region ${region}. Cannot perform weighted selection.`, LogContext.NONE);
+             return potentialSpawns[0].enemyId;
         }
-        
-        // Filter by boss status
-        if (isBoss !== undefined) {
-            possibleEnemies = possibleEnemies.filter(enemyProb => {
-                // Similar to subRegion, requires loading full def potentially
-                return (enemyProb as any).isBoss === isBoss; // Needs enemyProb to contain isBoss flag
-            });
-             Logger.debug(LogCategory.ACTIONS, `Filtered enemies by isBoss=${isBoss}: ${possibleEnemies.length} remaining`, LogContext.NONE);
-        }
-        
-        if (possibleEnemies.length === 0) {
-            Logger.warn(LogCategory.ACTIONS, `No matching enemies found for region ${region}...`, LogContext.NONE);
-            return undefined;
-        }
-        
-        // Calculate total weight
-        const totalWeight = possibleEnemies.reduce((sum, entry) => sum + entry.weight, 0);
-        
-        // Select random enemy based on weights
+
         let randomValue = Math.random() * totalWeight;
-        for (const enemy of possibleEnemies) {
-            randomValue -= enemy.weight;
-            if (randomValue <= 0) {
-                Logger.debug(LogCategory.ACTIONS, `Selected enemy: ${enemy.enemyId}`, LogContext.NONE);
-                return enemy.enemyId;
+        for (const spawn of potentialSpawns) { // Type is now inferred correctly
+            if (spawn.weight > 0) { 
+                randomValue -= spawn.weight;
+                if (randomValue <= 0) {
+                    Logger.debug(LogCategory.ACTIONS, `Selected enemy: ${spawn.enemyId} (weight: ${spawn.weight})`, LogContext.NONE);
+                    return spawn.enemyId;
+                }
             }
         }
-        
-        // Fallback: return the first enemy ID if selection failed (should not happen)
-        Logger.warn(LogCategory.ACTIONS, `Enemy selection failed, returning first possible enemy: ${possibleEnemies[0].enemyId}`, LogContext.NONE);
-        return possibleEnemies[0].enemyId;
+
+        // 4. Fallback
+        Logger.warn(LogCategory.ACTIONS, `Weighted enemy selection failed unexpectedly, returning first possible enemy: ${potentialSpawns[0].enemyId}`, LogContext.NONE);
+        return potentialSpawns[0].enemyId;
     }
 
     /**
@@ -424,7 +445,7 @@ export class EncounterSystem {
             type: 'combat',
             title: 'Hostile Encounter',
             description: `You've encountered a hostile entity in the ${region} region!`,
-            region,
+            validLocations: [{ regionId: region }],
             enemyId: enemyId
         };
     }

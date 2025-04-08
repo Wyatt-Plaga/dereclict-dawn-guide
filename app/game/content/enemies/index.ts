@@ -15,9 +15,10 @@ import { VOID_ENEMIES } from './voidEnemies'; // Assuming single export
 // Note: anomalyEnemies.ts is currently missing
 
 /**
- * Combined array of all enemy definitions from all regions.
+ * Combined list (array) of ALL enemy definitions.
+ * Needed for filtering enemies based on spawn locations.
  */
-export const ALL_ENEMIES: EnemyDefinition[] = [
+export const ALL_ENEMIES_LIST: EnemyDefinition[] = [
     // Asteroid Field (has subregion arrays)
     ...MINING_FRONTIER_ENEMIES,
     ...DENSE_CLUSTER_ENEMIES,
@@ -34,9 +35,10 @@ export const ALL_ENEMIES: EnemyDefinition[] = [
 
 /**
  * Map of all enemies, keyed by their ID for efficient lookup.
+ * Useful for CombatSystem to get definition by ID.
  */
 export const ALL_ENEMIES_MAP: Record<string, EnemyDefinition> = 
-    ALL_ENEMIES.reduce((acc, enemy) => {
+    ALL_ENEMIES_LIST.reduce((acc, enemy) => {
         if (acc[enemy.id]) {
             // Log a warning if duplicate enemy IDs are found
             console.warn(`Duplicate enemy ID found: ${enemy.id}. Overwriting previous definition.`);
@@ -44,6 +46,13 @@ export const ALL_ENEMIES_MAP: Record<string, EnemyDefinition> =
         acc[enemy.id] = enemy;
         return acc;
     }, {} as Record<string, EnemyDefinition>);
+
+// Optional: Log counts for verification
+console.log(`Loaded ${ALL_ENEMIES_LIST.length} total enemies into list.`);
+console.log(`Mapped ${Object.keys(ALL_ENEMIES_MAP).length} total enemies into map.`);
+
+// Re-export EnemyDefinition using 'export type' for isolatedModules compatibility
+export type { EnemyDefinition };
 
 // Commented out re-exports
 /*

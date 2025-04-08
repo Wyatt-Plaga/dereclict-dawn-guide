@@ -96,6 +96,7 @@ export default function EncounterPage() {
         <div className="flex flex-col p-4 md:p-8 md:ml-64">
           <EncounterDisplay 
             encounter={state.encounters.encounter!}
+            currentRegion={state.navigation.currentRegion}
             onComplete={handleCompleteEncounter}
           />
         </div>
