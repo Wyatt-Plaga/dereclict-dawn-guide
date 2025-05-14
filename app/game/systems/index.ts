@@ -142,37 +142,30 @@ export class GameSystemManager {
   }
 
   /**
-   * Update all systems
-   * 
-   * @param state Current game state
-   * @param delta Time since last update in milliseconds
+   * Update all game systems
+   * @param state - Current game state
+   * @param delta - Time since last update
+   * @param automationHasPower - Optional flag indicating if automation has energy
    */
-  update(state: GameState, delta: number) {
-    // Update resources based on production rates
-    this.resource.update(state, delta);
+  update(state: GameState, delta: number, automationHasPower: boolean = true): void {
+    // Update systems that depend on automation power status first
+    this.resource.update(state, delta, automationHasPower);
     
-    // Check for unlockable logs
+    // Update other systems (order might matter)
     this.log.update(state, delta);
-    
+    // this.encounter.update(state, delta); // Removed - No update method
     // If there's an active combat, update it
     if (state.combat && state.combat.active) {
       this.combat.update(state, delta);
     }
-    
-    // In the future, we'll add more system updates here
-    // this.upgrade.update(state, delta);
-    // etc.
   }
 
   /**
-   * Process a game action
-   * 
-   * @param state Current game state
-   * @param action Action to process
-   * @returns Updated game state
+   * Process an action through the appropriate system
    */
   processAction(state: GameState, action: GameAction): GameState {
-    // Delegate to the ActionSystem
+    // Pass action to the ActionSystem
+    // Note: ActionSystem might need access to other systems via this manager
     return this.action.processAction(state, action);
   }
 } 

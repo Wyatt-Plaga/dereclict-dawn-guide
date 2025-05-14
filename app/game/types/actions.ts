@@ -103,6 +103,49 @@ export interface MakeStoryChoiceAction extends GameAction {
 }
 
 /**
+ * Toggle Production Action
+ * Triggered when the player enables/disables auto-production for a category
+ */
+export interface ToggleProductionAction extends GameAction {
+  type: 'TOGGLE_PRODUCTION';
+  payload: {
+    category: GameCategory;
+  };
+}
+
+/**
+ * Combat Action
+ * Triggered when player performs an action during combat
+ */
+export interface CombatAction extends GameAction {
+  type: 'COMBAT_ACTION';
+  payload: {
+    actionId: string;
+  };
+}
+
+/**
+ * Retreat From Battle Action
+ * Triggered when player chooses to retreat
+ */
+export interface RetreatFromBattleAction extends GameAction {
+  type: 'RETREAT_FROM_BATTLE';
+}
+
+/**
+ * Adjust Automation Action
+ * Triggered when the player increases/decreases the active level of an automation upgrade
+ */
+export interface AdjustAutomationAction extends GameAction {
+  type: 'ADJUST_AUTOMATION';
+  payload: {
+    category: GameCategory;
+    automationType: 'energyConverters' | 'processingThreads' | 'workerCrews' | 'manufacturingBays';
+    direction: 'increase' | 'decrease';
+  };
+}
+
+/**
  * Union type of all possible game actions
  */
 export type GameActions = 
@@ -113,4 +156,7 @@ export type GameActions =
   | InitiateJumpAction
   | CompleteEncounterAction
   | SelectRegionAction
-  | MakeStoryChoiceAction; 
+  | MakeStoryChoiceAction
+  | CombatAction
+  | RetreatFromBattleAction
+  | AdjustAutomationAction; 

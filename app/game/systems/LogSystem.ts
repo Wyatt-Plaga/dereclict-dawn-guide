@@ -182,9 +182,9 @@ export class LogSystem {
             }
             
             // Handle different resource structures (object vs number)
-            const amount = typeof resourceValue === 'object' 
-                ? (resourceValue as any).amount || 0 
-                : resourceValue as number;
+            const amount = typeof resourceValue === 'object' && resourceValue !== null
+                ? (resourceValue as any).amount ?? 0 // Use ?? for potentially undefined amount
+                : (typeof resourceValue === 'number' ? resourceValue : 0); // Handle non-object/non-number case
             
             return amount >= threshold;
         } catch (error) {

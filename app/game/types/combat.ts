@@ -175,6 +175,13 @@ export interface RegionDefinition {
   name: string;
   description: string;
   type: RegionType;
+  difficulty?: number;
+  encounterChance: number;
+  enemyProbabilities: {
+    enemyId: string;
+    weight: number;
+  }[];
+  resourceModifiers?: Record<string, number>;
   subRegions?: {
     id: string;
     name: string;
@@ -182,8 +189,6 @@ export interface RegionDefinition {
   }[];
   bossEnemyId: string;
   bossDefeatThreshold: number;
-  resourceModifiers?: Record<string, number>;
-  difficulty?: number;
 }
 
 /**

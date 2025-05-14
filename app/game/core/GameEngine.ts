@@ -5,6 +5,7 @@ import { GameAction } from '../types/actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { SaveSystem } from './SaveSystem';
 import { getCachedState, cacheState } from './memoryCache';
+import { AutomationConstants } from '../config/gameConstants';
 
 /**
  * GameEngine: The heart of the game
@@ -203,7 +204,6 @@ export class GameEngine {
         endMeasure();
 
         // Schedule the next update
-        // This is like scheduling the next tick of the clock
         requestAnimationFrame(() => this.gameLoop());
     }
 
@@ -223,8 +223,36 @@ export class GameEngine {
         // Trace level logging for game ticks
         Logger.trace(LogCategory.ENGINE, `Tick with delta: ${delta.toFixed(5)}s`, LogContext.NONE);
         
-        // Update all game systems
-        this.systems.update(this.state, delta);
+        // --- Calculate energy cost for automation ---
+        let totalAutomationEnergyCost = 0;
+        
+        const activeThreads = this.state.categories.processor?.stats?.activeProcessingThreads ?? 0;
+        const activeCrews = this.state.categories.crewQuarters?.stats?.activeWorkerCrews ?? 0;
+        const activeBays = this.state.categories.manufacturing?.stats?.activeManufacturingBays ?? 0;
+        
+        totalAutomationEnergyCost += activeThreads * AutomationConstants.ENERGY_COST_PER_ACTIVE_UNIT_PER_SECOND;
+        totalAutomationEnergyCost += activeCrews * AutomationConstants.ENERGY_COST_PER_ACTIVE_UNIT_PER_SECOND;
+        totalAutomationEnergyCost += activeBays * AutomationConstants.ENERGY_COST_PER_ACTIVE_UNIT_PER_SECOND;
+
+        const energyCostPerTick = totalAutomationEnergyCost * delta;
+        const currentEnergy = this.state.categories.reactor?.resources?.energy ?? 0;
+        let automationHasPower = true;
+
+        if (energyCostPerTick > 0) {
+          if (currentEnergy >= energyCostPerTick) {
+            // Consume energy
+            if (this.state.categories.reactor) {
+               this.state.categories.reactor.resources.energy -= energyCostPerTick;
+            }
+          } else {
+            // Not enough energy, automation stops
+            automationHasPower = false;
+          }
+        }
+        // --- End of energy cost calculation ---
+
+        // Update all game systems, passing power status
+        this.systems.update(this.state, delta, automationHasPower);
         
         // Only emit state updates if something actually changed
         const currentState = JSON.stringify(this.state);
@@ -235,7 +263,7 @@ export class GameEngine {
             this.eventBus.emit('stateUpdated', this.state);
         }
     }
-    
+
     /**
      * Process an action and update the game state
      * 

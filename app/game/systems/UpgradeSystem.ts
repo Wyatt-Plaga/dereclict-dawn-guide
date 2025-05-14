@@ -7,6 +7,8 @@ import {
   ProcessorConstants,
   ManufacturingConstants
 } from '../config/gameConstants';
+import { ResourceCost } from '../types/combat';
+import { ResourceSystem } from './ResourceSystem';
 
 /**
  * UpgradeSystem
@@ -15,6 +17,13 @@ import {
  * Think of this as the R&D department that improves your capabilities.
  */
 export class UpgradeSystem {
+  // Instantiate ResourceSystem once for the class instance
+  private resourceSystem: ResourceSystem;
+
+  constructor() {
+    this.resourceSystem = new ResourceSystem();
+  }
+
   /**
    * Attempt to purchase an upgrade
    * 
@@ -57,18 +66,21 @@ export class UpgradeSystem {
     
     switch (upgradeType) {
       case 'reactorExpansions':
-        // Calculate cost using the utility method
-        const expansionCost = this.calculateReactorExpansionCost(reactor.stats.energyCapacity);
+        // Calculate cost (now returns ResourceCost[])
+        const expansionCosts = this.calculateReactorExpansionCost(reactor.upgrades.reactorExpansions, reactor.stats.energyCapacity);
         
+        // Log the multi-resource cost
+        const costString = expansionCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
         Logger.debug(
           LogCategory.UPGRADES,
-          `Reactor expansion cost: ${expansionCost} energy (available: ${reactor.resources.energy})`,
+          `Reactor expansion costs: ${costString}`,
           [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
         );
         
-        if (reactor.resources.energy >= expansionCost) {
-          // Deduct cost
-          reactor.resources.energy -= expansionCost;
+        // Check if all resources are available
+        if (this.resourceSystem.hasResources(state, expansionCosts)) {
+          // Consume resources
+          this.resourceSystem.consumeResources(state, expansionCosts);
           
           // Increment upgrade
           reactor.upgrades.reactorExpansions += 1;
@@ -87,25 +99,27 @@ export class UpgradeSystem {
         
         Logger.debug(
           LogCategory.UPGRADES,
-          `Insufficient energy for reactor expansion`,
+          `Insufficient resources for reactor expansion`,
           [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
         );
         
         return false;
         
       case 'energyConverters':
-        // Calculate cost using the utility method
-        const converterCost = this.calculateEnergyConverterCost(reactor.upgrades.energyConverters);
+        // Calculate cost (now returns ResourceCost[])
+        const converterCosts = this.calculateEnergyConverterCost(reactor.upgrades.energyConverters);
         
+        // Log the multi-resource cost
+        const converterCostString = converterCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
         Logger.debug(
           LogCategory.UPGRADES,
-          `Energy converter cost: ${converterCost} energy (available: ${reactor.resources.energy})`,
+          `Energy converter costs: ${converterCostString}`,
           [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
         );
         
-        if (reactor.resources.energy >= converterCost) {
-          // Deduct cost
-          reactor.resources.energy -= converterCost;
+        // Use ResourceSystem for checking/consuming
+        if (this.resourceSystem.hasResources(state, converterCosts)) {
+          this.resourceSystem.consumeResources(state, converterCosts);
           
           // Increment upgrade
           reactor.upgrades.energyConverters += 1;
@@ -148,18 +162,21 @@ export class UpgradeSystem {
     
     switch (upgradeType) {
       case 'mainframeExpansions':
-        // Calculate cost using the utility method
-        const expansionCost = this.calculateMainframeExpansionCost(processor.stats.insightCapacity);
+        // Calculate cost (now returns ResourceCost[])
+        const expansionCosts = this.calculateMainframeExpansionCost(processor.upgrades.mainframeExpansions, processor.stats.insightCapacity);
         
+        // Log the multi-resource cost
+        const expansionCostString = expansionCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
         Logger.debug(
           LogCategory.UPGRADES,
-          `Mainframe expansion cost: ${expansionCost} insight (available: ${processor.resources.insight})`,
+          `Mainframe expansion costs: ${expansionCostString}`,
           [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
         );
         
-        if (processor.resources.insight >= expansionCost) {
-          // Deduct cost
-          processor.resources.insight -= expansionCost;
+        // Check if all resources are available
+        if (this.resourceSystem.hasResources(state, expansionCosts)) {
+          // Consume resources
+          this.resourceSystem.consumeResources(state, expansionCosts);
           
           // Increment upgrade
           processor.upgrades.mainframeExpansions += 1;
@@ -178,25 +195,28 @@ export class UpgradeSystem {
         
         Logger.debug(
           LogCategory.UPGRADES,
-          `Insufficient insight for mainframe expansion`,
+          `Insufficient resources for mainframe expansion`,
           [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
         );
         
         return false;
         
       case 'processingThreads':
-        // Calculate cost using the utility method
-        const threadCost = this.calculateProcessingThreadCost(processor.upgrades.processingThreads);
+        // Calculate cost (now returns ResourceCost[])
+        const threadCosts = this.calculateProcessingThreadCost(processor.upgrades.processingThreads);
         
+        // Log the multi-resource cost
+        const threadCostString = threadCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
         Logger.debug(
           LogCategory.UPGRADES,
-          `Processing thread cost: ${threadCost} insight (available: ${processor.resources.insight})`,
+          `Processing thread costs: ${threadCostString}`,
           [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
         );
         
-        if (processor.resources.insight >= threadCost) {
-          // Deduct cost
-          processor.resources.insight -= threadCost;
+        // Check if all resources are available
+        if (this.resourceSystem.hasResources(state, threadCosts)) {
+          // Consume resources
+          this.resourceSystem.consumeResources(state, threadCosts);
           
           // Increment upgrade
           processor.upgrades.processingThreads += 1;
@@ -215,7 +235,7 @@ export class UpgradeSystem {
         
         Logger.debug(
           LogCategory.UPGRADES,
-          `Insufficient insight for processing thread`,
+          `Insufficient resources for processing thread`,
           [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
         );
         
@@ -239,18 +259,21 @@ export class UpgradeSystem {
     
     switch (upgradeType) {
       case 'additionalQuarters':
-        // Calculate cost using the utility method
-        const quartersCost = this.calculateQuartersCost(crewQuarters.stats.crewCapacity);
+        // Calculate cost (now returns ResourceCost[])
+        const quartersCosts = this.calculateQuartersCost(crewQuarters.upgrades.additionalQuarters, crewQuarters.stats.crewCapacity);
         
+        // Log the multi-resource cost
+        const quartersCostString = quartersCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
         Logger.debug(
           LogCategory.UPGRADES,
-          `Additional quarters cost: ${quartersCost} crew (available: ${crewQuarters.resources.crew})`,
+          `Additional quarters costs: ${quartersCostString}`,
           [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
         );
         
-        if (crewQuarters.resources.crew >= quartersCost) {
-          // Deduct cost
-          crewQuarters.resources.crew -= quartersCost;
+        // Check if all resources are available
+        if (this.resourceSystem.hasResources(state, quartersCosts)) {
+           // Consume resources
+           this.resourceSystem.consumeResources(state, quartersCosts);
           
           // Increment upgrade
           crewQuarters.upgrades.additionalQuarters += 1;
@@ -269,15 +292,15 @@ export class UpgradeSystem {
         
         Logger.debug(
           LogCategory.UPGRADES,
-          `Insufficient crew for additional quarters`,
+          `Insufficient resources for additional quarters`,
           [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
         );
         
         return false;
         
       case 'workerCrews':
-        // Calculate cost using the utility method
-        const workerCost = this.calculateWorkerCrewCost(crewQuarters.upgrades.workerCrews);
+        // Calculate cost (now returns ResourceCost[])
+        const workerCosts = this.calculateWorkerCrewCost(crewQuarters.upgrades.workerCrews);
         
         // Check if maxed out (max 5 worker crews)
         if (crewQuarters.upgrades.workerCrews >= this.getMaxWorkerCrews()) {
@@ -289,15 +312,18 @@ export class UpgradeSystem {
           return false;
         }
         
+        // Log the multi-resource cost
+        const workerCostString = workerCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
         Logger.debug(
           LogCategory.UPGRADES,
-          `Worker crew cost: ${workerCost} crew (available: ${crewQuarters.resources.crew})`,
+          `Worker crew costs: ${workerCostString}`,
           [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
         );
         
-        if (crewQuarters.resources.crew >= workerCost) {
-          // Deduct cost
-          crewQuarters.resources.crew -= workerCost;
+        // Check if all resources are available
+        if (this.resourceSystem.hasResources(state, workerCosts)) {
+          // Consume resources
+          this.resourceSystem.consumeResources(state, workerCosts);
           
           // Increment upgrade
           crewQuarters.upgrades.workerCrews += 1;
@@ -316,7 +342,7 @@ export class UpgradeSystem {
         
         Logger.debug(
           LogCategory.UPGRADES,
-          `Insufficient crew for worker crew`,
+          `Insufficient resources for worker crew`,
           [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
         );
         
@@ -340,18 +366,21 @@ export class UpgradeSystem {
     
     switch (upgradeType) {
       case 'cargoHoldExpansions':
-        // Calculate cost using the utility method
-        const expansionCost = this.calculateCargoHoldExpansionCost(manufacturing.stats.scrapCapacity);
+        // Calculate cost (now returns ResourceCost[])
+        const expansionCosts = this.calculateCargoHoldExpansionCost(manufacturing.upgrades.cargoHoldExpansions, manufacturing.stats.scrapCapacity);
         
+        // Log the multi-resource cost
+        const expansionCostString = expansionCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
         Logger.debug(
           LogCategory.UPGRADES,
-          `Cargo hold expansion cost: ${expansionCost} scrap (available: ${manufacturing.resources.scrap})`,
+          `Cargo hold expansion costs: ${expansionCostString}`,
           [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
         );
         
-        if (manufacturing.resources.scrap >= expansionCost) {
-          // Deduct cost
-          manufacturing.resources.scrap -= expansionCost;
+        // Check if all resources are available
+        if (this.resourceSystem.hasResources(state, expansionCosts)) {
+          // Consume resources
+          this.resourceSystem.consumeResources(state, expansionCosts);
           
           // Increment upgrade
           manufacturing.upgrades.cargoHoldExpansions += 1;
@@ -370,25 +399,28 @@ export class UpgradeSystem {
         
         Logger.debug(
           LogCategory.UPGRADES,
-          `Insufficient scrap for cargo hold expansion`,
+          `Insufficient resources for cargo hold expansion`,
           [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
         );
         
         return false;
         
       case 'manufacturingBays':
-        // Calculate cost using the utility method
-        const bayCost = this.calculateManufacturingBayCost(manufacturing.upgrades.manufacturingBays);
+        // Calculate cost (now returns ResourceCost[])
+        const bayCosts = this.calculateManufacturingBayCost(manufacturing.upgrades.manufacturingBays);
         
+        // Log the multi-resource cost
+        const bayCostString = bayCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
         Logger.debug(
           LogCategory.UPGRADES,
-          `Manufacturing bay cost: ${bayCost} scrap (available: ${manufacturing.resources.scrap})`,
+          `Manufacturing bay costs: ${bayCostString}`,
           [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
         );
         
-        if (manufacturing.resources.scrap >= bayCost) {
-          // Deduct cost
-          manufacturing.resources.scrap -= bayCost;
+        // Check if all resources are available
+        if (this.resourceSystem.hasResources(state, bayCosts)) {
+          // Consume resources
+          this.resourceSystem.consumeResources(state, bayCosts);
           
           // Increment upgrade
           manufacturing.upgrades.manufacturingBays += 1;
@@ -407,7 +439,7 @@ export class UpgradeSystem {
         
         Logger.debug(
           LogCategory.UPGRADES,
-          `Insufficient scrap for manufacturing bay`,
+          `Insufficient resources for manufacturing bay`,
           [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
         );
         
@@ -443,13 +475,11 @@ export class UpgradeSystem {
     const reactor = state.categories.reactor;
     
     // Calculate energy capacity based on expansions
-    // Base capacity = 100, each expansion adds 50% more
     reactor.stats.energyCapacity = ReactorConstants.BASE_ENERGY_CAPACITY * 
       Math.pow(ReactorConstants.ENERGY_CAPACITY_MULTIPLIER, reactor.upgrades.reactorExpansions);
     
-    // Calculate energy production based on converters
-    // Each converter adds 1 energy per second
-    reactor.stats.energyPerSecond = reactor.upgrades.energyConverters * ReactorConstants.ENERGY_PER_CONVERTER;
+    // Calculate energy production based on *active* converters
+    reactor.stats.energyPerSecond = reactor.stats.activeEnergyConverters * ReactorConstants.ENERGY_PER_CONVERTER;
   }
   
   /**
@@ -459,13 +489,11 @@ export class UpgradeSystem {
     const processor = state.categories.processor;
     
     // Calculate insight capacity based on mainframe expansions
-    // Base capacity = 50, each expansion adds 50% more
     processor.stats.insightCapacity = ProcessorConstants.BASE_INSIGHT_CAPACITY * 
       Math.pow(ProcessorConstants.INSIGHT_CAPACITY_MULTIPLIER, processor.upgrades.mainframeExpansions);
     
-    // Calculate insight production based on processing threads
-    // Each thread adds 0.2 insight per second
-    processor.stats.insightPerSecond = processor.upgrades.processingThreads * ProcessorConstants.INSIGHT_PER_THREAD;
+    // Calculate insight production based on *active* processing threads
+    processor.stats.insightPerSecond = processor.stats.activeProcessingThreads * ProcessorConstants.INSIGHT_PER_THREAD;
   }
   
   /**
@@ -475,13 +503,11 @@ export class UpgradeSystem {
     const crewQuarters = state.categories.crewQuarters;
     
     // Calculate crew capacity based on additional quarters
-    // Base capacity = 5, each quarters upgrade adds 3 capacity
     crewQuarters.stats.crewCapacity = CrewQuartersConstants.BASE_CREW_CAPACITY + 
       (crewQuarters.upgrades.additionalQuarters * CrewQuartersConstants.QUARTERS_UPGRADE_CAPACITY_INCREASE);
     
-    // Calculate crew production based on worker crews
-    // Each worker crew adds 1.0 awakening progress per second
-    crewQuarters.stats.crewPerSecond = crewQuarters.upgrades.workerCrews * CrewQuartersConstants.WORKER_CREW_PRODUCTION_RATE;
+    // Calculate crew production based on *active* worker crews
+    crewQuarters.stats.crewPerSecond = crewQuarters.stats.activeWorkerCrews * CrewQuartersConstants.WORKER_CREW_PRODUCTION_RATE;
   }
   
   /**
@@ -491,13 +517,11 @@ export class UpgradeSystem {
     const manufacturing = state.categories.manufacturing;
     
     // Calculate scrap capacity based on cargo hold expansions
-    // Base capacity = 100, each expansion adds 50% more
     manufacturing.stats.scrapCapacity = ManufacturingConstants.BASE_SCRAP_CAPACITY * 
       Math.pow(ManufacturingConstants.SCRAP_CAPACITY_MULTIPLIER, manufacturing.upgrades.cargoHoldExpansions);
     
-    // Calculate scrap production based on manufacturing bays
-    // Each bay adds 0.5 scrap per second
-    manufacturing.stats.scrapPerSecond = manufacturing.upgrades.manufacturingBays * ManufacturingConstants.SCRAP_PER_BAY;
+    // Calculate scrap production based on *active* manufacturing bays
+    manufacturing.stats.scrapPerSecond = manufacturing.stats.activeManufacturingBays * ManufacturingConstants.SCRAP_PER_BAY;
   }
 
   /*** Utility methods for cost calculations ***/
@@ -505,11 +529,22 @@ export class UpgradeSystem {
   /**
    * Calculate the cost of upgrading crew quarters
    * 
+   * @param currentLevel Current crew quarters level
    * @param crewCapacity Current crew capacity
    * @returns The cost in crew
    */
-  calculateQuartersCost(crewCapacity: number): number {
-    return Math.floor(crewCapacity * CrewQuartersConstants.QUARTERS_COST_MULTIPLIER);
+  calculateQuartersCost(currentLevel: number, crewCapacity: number): ResourceCost[] {
+    const baseCrewCost = Math.floor(crewCapacity * CrewQuartersConstants.QUARTERS_COST_MULTIPLIER);
+    const costs: ResourceCost[] = [
+      { type: 'crew', amount: baseCrewCost }
+    ];
+
+    // Example: Add combat component cost
+    if (currentLevel >= 2) { // Cost applies when buying level 3+
+      const componentCost = Math.floor(Math.pow(1.3, currentLevel));
+      costs.push({ type: 'combatComponents', amount: componentCost });
+    }
+    return costs;
   }
 
   /**
@@ -518,8 +553,18 @@ export class UpgradeSystem {
    * @param currentWorkerCrews Current worker crew level
    * @returns The cost in crew
    */
-  calculateWorkerCrewCost(currentWorkerCrews: number): number {
-    return Math.floor((currentWorkerCrews + 1) * CrewQuartersConstants.WORKER_CREW_COST_BASE);
+  calculateWorkerCrewCost(currentWorkerCrews: number): ResourceCost[] {
+    const baseCrewCost = Math.floor((currentWorkerCrews + 1) * CrewQuartersConstants.WORKER_CREW_COST_BASE);
+    const costs: ResourceCost[] = [
+      { type: 'crew', amount: baseCrewCost }
+    ];
+
+     // Example: Add combat component cost
+     if (currentWorkerCrews >= 1) { // Cost applies when buying level 2+
+      const componentCost = Math.floor(Math.pow(1.8, currentWorkerCrews));
+      costs.push({ type: 'combatComponents', amount: componentCost });
+    }
+    return costs;
   }
 
   /**
@@ -534,11 +579,23 @@ export class UpgradeSystem {
   /**
    * Calculate the cost of upgrading the reactor
    * 
-   * @param energyCapacity Current energy capacity
-   * @returns The cost in energy
+   * @param currentLevel Current upgrade level
+   * @param energyCapacity Current energy capacity (used for scaling base cost)
+   * @returns Array of resource costs
    */
-  calculateReactorExpansionCost(energyCapacity: number): number {
-    return energyCapacity * ReactorConstants.EXPANSION_COST_MULTIPLIER;
+  calculateReactorExpansionCost(currentLevel: number, energyCapacity: number): ResourceCost[] {
+    const baseEnergyCost = energyCapacity * ReactorConstants.EXPANSION_COST_MULTIPLIER;
+    const costs: ResourceCost[] = [
+      { type: 'energy', amount: Math.floor(baseEnergyCost) }
+    ];
+
+    // Example: Add combat component cost starting at level 5
+    if (currentLevel >= 4) { // Cost applies when buying level 5+
+      const componentCost = Math.floor(Math.pow(1.5, currentLevel - 3)); // Exponential cost
+      costs.push({ type: 'combatComponents', amount: componentCost });
+    }
+
+    return costs;
   }
 
   /**
@@ -547,8 +604,13 @@ export class UpgradeSystem {
    * @param currentConverters Current energy converter level
    * @returns The cost in energy
    */
-  calculateEnergyConverterCost(currentConverters: number): number {
-    return (currentConverters + 1) * ReactorConstants.CONVERTER_COST_BASE;
+  calculateEnergyConverterCost(currentConverters: number): ResourceCost[] {
+    const baseEnergyCost = (currentConverters + 1) * ReactorConstants.CONVERTER_COST_BASE;
+    const costs: ResourceCost[] = [
+      { type: 'energy', amount: baseEnergyCost }
+    ];
+
+    return costs;
   }
 
   /**
@@ -557,8 +619,18 @@ export class UpgradeSystem {
    * @param insightCapacity Current insight capacity
    * @returns The cost in insight
    */
-  calculateMainframeExpansionCost(insightCapacity: number): number {
-    return insightCapacity * ProcessorConstants.EXPANSION_COST_MULTIPLIER;
+  calculateMainframeExpansionCost(currentLevel: number, insightCapacity: number): ResourceCost[] {
+    const baseInsightCost = insightCapacity * ProcessorConstants.EXPANSION_COST_MULTIPLIER;
+    const costs: ResourceCost[] = [
+      { type: 'insight', amount: Math.floor(baseInsightCost) }
+    ];
+
+    // Example: Add combat component cost
+    if (currentLevel >= 4) { // Cost applies when buying level 5+
+      const componentCost = Math.floor(Math.pow(1.4, currentLevel - 2));
+      costs.push({ type: 'combatComponents', amount: componentCost });
+    }
+    return costs;
   }
 
   /**
@@ -567,8 +639,18 @@ export class UpgradeSystem {
    * @param currentThreads Current processing thread level
    * @returns The cost in insight
    */
-  calculateProcessingThreadCost(currentThreads: number): number {
-    return (currentThreads + 1) * ProcessorConstants.THREAD_COST_BASE;
+  calculateProcessingThreadCost(currentThreads: number): ResourceCost[] {
+    const baseInsightCost = (currentThreads + 1) * ProcessorConstants.THREAD_COST_BASE;
+    const costs: ResourceCost[] = [
+      { type: 'insight', amount: baseInsightCost }
+    ];
+
+    // Example: Add combat component cost
+    if (currentThreads >= 2) { // Cost applies when buying level 3+
+      const componentCost = Math.floor(Math.pow(1.7, currentThreads));
+      costs.push({ type: 'combatComponents', amount: componentCost });
+    }
+    return costs;
   }
 
   /**
@@ -577,8 +659,18 @@ export class UpgradeSystem {
    * @param scrapCapacity Current scrap capacity
    * @returns The cost in scrap
    */
-  calculateCargoHoldExpansionCost(scrapCapacity: number): number {
-    return Math.floor(scrapCapacity * ManufacturingConstants.EXPANSION_COST_MULTIPLIER);
+  calculateCargoHoldExpansionCost(currentLevel: number, scrapCapacity: number): ResourceCost[] {
+    const baseScrapCost = Math.floor(scrapCapacity * ManufacturingConstants.EXPANSION_COST_MULTIPLIER);
+    const costs: ResourceCost[] = [
+      { type: 'scrap', amount: baseScrapCost }
+    ];
+
+    // Example: Add combat component cost
+    if (currentLevel >= 5) { // Cost applies when buying level 6+
+      const componentCost = Math.floor(Math.pow(1.2, currentLevel - 1));
+      costs.push({ type: 'combatComponents', amount: componentCost });
+    }
+    return costs;
   }
 
   /**
@@ -587,7 +679,28 @@ export class UpgradeSystem {
    * @param currentBays Current manufacturing bay level
    * @returns The cost in scrap
    */
-  calculateManufacturingBayCost(currentBays: number): number {
-    return (currentBays + 1) * ManufacturingConstants.BAY_COST_BASE;
+  calculateManufacturingBayCost(currentBays: number): ResourceCost[] {
+    const baseScrapCost = (currentBays + 1) * ManufacturingConstants.BAY_COST_BASE;
+    const costs: ResourceCost[] = [
+      { type: 'scrap', amount: baseScrapCost }
+    ];
+
+     // Example: Add combat component cost
+     if (currentBays >= 3) { // Cost applies when buying level 4+
+      const componentCost = Math.floor(Math.pow(1.9, currentBays - 1));
+      costs.push({ type: 'combatComponents', amount: componentCost });
+    }
+    return costs;
+  }
+
+  /**
+   * Check if the player can afford a set of resource costs.
+   * 
+   * @param state - Current game state
+   * @param costs - Array of resource costs to check
+   * @returns True if the player has enough resources, false otherwise
+   */
+  canAffordUpgrade(state: GameState, costs: ResourceCost[]): boolean {
+    return this.resourceSystem.hasResources(state, costs);
   }
 } 

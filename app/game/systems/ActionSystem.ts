@@ -1,10 +1,12 @@
 import { GameState, RegionType } from '../types';
-import { GameAction, GameActions, GameCategory, MakeStoryChoiceAction } from '../types/actions';
+import { GameAction, GameActions, GameCategory, MakeStoryChoiceAction, ToggleProductionAction, SelectRegionAction, CombatAction, RetreatFromBattleAction, AdjustAutomationAction } from '../types/actions';
 import { GameSystemManager } from './index';
 import { UpgradeSystem } from './UpgradeSystem';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { EncounterSystem } from './EncounterSystem';
 import { v4 as uuidv4 } from 'uuid';
+import { ReactorConstants, ProcessorConstants, CrewQuartersConstants, ManufacturingConstants, AutomationConstants } from '../config/gameConstants';
+import { ResourceSystem } from './ResourceSystem';
 
 /**
  * ActionSystem
@@ -30,7 +32,10 @@ export class ActionSystem {
   /**
    * Process an action and update the game state
    */
-  processAction(state: GameState, action: GameAction): GameState {
+  processAction(state: GameState, action: GameActions): GameState {
+    // Log action arrival
+    console.log(`[ActionSystem] Received action: ${action.type}`, action.payload);
+
     Logger.trace(
       LogCategory.ACTIONS, 
       `Processing action: ${action.type}`,
@@ -40,7 +45,7 @@ export class ActionSystem {
     // Process the action based on its type - directly mutate the state
     switch (action.type) {
       case 'CLICK_RESOURCE':
-        this.handleResourceClick(state, action);
+        this.handleResourceClick(state, action as GameAction);
         break;
 
       case 'PURCHASE_UPGRADE':
@@ -60,7 +65,7 @@ export class ActionSystem {
         break;
 
       case 'SELECT_REGION': 
-        this.handleSelectRegion(state, action.payload.regionId);
+        this.handleSelectRegion(state, action as SelectRegionAction);
         break;
         
       case 'INITIATE_JUMP':
@@ -76,19 +81,21 @@ export class ActionSystem {
         break;
         
       case 'COMBAT_ACTION':
-        this.handleCombatAction(state, action);
+        this.handleCombatAction(state, action as CombatAction);
         break;
         
       case 'RETREAT_FROM_BATTLE':
         this.handleRetreatFromBattle(state);
         break;
+
+      case 'ADJUST_AUTOMATION':
+        this.handleAdjustAutomation(state, action as AdjustAutomationAction);
+        break;
         
       default:
-        Logger.warn(
-          LogCategory.ACTIONS, 
-          `Unknown action type: ${action.type}`,
-          LogContext.NONE
-        );
+        // This check helps ensure all action types are handled
+        const _exhaustiveCheck: never = action;
+        Logger.warn(LogCategory.ACTIONS, `Unhandled action type: ${(_exhaustiveCheck as GameAction).type}`, LogContext.NONE);
     }
     
     return state;
@@ -97,7 +104,7 @@ export class ActionSystem {
   /**
    * Handle resource click actions
    */
-  private handleResourceClick(state: GameState, action: GameAction): GameState {
+  private handleResourceClick(state: GameState, action: GameAction): void {
     const category = action.payload?.category;
     
     if (!category) {
@@ -106,7 +113,7 @@ export class ActionSystem {
         'No category specified for resource click',
         LogContext.NONE
       );
-      return state;
+      return;
     }
     
     Logger.debug(
@@ -115,29 +122,64 @@ export class ActionSystem {
       LogContext.NONE
     );
     
+    const energyCost = AutomationConstants.ENERGY_COST_PER_CLICK;
+    let canAffordEnergy = true;
+    let requiresEnergy = false;
+
+    // Check if this click requires energy and if affordable
+    if (category === 'processor' || category === 'crewQuarters' || category === 'manufacturing') {
+      requiresEnergy = true;
+      const currentEnergy = state.categories.reactor?.resources?.energy ?? 0;
+      if (currentEnergy < energyCost) {
+        canAffordEnergy = false;
+        Logger.debug(LogCategory.ACTIONS, `Insufficient energy (${currentEnergy.toFixed(1)}) for ${category} click (cost: ${energyCost})`, LogContext.ACTION_PROCESSING);
+      }
+    }
+
+    // If requires energy and cannot afford, stop processing
+    if (requiresEnergy && !canAffordEnergy) {
+      return;
+    }
+
+    // Consume energy if required
+    if (requiresEnergy) {
+      if (state.categories.reactor) { // Safety check
+          state.categories.reactor.resources.energy = Math.max(0, (state.categories.reactor.resources.energy ?? 0) - energyCost);
+          Logger.debug(LogCategory.ACTIONS, `Consumed ${energyCost} energy for ${category} click. Remaining: ${state.categories.reactor.resources.energy.toFixed(1)}`, LogContext.ACTION_PROCESSING);
+      } else {
+          Logger.warn(LogCategory.ACTIONS, `Cannot consume energy for ${category} click: Reactor category missing.`, LogContext.ACTION_PROCESSING);
+          // Decide if the click should still proceed without energy cost?
+          // For now, let it proceed but log warning.
+      }
+    }
+
+    // Proceed with resource generation based on category
     switch (category) {
       case 'reactor':
-        return this.handleReactorClick(state);
+        this.handleReactorClick(state);
+        break;
       case 'processor':
-        return this.handleProcessorClick(state);
+        this.handleProcessorClick(state);
+        break;
       case 'manufacturing':
-        return this.handleManufacturingClick(state);
+        this.handleManufacturingClick(state);
+        break;
       case 'crewQuarters':
-        return this.handleCrewQuartersClick(state);
+        this.handleCrewQuartersClick(state);
+        break;
       default:
         Logger.warn(
           LogCategory.ACTIONS,
           `Unknown resource category: ${category}`,
           LogContext.NONE
         );
-        return state;
     }
   }
   
   /**
    * Handle reactor energy click
    */
-  private handleReactorClick(state: GameState): GameState {
+  private handleReactorClick(state: GameState): void {
     const reactor = state.categories.reactor;
     
     Logger.debug(
@@ -169,13 +211,12 @@ export class ActionSystem {
         LogContext.REACTOR_LIFECYCLE
       );
     }
-    return state;
   }
   
   /**
    * Handle processor insight click
    */
-  private handleProcessorClick(state: GameState): GameState {
+  private handleProcessorClick(state: GameState): void {
     const processor = state.categories.processor;
     
     Logger.debug(
@@ -203,13 +244,12 @@ export class ActionSystem {
         LogContext.PROCESSOR_LIFECYCLE
       );
     }
-    return state;
   }
   
   /**
    * Handle manufacturing scrap click
    */
-  private handleManufacturingClick(state: GameState): GameState {
+  private handleManufacturingClick(state: GameState): void {
     const manufacturing = state.categories.manufacturing;
     
     Logger.debug(
@@ -237,13 +277,12 @@ export class ActionSystem {
         LogContext.MANUFACTURING_LIFECYCLE
       );
     }
-    return state;
   }
   
   /**
    * Handle crew quarters click for awakening crew
    */
-  private handleCrewQuartersClick(state: GameState): GameState {
+  private handleCrewQuartersClick(state: GameState): void {
     const crewQuarters = state.categories.crewQuarters;
     
     Logger.debug(
@@ -259,7 +298,7 @@ export class ActionSystem {
         `Crew Quarters already at capacity (${crewQuarters.stats.crewCapacity})`,
         LogContext.CREW_LIFECYCLE
       );
-      return state;
+      return;
     }
     
     // Increment awakening progress
@@ -286,8 +325,6 @@ export class ActionSystem {
         LogContext.CREW_LIFECYCLE
       );
     }
-    
-    return state;
   }
   
   /**
@@ -330,12 +367,26 @@ export class ActionSystem {
         LogContext.UPGRADE_PURCHASE
       );
     } else {
+      // Log the fallback case
+      if (!this.manager) {
+        console.error("[ActionSystem] FATAL: Manager was null during upgrade purchase! Using temporary UpgradeSystem.");
+      }
       Logger.warn(
         LogCategory.UPGRADES, 
         `Failed to purchase ${upgradeType} for ${category} - insufficient resources`,
         LogContext.UPGRADE_PURCHASE
       );
     }
+
+    // Trigger stats update after changing active level
+    // Log the manager status BEFORE the check
+    console.log(`[ActionSystem] Checking manager before updateAllStats:`, this.manager ? 'Manager exists' : 'Manager is NULL');
+    if (this.manager) {
+        this.manager.upgrade.updateAllStats(state);
+    } else {
+        console.error("[ActionSystem] FATAL: Manager was null during automation adjustment! Cannot call updateAllStats.");
+    }
+
     return state;
   }
 
@@ -427,132 +478,37 @@ export class ActionSystem {
   }
   
   /**
-   * Handle selecting a region to navigate to
+   * Handle region selection
    */
-  private handleSelectRegion(state: GameState, region: RegionType): GameState {
-    Logger.info(
-      LogCategory.ACTIONS,
-      `Navigating to ${region} region`,
-      LogContext.NONE
-    );
-    
-    // Directly update the state
-    state.navigation.currentRegion = region;
-    
-    return state;
-  }
-
-  /**
-   * Handle a story choice action
-   */
-  private handleStoryChoice(state: GameState, action: MakeStoryChoiceAction): GameState {
-    Logger.debug(
-      LogCategory.ACTIONS,
-      `Making story choice: ${action.payload?.choiceId}`,
-      LogContext.NONE
-    );
-    
-    if (!action.payload?.choiceId) {
-      Logger.error(
-        LogCategory.ACTIONS,
-        'No choice ID provided for story choice action',
-        LogContext.NONE
-      );
-      return state;
+  private handleSelectRegion(state: GameState, action: SelectRegionAction): void {
+    // Ensure payload and region exist
+    if (!action.payload || !action.payload.region) {
+      Logger.warn(LogCategory.ACTIONS, `Invalid payload for SELECT_REGION action`, LogContext.NONE);
+      return;
     }
     
-    if (!this.manager) {
-      Logger.error(
-        LogCategory.ACTIONS,
-        'Game system manager not set',
-        LogContext.NONE
-      );
-      return state;
-    }
-    
-    // Use the encounter system to process the choice
-    const encounterSystem = this.manager.encounter;
-    return encounterSystem.completeEncounter(state, action.payload.choiceId);
-  }
+    const selectedRegionId = action.payload.region; // Use action.payload.region
 
-  /**
-   * Handle combat actions
-   */
-  private handleCombatAction(state: GameState, action: any): GameState {
-    if (!this.manager) {
-      Logger.error(
-        LogCategory.ACTIONS,
-        'Game system manager not set',
-        LogContext.COMBAT_ACTION
-      );
-      return state;
+    // Validate region ID (this assumes RegionType includes all valid IDs)
+    const validRegions = Object.values(RegionType) as string[];
+    if (!validRegions.includes(selectedRegionId)) {
+      Logger.warn(LogCategory.ACTIONS, `Invalid region selected: ${selectedRegionId}`, LogContext.NONE);
+      return;
     }
 
-    Logger.info(
-      LogCategory.COMBAT,
-      `Processing combat action: ${action.payload?.actionId}`,
-      LogContext.COMBAT_ACTION
-    );
-    
-    // Use the combat system to process the action
-    const actionId = action.payload?.actionId;
-    if (!actionId) {
-      Logger.error(
-        LogCategory.COMBAT,
-        'No action ID provided for combat action',
-        LogContext.COMBAT_ACTION
-      );
-      return state;
-    }
-    
-    // Perform the combat action - direct mutation happens in performCombatAction
-    const result = this.manager.combat.performCombatAction(state, actionId);
-    
-    // Update the combat state with the result
-    if (result.success) {
-      // Record the action result in the combat state
-      state.combat.lastActionResult = result;
-      
-      // Add a log entry if provided
-      if (result.message) {
-        state.combat.battleLog.push({
-          id: uuidv4(),
-          text: result.message,
-          type: 'PLAYER',
-          timestamp: Date.now()
-        });
-      }
+    // Ensure navigation state exists
+    if (!state.navigation) {
+      state.navigation = {
+        currentRegion: selectedRegionId as RegionType,
+        completedRegions: [],
+        regionProgress: {}
+      };
     } else {
-      // Log the failure
-      Logger.warn(
-        LogCategory.COMBAT,
-        `Combat action failed: ${result.message}`,
-        LogContext.COMBAT_ACTION
-      );
+      // Update the current region
+      state.navigation.currentRegion = selectedRegionId as RegionType;
     }
     
-    return state;
-  }
+    // Reset subregion when changing main regions
+    state.navigation.currentSubRegion = undefined;
 
-  /**
-   * Handle retreat from battle
-   */
-  private handleRetreatFromBattle(state: GameState): GameState {
-    if (!this.manager) {
-      Logger.error(
-        LogCategory.ACTIONS,
-        'Game system manager not set',
-        LogContext.COMBAT
-      );
-      return state;
-    }
-
-    Logger.info(
-      LogCategory.COMBAT,
-      'Retreating from battle',
-      LogContext.COMBAT
-    );
-    
-    return this.manager.combat.retreatFromCombat(state);
-  }
-} 
+    Logger.info(LogCategory.ACTIONS, `

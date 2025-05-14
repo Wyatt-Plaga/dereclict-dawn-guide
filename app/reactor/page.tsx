@@ -1,75 +1,24 @@
 "use client"
 
 import { NavBar } from "@/components/ui/navbar"
-import { Battery, Zap, ArrowUpCircle } from "lucide-react"
+import { Battery, Zap, ArrowUpCircle, MinusCircle, PlusCircle } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
-import { useGame } from "@/app/game/hooks/useGame"
+import { useReactor } from "@/app/game/hooks/useReactor"
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
+import { Button } from "@/components/ui/button"
 
 export default function ReactorPage() {
-  const { state, dispatch } = useGame()
+  const reactor = useReactor()
   const { shouldFlicker } = useSystemStatus()
-  
-  // Get reactor data from game state
-  const reactor = state.categories.reactor
-  const { energy } = reactor.resources
-  const { energyCapacity, energyPerSecond } = reactor.stats
   
   // Log component render
   Logger.debug(
     LogCategory.UI,
-    `Rendering ReactorPage: Energy: ${energy}/${energyCapacity}`,
+    `Rendering ReactorPage: Energy: ${reactor.formattedEnergy}/${reactor.formattedCapacity}, Active Converters: ${reactor.activeEnergyConverters}/${reactor.energyConverters}`,
     LogContext.UI_RENDER
   )
-  
-  // Handle reactor click
-  const generateEnergy = () => {
-    Logger.debug(LogCategory.ACTIONS, "Manual energy generation clicked", LogContext.REACTOR_LIFECYCLE)
-    dispatch({
-      type: 'CLICK_RESOURCE',
-      payload: { category: 'reactor' }
-    })
-  }
-  
-  // Upgrade energy capacity
-  const upgradeCapacity = () => {
-    Logger.debug(
-      LogCategory.UI, 
-      'Upgrade reactor capacity clicked', 
-      [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-    );
-    
-    dispatch({
-      type: 'PURCHASE_UPGRADE',
-      payload: {
-        category: 'reactor',
-        upgradeType: 'reactorExpansions'
-      }
-    })
-  }
-  
-  // Upgrade auto generation
-  const upgradeAutoGeneration = () => {
-    Logger.debug(
-      LogCategory.UI, 
-      'Upgrade energy converters clicked', 
-      [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-    );
-    
-    dispatch({
-      type: 'PURCHASE_UPGRADE',
-      payload: {
-        category: 'reactor',
-        upgradeType: 'energyConverters'
-      }
-    })
-  }
-  
-  // Calculate upgrade costs
-  const expansionCost = Math.floor(energyCapacity * 0.8)
-  const converterCost = (reactor.upgrades.energyConverters + 1) * 20
   
   return (
     <GameLoader>
@@ -83,25 +32,69 @@ export default function ReactorPage() {
               The ship's primary energy generation system. Repair and enhance to power all ship functions.
             </p>
             
-            {/* Resource display */}
             <div className="mb-8">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center">
-                  <Battery className="h-5 w-5 text-chart-1 mr-2" />
-                  <span className="terminal-text">Energy</span>
+              <div className="flex flex-col md:flex-row md:items-center md:gap-4">
+                {reactor.energyConverters > 0 && (
+                  <div className="order-2 md:order-1 mt-3 md:mt-0 mb-3 md:mb-0 bg-background/30 rounded-md p-2 md:min-w-[140px]">
+                    <div className="text-center mb-1">
+                      <span className="text-xs text-muted-foreground">Active Converters</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={(e: React.MouseEvent) => { 
+                          e.stopPropagation(); 
+                          reactor.adjustActiveConverters('decrease'); 
+                        }} 
+                        disabled={!reactor.canDecreaseConverters}
+                        className="h-7 w-7 rounded-md"
+                      >
+                        <MinusCircle className="h-4 w-4" />
+                      </Button>
+
+                      <span className="font-mono text-sm font-semibold mx-2">
+                        {reactor.activeEnergyConverters}/{reactor.energyConverters}
+                      </span>
+
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={(e: React.MouseEvent) => { 
+                          e.stopPropagation(); 
+                          reactor.adjustActiveConverters('increase'); 
+                        }} 
+                        disabled={!reactor.canIncreaseConverters}
+                        className="h-7 w-7 rounded-md"
+                      >
+                        <PlusCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="order-1 md:order-2 flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      <Battery className="h-5 w-5 text-chart-1 mr-2" />
+                      <span className="terminal-text">Energy</span>
+                    </div>
+                    <span className="font-mono">{Math.floor(reactor.formattedEnergy)} / {Math.floor(reactor.formattedCapacity)}</span>
+                  </div>
+                  <Progress value={(reactor.energy / reactor.energyCapacity) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-1" />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {reactor.energyPerSecond > 0 && <span>+{reactor.energyPerSecond.toFixed(1)} per second</span>}
+                  </div>
                 </div>
-                <span className="font-mono">{Math.floor(energy)} / {Math.floor(energyCapacity)}</span>
-              </div>
-              <Progress value={(energy / energyCapacity) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-1" />
-              <div className="text-xs text-muted-foreground mt-1">
-                {energyPerSecond > 0 && <span>+{energyPerSecond} per second</span>}
               </div>
             </div>
             
-            {/* Manual button */}
             <button 
-              onClick={generateEnergy} 
-              className="system-panel w-full py-8 flex items-center justify-center mb-8 hover:bg-accent/10 transition-colors"
+              onClick={reactor.generateEnergy}
+              disabled={!reactor.canGenerate}
+              className={`system-panel w-full py-8 flex items-center justify-center mb-8 transition-colors ${
+                !reactor.canGenerate ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent/10'
+              }`}
             >
               <div className="flex flex-col items-center">
                 <Zap className={`h-12 w-12 text-chart-1 mb-2 ${shouldFlicker('reactor') ? 'flickering-text' : ''}`} />
@@ -110,43 +103,40 @@ export default function ReactorPage() {
               </div>
             </button>
             
-            {/* Upgrades section */}
             <div className="space-y-4">
               <h2 className="text-lg font-semibold terminal-text">Upgrades</h2>
               
-              {/* Capacity upgrade */}
-              <div className={`system-panel p-4 ${energy >= expansionCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
-                   onClick={upgradeCapacity}>
+              <div className={`system-panel p-4 ${reactor.canUpgradeExpansions ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+                   onClick={reactor.upgradeExpansions}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center">
                     <ArrowUpCircle className="h-5 w-5 text-chart-1 mr-2" />
                     <span>Reactor Expansion</span>
                   </div>
-                  <span className="font-mono text-xs">{expansionCost} Energy</span>
+                  <span className="font-mono text-xs">{reactor.expansionCost}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Expand energy storage capacity to {Math.floor(energyCapacity * 1.5)}
+                  {reactor.expansionDescription}
                 </p>
                 <div className="mt-2 text-xs">
-                  Level: {reactor.upgrades.reactorExpansions}
+                  Level: {reactor.reactorExpansions}
                 </div>
               </div>
               
-              {/* Auto generation upgrade */}
-              <div className={`system-panel p-4 ${energy >= converterCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
-                   onClick={upgradeAutoGeneration}>
+              <div className={`system-panel p-4 ${reactor.canUpgradeConverters ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+                   onClick={reactor.upgradeConverters}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center">
                     <Zap className="h-5 w-5 text-chart-1 mr-2" />
                     <span>Energy Converter</span>
                   </div>
-                  <span className="font-mono text-xs">{converterCost} Energy</span>
+                  <span className="font-mono text-xs">{reactor.converterCost}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Add +1 automatic energy generation per second
+                  {reactor.converterDescription}
                 </p>
                 <div className="mt-2 text-xs">
-                  Level: {reactor.upgrades.energyConverters}
+                  Purchased: {reactor.energyConverters}
                 </div>
               </div>
             </div>

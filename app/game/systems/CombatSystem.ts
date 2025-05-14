@@ -17,14 +17,14 @@ import { REGION_DEFINITIONS } from '@/app/game/content/regions';
 
 // Try multiple import strategies for ALL_ENEMIES_MAP
 // First attempt: direct import from the specific file
-import { ALL_ENEMIES, ALL_ENEMIES_MAP as ENEMIES_MAP } from '../content/enemies/index';
+import { ALL_ENEMIES_MAP as ENEMIES_MAP } from '../content/enemies/index'; // Use the map directly
 
-// Create a fallback map in case the import fails
-const ALL_ENEMIES_MAP: Record<string, EnemyDefinition> = ENEMIES_MAP || {};
+// Create a fallback map in case the import fails - Removed fallback, relying on direct import
+const ALL_ENEMIES_MAP: Record<string, EnemyDefinition> = ENEMIES_MAP;
 
 // Log for debugging
 console.log('ALL_ENEMIES_MAP loaded status:', ALL_ENEMIES_MAP ? 'Defined' : 'Undefined', 
-            'Keys:', Object.keys(ALL_ENEMIES_MAP).length);
+            'Keys:', ALL_ENEMIES_MAP ? Object.keys(ALL_ENEMIES_MAP).length : 'N/A');
 
 import { EventBus } from '../core/EventBus';
 
@@ -85,7 +85,8 @@ export class CombatSystem {
       
       state.navigation = {
         currentRegion: toRegion,
-        completedRegions: []
+        completedRegions: [],
+        regionProgress: {} // Added missing property
       };
     }
     
@@ -368,22 +369,41 @@ export class CombatSystem {
       if (reward.probability && Math.random() > reward.probability) {
         return;
       }
-      
-      // Emit event instead of direct mutation
-      this.eventBus.emit('resourceChange', {
-          state: state, // Keep passing state if handler needs it
-          resourceType: reward.type,
-          amount: reward.amount, // Positive amount for reward
-          source: 'combat-victory' 
-      });
-      
-      // Add log entry (ensure consistency with event emission)
-      this.addBattleLog(state, {
-        id: uuidv4(),
-        timestamp: Date.now(),
-        text: `Recovered ${reward.amount} ${reward.type} from the encounter.`, // Log what was intended
-        type: 'SYSTEM'
-      });
+
+      // Handle new global resources directly
+      if (reward.type === 'combatComponents') {
+        state.combatComponents += reward.amount;
+        this.addBattleLog(state, {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          text: `Recovered ${reward.amount} Combat Components.`,
+          type: 'SYSTEM'
+        });
+      } else if (reward.type === 'bossMatrix') {
+        state.bossMatrix += reward.amount;
+        this.addBattleLog(state, {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          text: `Recovered ${reward.amount} Boss Matrix!`,
+          type: 'SYSTEM'
+        });
+      } else {
+        // Handle existing resources via event bus (or potentially ResourceSystem.addResource if we refactor)
+        this.eventBus.emit('resourceChange', {
+            state: state, // Keep passing state if handler needs it
+            resourceType: reward.type,
+            amount: reward.amount, // Positive amount for reward
+            source: 'combat-victory' 
+        });
+        
+        // Add log entry (ensure consistency with event emission)
+        this.addBattleLog(state, {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          text: `Recovered ${reward.amount} ${reward.type} from the encounter.`, // Log what was intended
+          type: 'SYSTEM'
+        });
+      }
     });
   }
 
@@ -763,46 +783,23 @@ export class CombatSystem {
     // Log for debugging
     console.log('Getting enemy definition for:', enemyId);
     console.log('ALL_ENEMIES_MAP status:', ALL_ENEMIES_MAP ? 'Defined' : 'Undefined', 
-                'Keys:', Object.keys(ALL_ENEMIES_MAP).length);
+                'Keys:', ALL_ENEMIES_MAP ? Object.keys(ALL_ENEMIES_MAP).length : 'N/A');
     
-    // First attempt: Check if map exists and has the enemy
+    // Attempt using the imported map directly
     if (ALL_ENEMIES_MAP && ALL_ENEMIES_MAP[enemyId]) {
       return ALL_ENEMIES_MAP[enemyId];
     }
     
-    // Fallback: Look directly in the ALL_ENEMIES array if available
-    if (ALL_ENEMIES) {
-      console.log('Fallback: Searching in ALL_ENEMIES array');
-      const enemy = ALL_ENEMIES.find(e => e.id === enemyId);
-      if (enemy) {
-        console.log('Found enemy in ALL_ENEMIES array:', enemy.name);
-        return enemy;
-      }
+    // Fallback: Check if the ID exists as a key in the map anyway (might handle dynamic loading issues)
+    if (ALL_ENEMIES_MAP && Object.keys(ALL_ENEMIES_MAP).includes(enemyId)) {
+        console.warn(`Enemy ID ${enemyId} found in keys but not directly accessible, returning map entry.`);
+        return ALL_ENEMIES_MAP[enemyId];
     }
-    
-    // Additional fallback for common enemy ID formats
-    // Enemy IDs might be in format "region-name" or just "name"
-    if (ALL_ENEMIES) {
-      // Try with different region prefixes if the direct ID fails
-      const possibleMatches = ALL_ENEMIES.filter(e => 
-        // Check if the ID ends with enemyId (e.g., "void-scavenger" matches "scavenger")
-        e.id.endsWith(`-${enemyId}`) || 
-        // Or check if it's exactly equal
-        e.id === enemyId || 
-        // For common test cases, also check for "scavenger" vs "void-service-bot"
-        (enemyId === 'scavenger' && e.id.includes('scavenger'))
-      );
-      
-      if (possibleMatches.length > 0) {
-        console.log('Found possible match by partial ID:', possibleMatches[0].name);
-        return possibleMatches[0];
-      }
-    }
-    
+
     // Log the failure
     Logger.warn(
         LogCategory.COMBAT,
-        `Enemy definition not found for ID: ${enemyId}. Available enemies: ${ALL_ENEMIES ? ALL_ENEMIES.map(e => e.id).join(', ') : 'none'}`,
+        `Enemy definition not found for ID: ${enemyId}. Available keys in map: ${ALL_ENEMIES_MAP ? Object.keys(ALL_ENEMIES_MAP).join(', ') : 'none'}`,
         LogContext.COMBAT
     );
     
@@ -900,7 +897,7 @@ export class CombatSystem {
     }
     
     // Calculate total weight
-    const totalWeight = possibleEnemies.reduce((sum, entry) => sum + entry.weight, 0);
+    const totalWeight = possibleEnemies.reduce((sum: number, entry: { weight: number }) => sum + entry.weight, 0);
     Logger.debug(
       LogCategory.COMBAT,
       `Total weight: ${totalWeight}`,

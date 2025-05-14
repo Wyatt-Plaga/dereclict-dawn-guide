@@ -45,7 +45,8 @@ export const VOID_ENEMIES: EnemyDefinition[] = [
         ],
         loot: [
           { type: 'scrap', amount: 5 },
-          { type: 'energy', amount: 2, probability: 0.5 }
+          { type: 'energy', amount: 2, probability: 0.5 },
+          { type: 'combatComponents', amount: 1, probability: 0.5 }
         ]
     },
     {

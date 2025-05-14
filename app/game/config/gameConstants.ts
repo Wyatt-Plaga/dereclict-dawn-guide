@@ -19,6 +19,7 @@ export const CrewQuartersConstants = {
   AWAKENING_THRESHOLD: 10,
   CREW_PER_CLICK: 1,
   WORKER_CREW_PRODUCTION_RATE: 1.0,
+  ENERGY_COST_PER_CREW_AWAKENING_SECOND: 0.5,
   
   // Cost multipliers
   QUARTERS_COST_MULTIPLIER: 0.6,
@@ -46,6 +47,7 @@ export const ProcessorConstants = {
   INSIGHT_CAPACITY_MULTIPLIER: 1.5,
   INSIGHT_PER_CLICK: 0.5,
   INSIGHT_PER_THREAD: 0.2,
+  ENERGY_COST_PER_INSIGHT_SECOND: 0.1,
   
   EXPANSION_COST_MULTIPLIER: 0.7,
   THREAD_COST_BASE: 15
@@ -59,7 +61,13 @@ export const ManufacturingConstants = {
   SCRAP_CAPACITY_MULTIPLIER: 1.5,
   SCRAP_PER_CLICK: 1,
   SCRAP_PER_BAY: 0.5,
+  ENERGY_COST_PER_SCRAP_SECOND: 0.2,
   
   EXPANSION_COST_MULTIPLIER: 0.5,
   BAY_COST_BASE: 25
+};
+
+export const AutomationConstants = {
+  ENERGY_COST_PER_CLICK: 0.1, // Energy cost for manual resource generation clicks
+  ENERGY_COST_PER_ACTIVE_UNIT_PER_SECOND: 0.1, // Energy cost per active automation unit per second
 }; 

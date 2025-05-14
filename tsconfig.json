@@ -16,6 +16,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "types": ["jest"],
     "plugins": [
       {
         "name": "next"
@@ -24,6 +25,18 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "core/*": [
+        "./core/*"
+      ],
+      "game/*": [
+        "./game/*"
+      ],
+      "ui/*": [
+        "./ui/*"
+      ],
+      "assets/*": [
+        "./assets/*"
       ]
     },
     "target": "ES2017"

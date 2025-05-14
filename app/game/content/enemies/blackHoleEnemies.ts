@@ -393,7 +393,7 @@ export const SINGULARITY_ECHO_BOSS: EnemyDefinition = {
             probability: 0.2
         }
     ],
-    loot: [ { type: 'scrap', amount: 60 }, { type: 'energy', amount: 40 }, { type: 'insight', amount: 30 } ]
+    loot: [ { type: 'scrap', amount: 60 }, { type: 'energy', amount: 40 }, { type: 'insight', amount: 30 }, { type: 'bossMatrix', amount: 1 } ]
 };
 
 // Combine all enemies from this region into one export array (optional but good practice)

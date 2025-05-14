@@ -78,7 +78,8 @@ export interface ReactorCategory {
     };
     stats: {
         energyCapacity: number;
-        energyPerSecond: number;    // Auto-generation rate
+        energyPerSecond: number;    // Auto-generation rate based on active converters
+        activeEnergyConverters: number; // Added: Active level of automation
     };
 }
 
@@ -95,8 +96,9 @@ export interface ProcessorCategory {
     };
     stats: {
         insightCapacity: number;
-        insightPerSecond: number;     // Auto-generation rate
+        insightPerSecond: number;     // Auto-generation rate based on active threads
         insightPerClick: number;      // Currently fixed at 0.5
+        activeProcessingThreads: number; // Added: Active level of automation
     };
 }
 
@@ -113,8 +115,9 @@ export interface CrewQuartersCategory {
     };
     stats: {
         crewCapacity: number;
-        crewPerSecond: number;       // Auto-awakening rate
+        crewPerSecond: number;       // Auto-awakening rate based on active crews
         awakeningProgress: number;   // Tracks 0-10 clicks for manual awakening
+        activeWorkerCrews: number;   // Added: Active level of automation
     };
 }
 
@@ -131,7 +134,8 @@ export interface ManufacturingCategory {
     };
     stats: {
         scrapCapacity: number;
-        scrapPerSecond: number;       // Auto-collection rate
+        scrapPerSecond: number;       // Auto-collection rate based on active bays
+        activeManufacturingBays: number; // Added: Active level of automation
     };
 }
 
@@ -313,6 +317,10 @@ export interface GameState {
      * Combat state
      */
     combat: CombatState;
+
+    // Added: Global resources not tied to a category
+    combatComponents: number;
+    bossMatrix: number;
 }
 
 /**
@@ -330,7 +338,8 @@ export const initialGameState: GameState = {
             },
             stats: {
                 energyCapacity: 100,
-                energyPerSecond: 0,  // Will increase with energyConverters
+                energyPerSecond: 0,
+                activeEnergyConverters: 0,
             }
         },
         processor: {
@@ -343,8 +352,9 @@ export const initialGameState: GameState = {
             },
             stats: {
                 insightCapacity: 50,
-                insightPerSecond: 0,  // Will increase with processingThreads
+                insightPerSecond: 0,
                 insightPerClick: 0.5,
+                activeProcessingThreads: 0,
             }
         },
         crewQuarters: {
@@ -357,8 +367,9 @@ export const initialGameState: GameState = {
             },
             stats: {
                 crewCapacity: 5,
-                crewPerSecond: 0,  // Will increase with workerCrews
+                crewPerSecond: 0,
                 awakeningProgress: 0,
+                activeWorkerCrews: 0,
             }
         },
         manufacturing: {
@@ -371,7 +382,8 @@ export const initialGameState: GameState = {
             },
             stats: {
                 scrapCapacity: 100,
-                scrapPerSecond: 0,  // Will increase with manufacturingBays
+                scrapPerSecond: 0,
+                activeManufacturingBays: 0,
             }
         }
     },
@@ -423,7 +435,9 @@ export const initialGameState: GameState = {
             scrap: 0
         },
         enemyIntentions: null
-    }
+    },
+    combatComponents: 0,
+    bossMatrix: 0
 };
 
 // Export RegionType so it can be imported from this index file

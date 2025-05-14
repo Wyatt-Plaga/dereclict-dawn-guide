@@ -1,5 +1,6 @@
 import { GameState } from '../types';
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
+import { ProcessorConstants, CrewQuartersConstants, ManufacturingConstants } from '../config/gameConstants';
 
 /**
  * ResourceSystem
@@ -9,128 +10,65 @@ import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
  */
 export class ResourceSystem {
   /**
-   * Update all resources based on production rates and time passed
+   * Update resources based on production rates
    * 
    * @param state - Current game state
-   * @param delta - Time passed in seconds since last update
+   * @param delta - Time since last update in seconds
+   * @param automationHasPower - Flag indicating if automation units have power
    */
-  update(state: GameState, delta: number) {
-    this.updateReactor(state, delta);
-    this.updateProcessor(state, delta);
-    this.updateCrewQuarters(state, delta);
-    this.updateManufacturing(state, delta);
-  }
-
-  /**
-   * Update reactor resources (energy)
-   */
-  private updateReactor(state: GameState, delta: number) {
+  update(state: GameState, delta: number, automationHasPower: boolean = true): void {
+    // 1. Energy Generation (Reactor) - Not affected by automation power cost
     const reactor = state.categories.reactor;
-    const energyProduced = reactor.stats.energyPerSecond * delta;
-    
-    // Only process if there's actual production
-    if (energyProduced > 0) {
-      // Add resources but don't exceed capacity
-      reactor.resources.energy = Math.min(
-        reactor.resources.energy + energyProduced,
-        reactor.stats.energyCapacity
-      );
-    }
-  }
-
-  /**
-   * Update processor resources (insight)
-   */
-  private updateProcessor(state: GameState, delta: number) {
-    const processor = state.categories.processor;
-    const insightProduced = processor.stats.insightPerSecond * delta;
-    
-    if (insightProduced > 0) {
-      processor.resources.insight = Math.min(
-        processor.resources.insight + insightProduced,
-        processor.stats.insightCapacity
-      );
-    }
-  }
-
-  /**
-   * Update crew quarters resources (crew)
-   */
-  private updateCrewQuarters(state: GameState, delta: number) {
-    const crewQuarters = state.categories.crewQuarters;
-    const awakeningProgressPerSecond = crewQuarters.stats.crewPerSecond;
-    const progressAdded = awakeningProgressPerSecond * delta;
-    
-    // Log crew production
-    if (awakeningProgressPerSecond > 0) {
-      Logger.debug(
-        LogCategory.RESOURCES,
-        `Crew production: ${progressAdded.toFixed(5)} progress (rate: ${awakeningProgressPerSecond}/s, delta: ${delta.toFixed(5)}s)`,
-        LogContext.CREW_LIFECYCLE
-      );
-    }
-    
-    if (progressAdded > 0 && crewQuarters.resources.crew < crewQuarters.stats.crewCapacity) {
-      // Log current values before update
-      const oldProgress = crewQuarters.stats.awakeningProgress;
-      const oldCrew = crewQuarters.resources.crew;
-      
-      // Add progress
-      crewQuarters.stats.awakeningProgress += progressAdded;
-      
-      // Check if we've reached the threshold to add crew
-      while (crewQuarters.stats.awakeningProgress >= 10 && crewQuarters.resources.crew < crewQuarters.stats.crewCapacity) {
-        // Add one crew member
-        crewQuarters.resources.crew = Math.min(
-          crewQuarters.resources.crew + 1,
-          crewQuarters.stats.crewCapacity
-        );
-        
-        // Subtract 10 from progress
-        crewQuarters.stats.awakeningProgress -= 10;
-        
-        Logger.info(
-          LogCategory.RESOURCES,
-          `Crew member auto-awakened! Current crew: ${crewQuarters.resources.crew}`,
-          LogContext.CREW_LIFECYCLE
+    if (reactor) {
+      const energyPerSecond = reactor.stats.energyPerSecond;
+      if (energyPerSecond > 0) {
+        reactor.resources.energy = Math.min(
+          reactor.stats.energyCapacity,
+          reactor.resources.energy + energyPerSecond * delta
         );
       }
-      
-      // Cap awakening progress at 10
-      crewQuarters.stats.awakeningProgress = Math.min(crewQuarters.stats.awakeningProgress, 10);
-      
-      // Log the change
-      if (oldProgress !== crewQuarters.stats.awakeningProgress || oldCrew !== crewQuarters.resources.crew) {
-        Logger.debug(
-          LogCategory.RESOURCES,
-          `Awakening progress updated: ${oldProgress.toFixed(2)} -> ${crewQuarters.stats.awakeningProgress.toFixed(2)}`,
-          LogContext.CREW_LIFECYCLE
+    }
+    
+    // 2. Insight Generation (Processor)
+    const processor = state.categories.processor;
+    if (processor && automationHasPower) { // Check power
+      const insightPerSecond = processor.stats.insightPerSecond;
+      if (insightPerSecond > 0) {
+        processor.resources.insight = Math.min(
+          processor.stats.insightCapacity,
+          processor.resources.insight + insightPerSecond * delta
         );
-        
-        if (oldCrew !== crewQuarters.resources.crew) {
-          Logger.debug(
-            LogCategory.RESOURCES,
-            `Crew updated: ${oldCrew.toFixed(2)} -> ${crewQuarters.resources.crew.toFixed(2)}`,
-            LogContext.CREW_LIFECYCLE
+      }
+    } // If !automationHasPower, insight doesn't increase
+    
+    // 3. Crew Awakening (Crew Quarters)
+    const crewQuarters = state.categories.crewQuarters;
+    if (crewQuarters && automationHasPower) { // Check power
+      const crewPerSecond = crewQuarters.stats.crewPerSecond;
+      if (crewPerSecond > 0 && crewQuarters.resources.crew < crewQuarters.stats.crewCapacity) {
+        crewQuarters.stats.awakeningProgress += crewPerSecond * delta;
+        if (crewQuarters.stats.awakeningProgress >= CrewQuartersConstants.AWAKENING_THRESHOLD) {
+          const newCrew = Math.floor(crewQuarters.stats.awakeningProgress / CrewQuartersConstants.AWAKENING_THRESHOLD);
+          crewQuarters.resources.crew = Math.min(
+            crewQuarters.stats.crewCapacity,
+            crewQuarters.resources.crew + newCrew
           );
+          crewQuarters.stats.awakeningProgress %= CrewQuartersConstants.AWAKENING_THRESHOLD;
         }
       }
-    }
-  }
-
-  /**
-   * Update manufacturing resources (scrap)
-   */
-  private updateManufacturing(state: GameState, delta: number) {
-    const manufacturing = state.categories.manufacturing;
-    const scrapProduced = manufacturing.stats.scrapPerSecond * delta;
+    } // If !automationHasPower, awakening progress doesn't increase
     
-    if (scrapProduced > 0) {
-      manufacturing.resources.scrap = Math.min(
-        manufacturing.resources.scrap + scrapProduced,
-        manufacturing.stats.scrapCapacity
-      );
-    }
+    // 4. Scrap Collection (Manufacturing)
+    const manufacturing = state.categories.manufacturing;
+    if (manufacturing && automationHasPower) { // Check power
+      const scrapPerSecond = manufacturing.stats.scrapPerSecond;
+      if (scrapPerSecond > 0) {
+        manufacturing.resources.scrap = Math.min(
+          manufacturing.stats.scrapCapacity,
+          manufacturing.resources.scrap + scrapPerSecond * delta
+        );
+      }
+    } // If !automationHasPower, scrap doesn't increase
   }
 
   /**
@@ -166,6 +104,16 @@ export class ResourceSystem {
           break;
         case 'scrap':
           if (state.categories.manufacturing.resources.scrap < amount) {
+            return false;
+          }
+          break;
+        case 'combatComponents':
+          if (state.combatComponents < amount) {
+            return false;
+          }
+          break;
+        case 'bossMatrix':
+          if (state.bossMatrix < amount) {
             return false;
           }
           break;
@@ -233,6 +181,22 @@ export class ResourceSystem {
           Logger.debug(
             LogCategory.RESOURCES,
             `Consumed ${amount} scrap`,
+            LogContext.COMBAT
+          );
+          break;
+        case 'combatComponents':
+          state.combatComponents -= amount;
+          Logger.debug(
+            LogCategory.RESOURCES,
+            `Consumed ${amount} combatComponents`,
+            LogContext.COMBAT
+          );
+          break;
+        case 'bossMatrix':
+          state.bossMatrix -= amount;
+          Logger.debug(
+            LogCategory.RESOURCES,
+            `Consumed ${amount} bossMatrix`,
             LogContext.COMBAT
           );
           break;

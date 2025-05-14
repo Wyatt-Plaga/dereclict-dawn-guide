@@ -1,82 +1,31 @@
 "use client"
 
 import { NavBar } from "@/components/ui/navbar"
-import { Package, Cog, Warehouse, Factory } from "lucide-react"
+import { Package, PackageSearch, ArrowUpCircle, MinusCircle, PlusCircle } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
-import { useGame } from "@/app/game/hooks/useGame"
+import { useManufacturing } from "@/app/game/hooks/useManufacturing"
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
+import { Button } from "@/components/ui/button"
+import { useGame } from "@/app/game/hooks/useGame"
 
 export default function ManufacturingPage() {
-  const { state, dispatch } = useGame()
+  const manufacturing = useManufacturing()
+  const { dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
   
-  // Get manufacturing data from game state
-  const manufacturing = state.categories.manufacturing
-  const { scrap } = manufacturing.resources
-  const { scrapCapacity, scrapPerSecond } = manufacturing.stats
+  // Early exit or loading state if manufacturing data isn't ready
+  if (!manufacturing) {
+    return <GameLoader><p>Loading Manufacturing...</p></GameLoader>;
+  }
   
   // Log component render
   Logger.debug(
     LogCategory.UI, 
-    `Manufacturing page rendering with scrap: ${scrap}`,
+    `Manufacturing page rendering with scrap: ${manufacturing.scrap}`,
     [LogContext.UI_RENDER, LogContext.MANUFACTURING_LIFECYCLE]
   );
-  
-  // Collect scrap on manual click
-  const collectScrap = () => {
-    Logger.debug(
-      LogCategory.UI, 
-      'Collect scrap button clicked', 
-      LogContext.MANUFACTURING_LIFECYCLE
-    );
-    
-    dispatch({
-      type: 'CLICK_RESOURCE',
-      payload: {
-        category: 'manufacturing'
-      }
-    })
-  }
-  
-  // Upgrade cargo capacity
-  const upgradeCargoHold = () => {
-    Logger.debug(
-      LogCategory.UI, 
-      'Upgrade cargo hold clicked', 
-      [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-    );
-    
-    dispatch({
-      type: 'PURCHASE_UPGRADE',
-      payload: {
-        category: 'manufacturing',
-        upgradeType: 'cargoHoldExpansions'
-      }
-    })
-  }
-  
-  // Upgrade manufacturing bay
-  const upgradeManufacturingBay = () => {
-    Logger.debug(
-      LogCategory.UI, 
-      'Upgrade manufacturing bay clicked', 
-      [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-    );
-    
-    dispatch({
-      type: 'PURCHASE_UPGRADE',
-      payload: {
-        category: 'manufacturing',
-        upgradeType: 'manufacturingBays'
-      }
-    })
-  }
-  
-  // Calculate upgrade costs
-  const expansionCost = Math.floor(scrapCapacity * 0.5)
-  const bayCost = (manufacturing.upgrades.manufacturingBays + 1) * 25
   
   return (
     <GameLoader>
@@ -90,33 +39,67 @@ export default function ManufacturingPage() {
               Salvage and process ship materials. Collect Scrap to construct upgrades and repair systems.
             </p>
             
-            {/* Resource display */}
+            {/* Resource display and automation controls */}
             <div className="mb-8">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center">
-                  <Package className="h-5 w-5 text-chart-4 mr-2" />
-                  <span className="terminal-text">Scrap</span>
+              <div className="flex flex-col md:flex-row md:items-center md:gap-4">
+                {manufacturing.manufacturingBays > 0 && (
+                  <div className="order-2 md:order-1 mt-3 md:mt-0 mb-3 md:mb-0 bg-background/30 rounded-md p-2 md:min-w-[140px]">
+                    <div className="text-center mb-1">
+                      <span className="text-xs text-muted-foreground">Active Bays</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); manufacturing.adjustActiveBays('decrease'); }} 
+                        disabled={!manufacturing.canDecreaseBays}
+                        className="h-7 w-7 rounded-md"
+                      >
+                        <MinusCircle className="h-4 w-4" />
+                      </Button>
+                      <span className="font-mono text-sm font-semibold mx-2">
+                        {manufacturing.activeManufacturingBays}/{manufacturing.manufacturingBays}
+                      </span>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); manufacturing.adjustActiveBays('increase'); }} 
+                        disabled={!manufacturing.canIncreaseBays}
+                        className="h-7 w-7 rounded-md"
+                      >
+                        <PlusCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="order-1 md:order-2 flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      <Package className="h-5 w-5 text-chart-4 mr-2" />
+                      <span className="terminal-text">Scrap</span>
+                    </div>
+                    <span className="font-mono">{manufacturing.scrap.toFixed(0)} / {manufacturing.scrapCapacity.toFixed(0)}</span>
+                  </div>
+                  <Progress value={(manufacturing.scrap / manufacturing.scrapCapacity) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-4" />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {manufacturing.scrapPerSecond > 0 && <span>+{manufacturing.scrapPerSecond.toFixed(1)} per second</span>}
+                  </div>
                 </div>
-                <span className="font-mono">{Math.floor(scrap)} / {Math.floor(scrapCapacity)}</span>
-              </div>
-              <Progress value={(scrap / scrapCapacity) * 100} className="h-2 bg-muted" indicatorClassName="bg-chart-4" />
-              <div className="text-xs text-muted-foreground mt-1">
-                {scrapPerSecond > 0 && <span>+{scrapPerSecond} per second</span>}
               </div>
             </div>
             
             {/* Manual button */}
             <button 
-              onClick={collectScrap} 
-              disabled={scrap >= scrapCapacity}
-              className={`system-panel w-full py-8 flex items-center justify-center mb-8 transition-colors ${
-                scrap >= scrapCapacity ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent/10'
+              onClick={manufacturing.collectScrap}
+              disabled={!manufacturing.canCollectWithEnergy}
+              className={`system-panel w-full py-8 flex items-center justify-center mb-8 hover:bg-accent/10 transition-colors ${
+                !manufacturing.canCollectWithEnergy ? 'opacity-60 cursor-not-allowed' : ''
               }`}
             >
               <div className="flex flex-col items-center">
-                <Cog className={`h-12 w-12 text-chart-4 mb-2 ${shouldFlicker('manufacturing') ? 'flickering-text' : ''}`} />
+                <PackageSearch className={`h-12 w-12 text-chart-4 mb-2 ${shouldFlicker('manufacturing') ? 'flickering-text' : ''}`} />
                 <span className="terminal-text">Collect Scrap</span>
-                <span className="text-xs text-muted-foreground mt-1">+1 Scrap per click</span>
               </div>
             </button>
             
@@ -124,76 +107,40 @@ export default function ManufacturingPage() {
             <div className="space-y-4">
               <h2 className="text-lg font-semibold terminal-text">Upgrades</h2>
               
-              {/* Cargo hold upgrade */}
-              <div 
-                className={`system-panel p-4 ${scrap >= expansionCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
-                onClick={upgradeCargoHold}
-              >
+              {/* Cargo Hold Expansions upgrade */}
+              <div className={`system-panel p-4 ${manufacturing.canUpgradeExpansions ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+                   onClick={manufacturing.upgradeCargoHoldExpansions}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center">
-                    <Warehouse className="h-5 w-5 text-chart-4 mr-2" />
+                    <ArrowUpCircle className="h-5 w-5 text-chart-4 mr-2" />
                     <span>Cargo Hold Expansion</span>
                   </div>
-                  <span className="font-mono text-xs">{expansionCost} Scrap</span>
+                  <span className="font-mono text-xs">{manufacturing.expansionCost}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Expand cargo storage capacity to {Math.floor(scrapCapacity * 1.5)}
+                  {manufacturing.expansionDescription}
                 </p>
                 <div className="mt-2 text-xs">
-                  Level: {manufacturing.upgrades.cargoHoldExpansions}
+                  Level: {manufacturing.cargoHoldExpansions}
                 </div>
               </div>
               
-              {/* Manufacturing bay upgrade */}
-              <div 
-                className={`system-panel p-4 ${scrap >= bayCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
-                onClick={upgradeManufacturingBay}
-              >
+              {/* Manufacturing Bays upgrade */}
+              <div className={`system-panel p-4 ${manufacturing.canUpgradeBays ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+                   onClick={manufacturing.upgradeManufacturingBays}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center">
-                    <Factory className="h-5 w-5 text-chart-4 mr-2" />
+                    <Package className="h-5 w-5 text-chart-4 mr-2" />
                     <span>Manufacturing Bay</span>
                   </div>
-                  <span className="font-mono text-xs">{bayCost} Scrap</span>
+                  <span className="font-mono text-xs">{manufacturing.bayCost}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Automated scrap collection (+0.5 per second)
+                  {manufacturing.bayDescription}
                 </p>
                 <div className="mt-2 text-xs">
-                  Level: {manufacturing.upgrades.manufacturingBays}
+                  Level: {manufacturing.manufacturingBays}
                 </div>
-              </div>
-              
-              {/* Manufacturing projects placeholder */}
-              <h2 className="text-lg font-semibold terminal-text pt-4 mt-6 border-t border-border">Projects</h2>
-              <p className="text-xs text-muted-foreground mb-4">
-                Use scrap to manufacture special components
-              </p>
-              
-              <div className="opacity-60 system-panel p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <Cog className="h-5 w-5 text-chart-4 mr-2" />
-                    <span>Hull Plating</span>
-                  </div>
-                  <span className="font-mono text-xs">200 Scrap</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Reinforce ship's hull integrity [Coming Soon]
-                </p>
-              </div>
-              
-              <div className="opacity-60 system-panel p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <Cog className="h-5 w-5 text-chart-4 mr-2" />
-                    <span>Navigation System</span>
-                  </div>
-                  <span className="font-mono text-xs">300 Scrap</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Repair ship's navigation capabilities [Coming Soon]
-                </p>
               </div>
             </div>
           </div>

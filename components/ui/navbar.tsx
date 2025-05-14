@@ -37,7 +37,12 @@ export function NavBar() {
   const unreadLogsCount = state?.logs?.unread?.length || 0
 
   // Format number to show with one decimal place when needed, but as an integer when possible
-  const formatNumber = (num: number) => {
+  const formatNumber = (num: number | null | undefined) => {
+    // Handle null/undefined cases
+    if (num === null || num === undefined) {
+      return '0'; // Default to showing '0'
+    }
+    // Format the number
     return num % 1 === 0 ? num.toString() : num.toFixed(1);
   }
 
