@@ -15,7 +15,9 @@ export enum RegionType {
   ASTEROID_FIELD = 'asteroid',
   HABITABLE_ZONE = 'habitable',
   SUPERNOVA = 'supernova',
-  ANOMALY = 'anomaly'
+  ANOMALY = 'anomaly',
+  NEBULA = 'nebula',
+  DEEP_SPACE = 'deepspace'
 }
 
 /**

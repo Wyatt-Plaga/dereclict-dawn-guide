@@ -26,7 +26,7 @@ const ALL_ENEMIES_MAP: Record<string, EnemyDefinition> = ENEMIES_MAP;
 console.log('ALL_ENEMIES_MAP loaded status:', ALL_ENEMIES_MAP ? 'Defined' : 'Undefined', 
             'Keys:', ALL_ENEMIES_MAP ? Object.keys(ALL_ENEMIES_MAP).length : 'N/A');
 
-import { EventBus } from '../core/EventBus';
+import { EventBus } from 'core/EventBus';
 
 /**
  * Combat System
@@ -63,6 +63,20 @@ export class CombatSystem {
     });
 
     // Add more event listeners as needed
+
+    // Listen for player combat actions
+    this.eventBus.on('combatAction', ({ state, actionId }) => {
+      const result = this.performCombatAction(state, actionId);
+      // Emit state update so UI refreshes immediately
+      this.eventBus.emit('stateUpdated', state);
+      return result;
+    });
+
+    // Listen for player retreat actions
+    this.eventBus.on('retreatFromBattle', ({ state }) => {
+      this.retreatFromCombat(state);
+      this.eventBus.emit('stateUpdated', state);
+    });
   }
 
   /**

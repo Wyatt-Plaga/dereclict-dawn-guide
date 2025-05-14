@@ -321,6 +321,12 @@ export interface GameState {
     // Added: Global resources not tied to a category
     combatComponents: number;
     bossMatrix: number;
+
+    /**
+     * Experimental ECS world – array of entities generated from legacy state.
+     * Present only during the migration period.
+     */
+    world?: import('../components/interfaces').Entity[];
 }
 
 /**
@@ -437,7 +443,8 @@ export const initialGameState: GameState = {
         enemyIntentions: null
     },
     combatComponents: 0,
-    bossMatrix: 0
+    bossMatrix: 0,
+    world: undefined
 };
 
 // Export RegionType so it can be imported from this index file

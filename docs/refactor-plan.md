@@ -46,9 +46,9 @@ _Dependency:_ Phase 1 complete so files can land in correct folders.
 ## Phase 2 – Break Up God Objects (Checklist §2)
 | # | Task | Outcome |
 |---|------|---------|
-|2.1| Inventory responsibilities of `GameSystemManager` & similar "god" classes | Responsibility list in issue comment |
-|2.2| Extract dedicated managers (e.g., `SpawnManager`, `ScoreManager`) | New classes with unit tests |
-|2.3| Refactor original class to ≤200 LOC orchestration shell | Legacy logic removed |
+|2.1| ~~Inventory responsibilities of `GameSystemManager` & similar "god" classes~~ | Responsibility list in `docs/manager-inventory.md` |
+|2.2| ~~Extract dedicated managers (e.g., `SpawnManager`, `ScoreManager`)~~ | `ResourceManager` & `CombatEncounterManager` created |
+|2.3| ~~Refactor original class to ≤200 LOC orchestration shell~~ | Placeholder methods removed; GSM now ~120 LOC |
 
 _Dependency:_ Phase 1 complete so files can land in correct folders.
 
@@ -57,9 +57,9 @@ _Dependency:_ Phase 1 complete so files can land in correct folders.
 ## Phase 3 – Event / Message System (Checklist §3 & Research Step 3)
 | # | Task | Details |
 |---|------|---------|
-|3.1| Implement lightweight `EventBus` singleton (pub/sub) | API: `subscribe<T>()`, `publish<T>()` |
-|3.2| Refactor at least three direct cross-calls to events | Examples: Resource → UI, Upgrade → Stats |
-|3.3| Codify rule in `CONTRIBUTING.md` | "No direct calls across feature boundaries; use events." |
+|3.1| ~~Implement lightweight `EventBus` singleton (pub/sub)~~ | `core/EventBus` + typed `GameEventMap` |
+|3.2| ~~Refactor at least three direct cross-calls to events~~ | Resource gen, encounter rewards & automation drain now emit `resourceChange` |
+|3.3| ~~Codify rule in `CONTRIBUTING.md`~~ | Event-boundary policy committed |
 
 **Additional notes:** Events must be strongly typed (`publish<UpgradePurchasedEvent>()`) and support `AbortController`-based unsubscribe to avoid memory leaks.
 
@@ -68,10 +68,10 @@ _Dependency:_ Phase 1 complete so files can land in correct folders.
 ## Phase 4 – Component-Based Data Model & Generic Systems (Research Steps 1 & 2)
 | # | Task | Deliverable |
 |---|------|------------|
-|4.1| Introduce component interfaces (`ResourceStorage`, `Generator`, `Upgradable`, ...) in `game/components/` | TypeScript interfaces with docs |
-|4.2| Migrate `GameState` to entity-component structure | Factory to create initial world state |
-|4.3| Generalize `ResourceSystem.update()` to loop over entities | Removal of hard-coded category checks |
-|4.4| Register systems array in `GameSystemManager` | `systems.forEach(sys => sys.update(delta))` |
+|4.1| ~~Introduce component interfaces (`ResourceStorage`, `Generator`, `Upgradable`, ...) in `game/components/`~~ | `interfaces.ts` defines 16 starter components |
+|4.2| ~~Migrate `GameState` to entity-component structure~~ | `world` snapshot via `createWorldFromGameState()` |
+|4.3| ~~Generalize `ResourceSystem.update()` to loop over entities~~ | Uses ECS path when `state.world` exists |
+|4.4| ~~Register systems array in `GameSystemManager`~~ | Generic `systemsList` + `IGameSystem` interface |
 |4.5| Smoke test: add dummy resource entity via JSON, verify UI renders | Proves scalability |
 |4.6| Implement save-game migration or auto-wipe with warning banner | Data versioned & backward-compatible |
 

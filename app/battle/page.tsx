@@ -3,6 +3,7 @@
 import { Shield, Zap, Wrench, Cpu, AlertTriangle, ChevronDown, ChevronUp, Scan, ZapOff, Search } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/app/game/hooks/useGame"
+import { useGameBus } from '@/app/game/hooks/useGameBus'
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
 import { Progress } from "@/components/ui/progress"
@@ -43,9 +44,10 @@ const DamageEffect = ({ target }: { target: 'player' | 'enemy' }) => {
 };
 
 export default function BattlePage() {
-  const { state, dispatch } = useGame()
+  const { state } = useGame()
   const { shouldFlicker } = useSystemStatus()
   const router = useRouter()
+  const bus = useGameBus()
   
   // Prevent navigation away from battle during active combat
   useEffect(() => {
@@ -218,7 +220,7 @@ export default function BattlePage() {
       `Performing combat action: ${actionId}`, 
       LogContext.COMBAT_ACTION
     )
-    dispatch({ type: 'COMBAT_ACTION', payload: { actionId } })
+    bus.emit('combatAction', { state, actionId })
   }
   
   // Shield actions
@@ -248,7 +250,7 @@ export default function BattlePage() {
       'Retreating from battle', 
       LogContext.COMBAT
     )
-    dispatch({ type: 'RETREAT_FROM_BATTLE' })
+    bus.emit('retreatFromBattle', { state })
     router.push('/navigation')
   }
   

@@ -1,4 +1,5 @@
 import { useGame } from './useGame';
+import { useGameBus } from './useGameBus';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import { ResourceCost } from '../types/combat';
 import { AutomationConstants } from '../config/gameConstants';
@@ -11,6 +12,7 @@ const formatResourceCosts = (costs: ResourceCost[]): string => {
 
 export const useProcessor = () => {
   const { state, dispatch } = useGame();
+  const bus = useGameBus();
   const upgradeSystem = new UpgradeSystem();
 
   // Ensure processor data exists, provide defaults if not
@@ -59,7 +61,7 @@ export const useProcessor = () => {
     // Check energy before dispatching
     if (!canGenerateWithEnergy) return; 
     
-    dispatch({ type: 'CLICK_RESOURCE', payload: { category: 'processor' } });
+    bus.emit('resourceClick', { state, category: 'processor' });
     // Note: Energy consumption for clicks will be handled in ActionSystem
   };
 
@@ -76,13 +78,11 @@ export const useProcessor = () => {
   };
 
   const adjustActiveThreads = (direction: 'increase' | 'decrease') => {
-    dispatch({
-      type: 'ADJUST_AUTOMATION',
-      payload: {
-        category: 'processor',
-        automationType: 'processingThreads',
-        direction,
-      },
+    bus.emit('adjustAutomation', {
+      state,
+      category: 'processor',
+      automationType: 'processingThreads',
+      direction,
     });
   };
 

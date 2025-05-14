@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { useGame } from './useGame';
+import { useGameBus } from './useGameBus';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import {
@@ -28,6 +29,7 @@ import { AutomationConstants } from '../config/gameConstants';
  */
 export function useCrewQuarters() {
   const { state, dispatch } = useGame();
+  const bus = useGameBus();
   const [awakeningFlavor, setAwakeningFlavor] = useState("");
   
   // Create an instance of UpgradeSystem for cost calculations
@@ -100,12 +102,7 @@ export function useCrewQuarters() {
     const randomFlavor = getRandomAwakeningFlavor();
     setAwakeningFlavor(randomFlavor);
     
-    dispatch({
-      type: 'CLICK_RESOURCE',
-      payload: {
-        category: 'crewQuarters'
-      }
-    });
+    bus.emit('resourceClick', { state, category: 'crewQuarters' });
   };
   
   // Upgrade crew capacity
@@ -166,13 +163,11 @@ export function useCrewQuarters() {
   
   // Actions
   const adjustActiveCrews = (direction: 'increase' | 'decrease') => {
-    dispatch({
-      type: 'ADJUST_AUTOMATION',
-      payload: {
-        category: 'crewQuarters',
-        automationType: 'workerCrews',
-        direction,
-      },
+    bus.emit('adjustAutomation', {
+      state,
+      category: 'crewQuarters',
+      automationType: 'workerCrews',
+      direction,
     });
   };
   
@@ -189,7 +184,6 @@ export function useCrewQuarters() {
     additionalQuarters,
     quarterCost,
     quarterDescription,
-    canUpgradeQuarters,
     activeWorkerCrews,
     canIncreaseCrews,
     canDecreaseCrews,
@@ -200,7 +194,6 @@ export function useCrewQuarters() {
     
     // Utilities
     canAwaken: canAwakenWithEnergy,
-    canUpgradeQuarters,
-    canUpgradeWorkerCrews
+    canUpgradeQuarters
   };
 } 

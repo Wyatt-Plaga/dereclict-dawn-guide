@@ -1,11 +1,13 @@
-import { EventBus } from './EventBus';
+import { EventBus } from 'core/EventBus';
 import { GameState, initialGameState } from '../types';
 import { GameSystemManager } from '../systems';
-import { GameAction } from '../types/actions';
+import { GameActions } from '../types/actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
-import { SaveSystem } from './SaveSystem';
-import { getCachedState, cacheState } from './memoryCache';
+import { SaveSystem } from 'core/SaveSystem';
+import { getCachedState, cacheState } from 'core/memoryCache';
 import { AutomationConstants } from '../config/gameConstants';
+import { GameEventMap } from 'core/events';
+import { createWorldFromGameState } from '../ecs/factory';
 
 /**
  * GameEngine: The heart of the game
@@ -23,7 +25,7 @@ export class GameEngine {
     /**
      * Communication system to notify about changes
      */
-    public eventBus: EventBus;
+    public eventBus: EventBus<GameEventMap>;
     
     /**
      * Game systems that handle different aspects of game logic
@@ -61,7 +63,10 @@ export class GameEngine {
         }
         
         // Create our communication system
-        this.eventBus = new EventBus();
+        this.eventBus = new EventBus<GameEventMap>();
+        
+        // Build initial ECS world snapshot
+        this.state.world = createWorldFromGameState(this.state);
         
         // Initialize game systems
         this.systems = new GameSystemManager(this.eventBus);
@@ -87,7 +92,7 @@ export class GameEngine {
      */
     private setupEventHandlers() {
         // Listen for action dispatch events
-        this.eventBus.on('DISPATCH_ACTION', (action: GameAction) => {
+        this.eventBus.on('DISPATCH_ACTION', (action: GameActions) => {
             this.processAction(action);
         });
         
@@ -242,7 +247,12 @@ export class GameEngine {
           if (currentEnergy >= energyCostPerTick) {
             // Consume energy
             if (this.state.categories.reactor) {
-               this.state.categories.reactor.resources.energy -= energyCostPerTick;
+               this.eventBus.emit('resourceChange', {
+                 state: this.state,
+                 resourceType: 'energy',
+                 amount: -energyCostPerTick,
+                 source: 'automation'
+               });
             }
           } else {
             // Not enough energy, automation stops
@@ -269,7 +279,7 @@ export class GameEngine {
      * 
      * @param action - The action to process
      */
-    private processAction(action: GameAction) {
+    private processAction(action: GameActions) {
         // Determine the context based on action type
         let context = LogContext.NONE;
         if (action.type === 'CLICK_RESOURCE') {
@@ -324,7 +334,7 @@ export class GameEngine {
      * 
      * @param action - The action to dispatch
      */
-    dispatch(action: GameAction) {
+    dispatch(action: GameActions) {
         this.eventBus.emit('DISPATCH_ACTION', action);
     }
 
@@ -360,7 +370,9 @@ export class GameEngine {
         
         // Replace current state with saved state
         this.state = saveData.state;
-
+        // Recreate ECS world
+        this.state.world = createWorldFromGameState(this.state);
+        
         // ** Add migration/check for missing regionProgress **
         if (this.state && this.state.navigation && !this.state.navigation.regionProgress) {
             Logger.warn(LogCategory.ENGINE, "Loaded state missing navigation.regionProgress, initializing to {}.", LogContext.SAVE_LOAD);

@@ -1,11 +1,11 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
-import { GameEngine } from '../core/GameEngine';
+import { GameEngine } from 'core/GameEngine';
 import { GameState } from '../types';
 import { GameAction } from '../types/actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
-import { getCachedState } from '../core/memoryCache';
+import { getCachedState } from 'core/memoryCache';
 
 /**
  * The shape of our Game Context

@@ -1,4 +1,5 @@
 import { useGame } from './useGame';
+import { useGameBus } from './useGameBus';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import { ResourceCost } from '../types/combat';
 import { AutomationConstants } from '../config/gameConstants';
@@ -11,6 +12,7 @@ const formatResourceCosts = (costs: ResourceCost[]): string => {
 
 export const useManufacturing = () => {
   const { state, dispatch } = useGame();
+  const bus = useGameBus();
   const upgradeSystem = new UpgradeSystem();
 
   // Ensure manufacturing data exists, provide defaults if not
@@ -57,7 +59,7 @@ export const useManufacturing = () => {
     // Check energy before dispatching
     if (!canCollectWithEnergy) return;
     
-    dispatch({ type: 'CLICK_RESOURCE', payload: { category: 'manufacturing' } });
+    bus.emit('resourceClick', { state, category: 'manufacturing' });
     // Note: Energy consumption for clicks will be handled in ActionSystem
   };
 
@@ -74,13 +76,11 @@ export const useManufacturing = () => {
   };
 
   const adjustActiveBays = (direction: 'increase' | 'decrease') => {
-    dispatch({
-      type: 'ADJUST_AUTOMATION',
-      payload: {
-        category: 'manufacturing',
-        automationType: 'manufacturingBays',
-        direction,
-      },
+    bus.emit('adjustAutomation', {
+      state,
+      category: 'manufacturing',
+      automationType: 'manufacturingBays',
+      direction,
     });
   };
 

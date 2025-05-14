@@ -4,14 +4,16 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { NavBar } from "@/components/ui/navbar";
 import { useGame } from '@/app/game/hooks/useGame';
+import { useGameBus } from '@/app/game/hooks/useGameBus';
 import EncounterDisplay from '@/app/components/EncounterDisplay';
 import GameLoader from '@/app/components/GameLoader';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { EmptyEncounter } from '../game/types';
 
 export default function EncounterPage() {
-  const { state, dispatch } = useGame();
+  const { state } = useGame();
   const router = useRouter();
+  const bus = useGameBus();
   
   // Log component render
   Logger.debug(
@@ -47,24 +49,10 @@ export default function EncounterPage() {
       LogContext.NONE
     );
     
-    if (choiceId) {
-      dispatch({
-        type: 'MAKE_STORY_CHOICE',
-        payload: {
-          choiceId
-        }
-      });
-    } else {
-      dispatch({
-        type: 'COMPLETE_ENCOUNTER'
-      });
-    }
-    
-    // Give a small delay to ensure the state is updated before navigating
-    setTimeout(() => {
-      // Navigate back to the navigation page
-      router.push('/navigation');
-    }, 100);
+    bus.emit('storyChoice', { state, choiceId });
+
+    // Navigate away shortly after to reflect updated state
+    setTimeout(() => router.push('/navigation'), 100);
   };
   
   // If there's no active encounter or encounter data, show loading

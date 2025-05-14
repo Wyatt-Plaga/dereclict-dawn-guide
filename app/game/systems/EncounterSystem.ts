@@ -21,7 +21,7 @@ import {
 } from '../content/encounterConfig';
 import { ALL_ENEMIES_LIST, EnemyDefinition } from '../content/enemies/index';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
-import { EventBus } from '../core/EventBus';
+import { EventBus } from 'core/EventBus';
 import { REGION_DEFINITIONS } from '../content/regions';
 
 /**
@@ -33,6 +33,12 @@ export class EncounterSystem {
     constructor(eventBus: EventBus) {
         this.eventBus = eventBus;
         Logger.info(LogCategory.LIFECYCLE, 'EncounterSystem initialized', LogContext.STARTUP);
+
+        // Listen for story choice / encounter completion actions
+        this.eventBus.on('storyChoice', ({ state, choiceId }) => {
+          this.completeEncounter(state, choiceId);
+          this.eventBus.emit('stateUpdated', state);
+        });
     }
     
     /**

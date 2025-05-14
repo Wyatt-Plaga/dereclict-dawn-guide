@@ -4,10 +4,13 @@ import { ResourceSystem } from './ResourceSystem';
 import { UpgradeSystem } from './UpgradeSystem';
 import { LogSystem } from './LogSystem';
 import { CombatSystem } from './CombatSystem';
-import { EventBus } from '../core/EventBus';
-import { GameState, RegionType } from '../types';
-import { GameAction } from '../types/actions';
+import { EventBus } from 'core/EventBus';
+import { GameState } from '../types';
+import { GameActions } from '../types/actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
+import { ResourceManager } from 'core/managers/ResourceManager';
+import { CombatEncounterManager } from 'core/managers/CombatEncounterManager';
+import { IGameSystem } from './IGameSystem';
 
 /**
  * GameSystemManager
@@ -46,99 +49,52 @@ export class GameSystemManager {
   public combat: CombatSystem;
 
   /**
+   * Resource manager
+   */
+  public resourceManager: ResourceManager;
+
+  /**
+   * Combat encounter manager
+   */
+  public combatEncounterManager: CombatEncounterManager;
+
+  /**
+   * Internal list of systems that expose an update(delta) method. Enables generic iteration.
+   */
+  private systemsList: IGameSystem[] = [];
+
+  /**
    * Initialize all game systems
    */
   constructor(private eventBus: EventBus) {
-    this.resource = new ResourceSystem();
+    this.resource = new ResourceSystem(eventBus);
     this.upgrade = new UpgradeSystem();
     this.log = new LogSystem();
     this.encounter = new EncounterSystem(eventBus);
     this.combat = new CombatSystem(eventBus);
     
     // Initialize the action system last since it depends on other systems
-    this.action = new ActionSystem();
+    this.action = new ActionSystem(eventBus);
     
     // Set the manager reference in the ActionSystem
     this.action.setManager(this);
     
-    // Configure system dependencies where needed
-    this.setupSystemDependencies();
-    this.setupEventListeners();
+    // Configure system dependencies where needed (now handled by dedicated managers)
+    // this.setupSystemDependencies();
+    // this.setupEventListeners();
     
     // Initialize the game stats based on upgrades
     // This will be done during initialization when loading a game
-  }
 
-  /**
-   * Set up dependencies between systems
-   */
-  private setupSystemDependencies() {
-    // We're gradually moving away from direct dependencies 
-    // and toward event-based communication, so this method will
-    // eventually be removed
-  }
+    // Create resource manager to handle resourceChange events
+    this.resourceManager = new ResourceManager(eventBus);
 
-  /**
-   * Set up event listeners for cross-system communication
-   */
-  private setupEventListeners() {
-    // Listen for resource change events and update resources accordingly
-    this.eventBus.on('resourceChange', (data: {
-      state: GameState;
-      resourceType: string;
-      amount: number;
-      source: string;
-    }) => {
-      const { state, resourceType, amount, source } = data;
-      
-      // Update the resources based on the resourceType
-      switch (resourceType) {
-        case 'energy':
-          state.categories.reactor.resources.energy = Math.min(
-            state.categories.reactor.resources.energy + amount,
-            state.categories.reactor.stats.energyCapacity
-          );
-          break;
-        case 'insight':
-          state.categories.processor.resources.insight = Math.min(
-            state.categories.processor.resources.insight + amount,
-            state.categories.processor.stats.insightCapacity
-          );
-          break;
-        case 'crew':
-          if (amount >= 1 || amount < 0) { // Only modify crew if adding at least 1 or removing any
-            state.categories.crewQuarters.resources.crew = Math.min(
-              state.categories.crewQuarters.resources.crew + (amount >= 1 ? Math.floor(amount) : amount),
-              state.categories.crewQuarters.stats.crewCapacity
-            );
-          }
-          break;
-        case 'scrap':
-          state.categories.manufacturing.resources.scrap = Math.min(
-            state.categories.manufacturing.resources.scrap + amount,
-            state.categories.manufacturing.stats.scrapCapacity
-          );
-          break;
-        default:
-          Logger.warn(
-            LogCategory.RESOURCES,
-            `Unknown resource type: ${resourceType}`,
-            LogContext.NONE
-          );
-      }
-    });
+    this.combatEncounterManager = new CombatEncounterManager(eventBus, this.combat);
 
-    // Listen for combat encounters triggered by the EncounterSystem
-    this.eventBus.on('combatEncounterTriggered', (data: {
-      state: GameState;
-      enemyId: string;
-      regionId: RegionType;
-    }) => {
-      const { state, enemyId, regionId } = data;
-      if (enemyId && regionId) {
-        this.combat.startCombatEncounter(state, enemyId, regionId);
-      }
-    });
+    // Register updatable systems
+    this.systemsList.push(this.resource);
+    this.systemsList.push(this.log);
+    this.systemsList.push(this.combat);
   }
 
   /**
@@ -148,22 +104,23 @@ export class GameSystemManager {
    * @param automationHasPower - Optional flag indicating if automation has energy
    */
   update(state: GameState, delta: number, automationHasPower: boolean = true): void {
-    // Update systems that depend on automation power status first
-    this.resource.update(state, delta, automationHasPower);
-    
-    // Update other systems (order might matter)
-    this.log.update(state, delta);
-    // this.encounter.update(state, delta); // Removed - No update method
-    // If there's an active combat, update it
-    if (state.combat && state.combat.active) {
-      this.combat.update(state, delta);
+    // Allow ResourceSystem to know about power status separately
+    if (this.resource.update.length === 3) {
+      (this.resource as any).update(state, delta, automationHasPower);
     }
+
+    // Generic update over registered systems (order: resource already called, others follow)
+    this.systemsList.forEach(sys => {
+      if (sys !== this.resource) {
+        sys.update(state, delta);
+      }
+    });
   }
 
   /**
    * Process an action through the appropriate system
    */
-  processAction(state: GameState, action: GameAction): GameState {
+  processAction(state: GameState, action: GameActions): GameState {
     // Pass action to the ActionSystem
     // Note: ActionSystem might need access to other systems via this manager
     return this.action.processAction(state, action);

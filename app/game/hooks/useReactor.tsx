@@ -5,6 +5,7 @@
  */
 
 import { useGame } from './useGame';
+import { useGameBus } from './useGameBus';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { formatResourceCosts } from '../utils/formattingUtils';
@@ -12,6 +13,7 @@ import { ReactorTexts } from '../content/texts';
 
 export function useReactor() {
   const { state, dispatch } = useGame();
+  const bus = useGameBus();
   
   const upgradeSystem = new UpgradeSystem();
   
@@ -33,7 +35,7 @@ export function useReactor() {
   const generateEnergy = () => {
     if (energy >= energyCapacity) return;
     Logger.debug(LogCategory.UI, 'Generate energy button clicked', LogContext.REACTOR_LIFECYCLE);
-    dispatch({ type: 'CLICK_RESOURCE', payload: { category: 'reactor' } });
+    bus.emit('resourceClick', { state, category: 'reactor' });
   };
 
   // Upgrade actions
@@ -52,13 +54,11 @@ export function useReactor() {
   // --- Adjustable Automation Logic ---
   const adjustActiveConverters = (direction: 'increase' | 'decrease') => {
     Logger.debug(LogCategory.UI, `Adjust active converters: ${direction}`, LogContext.REACTOR_LIFECYCLE);
-    dispatch({ 
-      type: 'ADJUST_AUTOMATION', 
-      payload: { 
-        category: 'reactor', 
-        automationType: 'energyConverters', 
-        direction 
-      } 
+    bus.emit('adjustAutomation', {
+      state,
+      category: 'reactor',
+      automationType: 'energyConverters',
+      direction,
     });
   };
 

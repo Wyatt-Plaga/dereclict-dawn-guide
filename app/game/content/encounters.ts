@@ -16,7 +16,9 @@ export const REGION_ENCOUNTER_CHANCES: Record<RegionType, { combat: number, empt
     [RegionType.ASTEROID_FIELD]: { combat: 0.5, empty: 0.2, narrative: 0.3 },
     [RegionType.HABITABLE_ZONE]: { combat: 0.4, empty: 0.3, narrative: 0.3 },
     [RegionType.SUPERNOVA]: { combat: 0.7, empty: 0.1, narrative: 0.2 },
-    [RegionType.ANOMALY]: { combat: 0.8, empty: 0.1, narrative: 0.1 }
+    [RegionType.ANOMALY]: { combat: 0.8, empty: 0.1, narrative: 0.1 },
+    [RegionType.NEBULA]: { combat: 0.5, empty: 0.25, narrative: 0.25 },
+    [RegionType.DEEP_SPACE]: { combat: 0.45, empty: 0.35, narrative: 0.2 },
 };
 
 /**
@@ -64,7 +66,9 @@ export const EMPTY_ENCOUNTER_TITLES: Record<RegionType, string[]> = {
         "Dimensional Rift",
         "Strange Phenomenon",
         "Unknown Manifestation"
-    ]
+    ],
+    [RegionType.NEBULA]: ["Ethereal Cloud", "Ion Storm", "Colorful Veil"],
+    [RegionType.DEEP_SPACE]: ["Far Frontier", "Lonely Depths", "Silent Sector"],
 };
 
 /**
@@ -112,7 +116,9 @@ export const EMPTY_ENCOUNTER_DESCRIPTIONS: Record<RegionType, string[]> = {
         "The fabric of spacetime exhibits unusual properties here. Navigation systems report occasional unexplainable readings.",
         "This sector represents a true anomaly - phenomena observed here have no explanation in current scientific understanding.",
         "Your ship's systems register periodic fluctuations in background radiation and gravitational constants unique to this region."
-    ]
+    ],
+    [RegionType.NEBULA]: ["Ethereal Cloud", "Ion Storm", "Colorful Veil"],
+    [RegionType.DEEP_SPACE]: ["Far Frontier", "Lonely Depths", "Silent Sector"],
 };
 
 /**
@@ -160,7 +166,9 @@ export const EMPTY_ENCOUNTER_MESSAGES: Record<RegionType, string[]> = {
         "Your sensors detect phenomena that should be impossible according to standard physical models. The science team records everything, eager to analyze the data once you've left this strange place.",
         "Time and space seem less rigid here. Occasional flashes of what might be parallel realities bleed through, visible for just moments before disappearing.",
         "This region defies conventional understanding. Energy readings fluctuate without cause, and light sometimes appears to travel along curved paths with no gravitational source to explain it."
-    ]
+    ],
+    [RegionType.NEBULA]: ["Ethereal Cloud", "Ion Storm", "Colorful Veil"],
+    [RegionType.DEEP_SPACE]: ["Far Frontier", "Lonely Depths", "Silent Sector"],
 };
 
 /**
@@ -415,7 +423,7 @@ export const STORY_ENCOUNTERS: Record<RegionType, StoryEncounter[]> = {
             type: 'story',
             title: 'Mysterious Signal',
             description: 'Your sensors detect a faint distress signal coming from a nearby debris field. The signal appears to be automated, repeating on an old frequency not commonly used anymore.',
-            region: RegionType.VOID,
+            validLocations: [{ regionId: RegionType.VOID }],
             choices: [
                 {
                     id: uuidv4(),
@@ -452,7 +460,7 @@ export const STORY_ENCOUNTERS: Record<RegionType, StoryEncounter[]> = {
             type: 'story',
             title: 'Gravitational Lens Observatory',
             description: 'You discover the remains of a scientific outpost positioned to use the black hole as a gravitational lens for deep space observation. The facility appears to have been hastily evacuated.',
-            region: RegionType.BLACK_HOLE,
+            validLocations: [{ regionId: RegionType.BLACK_HOLE }],
             choices: [
                 {
                     id: uuidv4(),
@@ -493,7 +501,7 @@ export const STORY_ENCOUNTERS: Record<RegionType, StoryEncounter[]> = {
             type: 'story',
             title: 'Mining Outpost',
             description: 'You discover an abandoned mining outpost attached to a large asteroid. The facility appears to have been evacuated in a hurry, with equipment left running and personal belongings scattered about.',
-            region: RegionType.ASTEROID_FIELD,
+            validLocations: [{ regionId: RegionType.ASTEROID_FIELD }],
             choices: [
                 {
                     id: uuidv4(),
@@ -534,7 +542,7 @@ export const STORY_ENCOUNTERS: Record<RegionType, StoryEncounter[]> = {
             type: 'story',
             title: 'Pirate Outpost',
             description: 'You detect a small outpost hidden in the orbit of a habitable moon. The settlement appears to be a haven for space pirates and smugglers, using the nearby planet as cover from authorities.',
-            region: RegionType.HABITABLE_ZONE,
+            validLocations: [{ regionId: RegionType.HABITABLE_ZONE }],
             choices: [
                 {
                     id: uuidv4(),
@@ -574,7 +582,7 @@ export const STORY_ENCOUNTERS: Record<RegionType, StoryEncounter[]> = {
             type: 'story',
             title: 'Stellar Remnant',
             description: 'The remnants of a supernova glow in the distance, a testament to the violent end of a star.',
-            region: RegionType.SUPERNOVA,
+            validLocations: [{ regionId: RegionType.SUPERNOVA }],
             choices: [
                 {
                     id: uuidv4(),
@@ -605,7 +613,9 @@ export const STORY_ENCOUNTERS: Record<RegionType, StoryEncounter[]> = {
             ]
         }
     ],
-    [RegionType.ANOMALY]: []  // Empty for now as requested
+    [RegionType.ANOMALY]: [],  // Empty for now as requested
+    [RegionType.NEBULA]: [], // Placeholder - to be populated
+    [RegionType.DEEP_SPACE]: [] // Placeholder - to be populated
 };
 
 // Helper function to get a generic fallback encounter for regions without specific content
@@ -615,7 +625,7 @@ export function getGenericStoryEncounter(region: RegionType): StoryEncounter {
         type: 'story',
         title: 'Strange Encounter',
         description: 'As you navigate through this region, you encounter something unusual that catches your attention.',
-        region,
+        validLocations: [{ regionId: region }],
         choices: [
             {
                 id: uuidv4(),

@@ -7,6 +7,8 @@ import { EncounterSystem } from './EncounterSystem';
 import { v4 as uuidv4 } from 'uuid';
 import { ReactorConstants, ProcessorConstants, CrewQuartersConstants, ManufacturingConstants, AutomationConstants } from '../config/gameConstants';
 import { ResourceSystem } from './ResourceSystem';
+import { EventBus } from 'core/EventBus';
+import { GameEventMap } from 'core/events';
 
 /**
  * ActionSystem
@@ -20,6 +22,8 @@ export class ActionSystem {
    * This will be set when the ActionSystem is created by the GameSystemManager
    */
   private manager: GameSystemManager | null = null;
+
+  constructor(private bus: EventBus<GameEventMap>) {}
 
   /**
    * Set the GameSystemManager reference
@@ -45,7 +49,7 @@ export class ActionSystem {
     // Process the action based on its type - directly mutate the state
     switch (action.type) {
       case 'CLICK_RESOURCE':
-        this.handleResourceClick(state, action as GameAction);
+        this.bus.emit('resourceClick', { state, category: (action as GameAction).payload?.category });
         break;
 
       case 'PURCHASE_UPGRADE':
@@ -99,232 +103,6 @@ export class ActionSystem {
     }
     
     return state;
-  }
-  
-  /**
-   * Handle resource click actions
-   */
-  private handleResourceClick(state: GameState, action: GameAction): void {
-    const category = action.payload?.category;
-    
-    if (!category) {
-      Logger.warn(
-        LogCategory.ACTIONS,
-        'No category specified for resource click',
-        LogContext.NONE
-      );
-      return;
-    }
-    
-    Logger.debug(
-      LogCategory.ACTIONS,
-      `Processing resource click for ${category}`,
-      LogContext.NONE
-    );
-    
-    const energyCost = AutomationConstants.ENERGY_COST_PER_CLICK;
-    let canAffordEnergy = true;
-    let requiresEnergy = false;
-
-    // Check if this click requires energy and if affordable
-    if (category === 'processor' || category === 'crewQuarters' || category === 'manufacturing') {
-      requiresEnergy = true;
-      const currentEnergy = state.categories.reactor?.resources?.energy ?? 0;
-      if (currentEnergy < energyCost) {
-        canAffordEnergy = false;
-        Logger.debug(LogCategory.ACTIONS, `Insufficient energy (${currentEnergy.toFixed(1)}) for ${category} click (cost: ${energyCost})`, LogContext.ACTION_PROCESSING);
-      }
-    }
-
-    // If requires energy and cannot afford, stop processing
-    if (requiresEnergy && !canAffordEnergy) {
-      return;
-    }
-
-    // Consume energy if required
-    if (requiresEnergy) {
-      if (state.categories.reactor) { // Safety check
-          state.categories.reactor.resources.energy = Math.max(0, (state.categories.reactor.resources.energy ?? 0) - energyCost);
-          Logger.debug(LogCategory.ACTIONS, `Consumed ${energyCost} energy for ${category} click. Remaining: ${state.categories.reactor.resources.energy.toFixed(1)}`, LogContext.ACTION_PROCESSING);
-      } else {
-          Logger.warn(LogCategory.ACTIONS, `Cannot consume energy for ${category} click: Reactor category missing.`, LogContext.ACTION_PROCESSING);
-          // Decide if the click should still proceed without energy cost?
-          // For now, let it proceed but log warning.
-      }
-    }
-
-    // Proceed with resource generation based on category
-    switch (category) {
-      case 'reactor':
-        this.handleReactorClick(state);
-        break;
-      case 'processor':
-        this.handleProcessorClick(state);
-        break;
-      case 'manufacturing':
-        this.handleManufacturingClick(state);
-        break;
-      case 'crewQuarters':
-        this.handleCrewQuartersClick(state);
-        break;
-      default:
-        Logger.warn(
-          LogCategory.ACTIONS,
-          `Unknown resource category: ${category}`,
-          LogContext.NONE
-        );
-    }
-  }
-  
-  /**
-   * Handle reactor energy click
-   */
-  private handleReactorClick(state: GameState): void {
-    const reactor = state.categories.reactor;
-    
-    Logger.debug(
-      LogCategory.RESOURCES, 
-      `Reactor click - Before: ${reactor.resources.energy}/${reactor.stats.energyCapacity}`,
-      LogContext.REACTOR_LIFECYCLE
-    );
-    
-    // Add 1 energy (up to capacity)
-    if (reactor.resources.energy < reactor.stats.energyCapacity) {
-      reactor.resources.energy = Math.min(
-        reactor.resources.energy + 1,
-        reactor.stats.energyCapacity
-      );
-      Logger.debug(
-        LogCategory.RESOURCES, 
-        `Reactor click - After update: ${reactor.resources.energy}`,
-        LogContext.REACTOR_LIFECYCLE
-      );
-      Logger.trace(
-        LogCategory.STATE, 
-        `State modified directly: energy=${state.categories.reactor.resources.energy}`,
-        LogContext.REACTOR_LIFECYCLE
-      );
-    } else {
-      Logger.info(
-        LogCategory.RESOURCES, 
-        `Reactor already at capacity (${reactor.stats.energyCapacity})`,
-        LogContext.REACTOR_LIFECYCLE
-      );
-    }
-  }
-  
-  /**
-   * Handle processor insight click
-   */
-  private handleProcessorClick(state: GameState): void {
-    const processor = state.categories.processor;
-    
-    Logger.debug(
-      LogCategory.RESOURCES, 
-      `Processor click - Before: ${processor.resources.insight}/${processor.stats.insightCapacity}`,
-      LogContext.PROCESSOR_LIFECYCLE
-    );
-    
-    // Add 0.5 insight (up to capacity)
-    if (processor.resources.insight < processor.stats.insightCapacity) {
-      processor.resources.insight = Math.min(
-        processor.resources.insight + processor.stats.insightPerClick,
-        processor.stats.insightCapacity
-      );
-      
-      Logger.debug(
-        LogCategory.RESOURCES, 
-        `Processor click - After update: ${processor.resources.insight}`,
-        LogContext.PROCESSOR_LIFECYCLE
-      );
-    } else {
-      Logger.info(
-        LogCategory.RESOURCES, 
-        `Processor already at capacity (${processor.stats.insightCapacity})`,
-        LogContext.PROCESSOR_LIFECYCLE
-      );
-    }
-  }
-  
-  /**
-   * Handle manufacturing scrap click
-   */
-  private handleManufacturingClick(state: GameState): void {
-    const manufacturing = state.categories.manufacturing;
-    
-    Logger.debug(
-      LogCategory.RESOURCES, 
-      `Manufacturing click - Before: ${manufacturing.resources.scrap}/${manufacturing.stats.scrapCapacity}`,
-      LogContext.MANUFACTURING_LIFECYCLE
-    );
-    
-    // Add 1 scrap (up to capacity)
-    if (manufacturing.resources.scrap < manufacturing.stats.scrapCapacity) {
-      manufacturing.resources.scrap = Math.min(
-        manufacturing.resources.scrap + 1,
-        manufacturing.stats.scrapCapacity
-      );
-      
-      Logger.debug(
-        LogCategory.RESOURCES, 
-        `Manufacturing click - After update: ${manufacturing.resources.scrap}`,
-        LogContext.MANUFACTURING_LIFECYCLE
-      );
-    } else {
-      Logger.info(
-        LogCategory.RESOURCES, 
-        `Manufacturing already at capacity (${manufacturing.stats.scrapCapacity})`,
-        LogContext.MANUFACTURING_LIFECYCLE
-      );
-    }
-  }
-  
-  /**
-   * Handle crew quarters click for awakening crew
-   */
-  private handleCrewQuartersClick(state: GameState): void {
-    const crewQuarters = state.categories.crewQuarters;
-    
-    Logger.debug(
-      LogCategory.RESOURCES, 
-      `Crew Quarters click - Before: ${crewQuarters.resources.crew}/${crewQuarters.stats.crewCapacity}`,
-      LogContext.CREW_LIFECYCLE
-    );
-    
-    // If we're already at capacity, don't do anything
-    if (crewQuarters.resources.crew >= crewQuarters.stats.crewCapacity) {
-      Logger.info(
-        LogCategory.RESOURCES, 
-        `Crew Quarters already at capacity (${crewQuarters.stats.crewCapacity})`,
-        LogContext.CREW_LIFECYCLE
-      );
-      return;
-    }
-    
-    // Increment awakening progress
-    crewQuarters.stats.awakeningProgress += 1;
-    
-    // Check if we've reached the threshold to awaken a crew member
-    if (crewQuarters.stats.awakeningProgress >= 10) { // Using the AWAKENING_THRESHOLD from constants
-      // Reset progress and add crew
-      crewQuarters.stats.awakeningProgress = 0;
-      crewQuarters.resources.crew = Math.min(
-        crewQuarters.resources.crew + 1, // Add 1 crew member
-        crewQuarters.stats.crewCapacity
-      );
-      
-      Logger.debug(
-        LogCategory.RESOURCES, 
-        `Crew member awakened! New crew count: ${crewQuarters.resources.crew}`,
-        LogContext.CREW_LIFECYCLE
-      );
-    } else {
-      Logger.debug(
-        LogCategory.RESOURCES, 
-        `Awakening progress: ${crewQuarters.stats.awakeningProgress}/10`,
-        LogContext.CREW_LIFECYCLE
-      );
-    }
   }
   
   /**
@@ -511,4 +289,18 @@ export class ActionSystem {
     // Reset subregion when changing main regions
     state.navigation.currentSubRegion = undefined;
 
-    Logger.info(LogCategory.ACTIONS, `
+    Logger.info(LogCategory.ACTIONS, `Selected region set to ${selectedRegionId}`, LogContext.NONE);
+  }
+
+  // -------------------------------------------------------------------------
+  // Temporary no-op stubs – these actions will migrate to dedicated systems
+  // -------------------------------------------------------------------------
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private handleStoryChoice(state: GameState, action: MakeStoryChoiceAction) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private handleCombatAction(state: GameState, action: CombatAction) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private handleRetreatFromBattle(state: GameState) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private handleAdjustAutomation(state: GameState, action: AdjustAutomationAction) {}
+}
