@@ -4,6 +4,7 @@ import { NavBar } from "@/components/ui/navbar"
 import { Compass, Rocket, Skull } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/app/game/hooks/useGame"
+import { useGameBus } from "@/app/game/hooks/useGameBus"
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
 import { useRouter } from "next/navigation"
@@ -13,9 +14,10 @@ import { RegionType } from "@/app/game/types/combat"
 // Region type removed, using definitions directly
 
 export default function NavigationPage() {
-  const { state, dispatch } = useGame()
+  const { state } = useGame()
   const { shouldFlicker } = useSystemStatus()
   const router = useRouter()
+  const bus = useGameBus()
   
   Logger.debug(
     LogCategory.UI,
@@ -38,7 +40,7 @@ export default function NavigationPage() {
       'Initiating jump sequence', 
       LogContext.NONE
     );
-    dispatch({ type: 'INITIATE_JUMP' });
+    bus.emit('initiateJump', { state });
     setTimeout(() => {
       router.push('/encounter');
     }, 100);

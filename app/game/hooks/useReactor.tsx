@@ -12,7 +12,7 @@ import { formatResourceCosts } from '../utils/formattingUtils';
 import { ReactorTexts } from '../content/texts';
 
 export function useReactor() {
-  const { state, dispatch } = useGame();
+  const { state } = useGame();
   const bus = useGameBus();
   
   const upgradeSystem = new UpgradeSystem();
@@ -42,13 +42,13 @@ export function useReactor() {
   const upgradeExpansions = () => {
     if (!upgradeSystem.canAffordUpgrade(state, expansionCostArray)) return;
     Logger.debug(LogCategory.UI, 'Upgrade reactor expansions clicked', [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]);
-    dispatch({ type: 'PURCHASE_UPGRADE', payload: { category: 'reactor', upgradeType: 'reactorExpansions' } });
+    bus.emit('purchaseUpgrade', { state, category: 'reactor', upgradeType: 'reactorExpansions' });
   };
 
   const upgradeConverters = () => {
     if (!upgradeSystem.canAffordUpgrade(state, converterCostArray)) return;
     Logger.debug(LogCategory.UI, 'Upgrade energy converters clicked', [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]);
-    dispatch({ type: 'PURCHASE_UPGRADE', payload: { category: 'reactor', upgradeType: 'energyConverters' } });
+    bus.emit('purchaseUpgrade', { state, category: 'reactor', upgradeType: 'energyConverters' });
   };
 
   // --- Adjustable Automation Logic ---

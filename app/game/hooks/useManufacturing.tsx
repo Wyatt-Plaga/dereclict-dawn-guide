@@ -11,7 +11,7 @@ const formatResourceCosts = (costs: ResourceCost[]): string => {
 };
 
 export const useManufacturing = () => {
-  const { state, dispatch } = useGame();
+  const { state } = useGame();
   const bus = useGameBus();
   const upgradeSystem = new UpgradeSystem();
 
@@ -65,13 +65,13 @@ export const useManufacturing = () => {
 
   const upgradeManufacturingBays = () => {
     if (canUpgradeBays) {
-      dispatch({ type: 'PURCHASE_UPGRADE', payload: { category: 'manufacturing', upgradeType: 'manufacturingBays' } });
+      bus.emit('purchaseUpgrade', { state, category: 'manufacturing', upgradeType: 'manufacturingBays' });
     }
   };
 
   const upgradeCargoHoldExpansions = () => {
     if (canUpgradeExpansions) {
-      dispatch({ type: 'PURCHASE_UPGRADE', payload: { category: 'manufacturing', upgradeType: 'cargoHoldExpansions' } });
+      bus.emit('purchaseUpgrade', { state, category: 'manufacturing', upgradeType: 'cargoHoldExpansions' });
     }
   };
 

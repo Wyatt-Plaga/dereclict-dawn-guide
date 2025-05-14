@@ -28,7 +28,7 @@ import { AutomationConstants } from '../config/gameConstants';
  * Hook for accessing and manipulating crew quarters data
  */
 export function useCrewQuarters() {
-  const { state, dispatch } = useGame();
+  const { state } = useGame();
   const bus = useGameBus();
   const [awakeningFlavor, setAwakeningFlavor] = useState("");
   
@@ -116,13 +116,7 @@ export function useCrewQuarters() {
       [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
     );
     
-    dispatch({
-      type: 'PURCHASE_UPGRADE',
-      payload: {
-        category: 'crewQuarters',
-        upgradeType: 'additionalQuarters'
-      }
-    });
+    bus.emit('purchaseUpgrade', { state, category: 'crewQuarters', upgradeType: 'additionalQuarters' });
   };
   
   // Upgrade auto awakening
@@ -135,13 +129,7 @@ export function useCrewQuarters() {
         [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
       );
       
-      dispatch({
-        type: 'PURCHASE_UPGRADE',
-        payload: {
-          category: 'crewQuarters',
-          upgradeType: 'workerCrews'
-        }
-      });
+      bus.emit('purchaseUpgrade', { state, category: 'crewQuarters', upgradeType: 'workerCrews' });
     }
   };
   

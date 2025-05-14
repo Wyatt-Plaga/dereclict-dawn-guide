@@ -9,6 +9,7 @@ import {
 } from '../config/gameConstants';
 import { ResourceCost } from '../types/combat';
 import { ResourceSystem } from './ResourceSystem';
+import { EventBus } from 'core/EventBus';
 
 /**
  * UpgradeSystem
@@ -20,8 +21,18 @@ export class UpgradeSystem {
   // Instantiate ResourceSystem once for the class instance
   private resourceSystem: ResourceSystem;
 
-  constructor() {
-    this.resourceSystem = new ResourceSystem();
+  constructor(private bus?: EventBus) {
+    this.resourceSystem = new ResourceSystem(bus as any);
+
+    if (this.bus) {
+      this.bus.on('purchaseUpgrade', (data: { state: GameState; category: string; upgradeType: string }) => {
+        const { state, category, upgradeType } = data;
+        this.purchaseUpgrade(state, category as any, upgradeType);
+        // ensure stats update after purchase
+        this.updateAllStats(state);
+        this.bus?.emit('stateUpdated', state);
+      });
+    }
   }
 
   /**

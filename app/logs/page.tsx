@@ -1,6 +1,7 @@
 'use client';
 
 import { useGame } from '@/app/game/hooks/useGame';
+import { useGameBus } from '@/app/game/hooks/useGameBus';
 import GameLoader from '@/app/components/GameLoader';
 import { useState } from 'react';
 import { LogCategory, LogEntry } from '@/app/game/types';
@@ -10,7 +11,8 @@ import { BookOpen } from "lucide-react";
 import { useSystemStatus } from "@/components/providers/system-status-provider";
 
 export default function LogsPage() {
-  const { state, dispatch, isInitializing } = useGame();
+  const { state, isInitializing } = useGame();
+  const bus = useGameBus();
   const { shouldFlicker } = useSystemStatus();
   const [selectedLog, setSelectedLog] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<LogCategory | 'all'>('all');
@@ -36,16 +38,13 @@ export default function LogsPage() {
     
     // Mark as read if it's not already
     if (logs[logId] && !logs[logId].isRead) {
-      dispatch({
-        type: 'MARK_LOG_READ',
-        payload: { logId }
-      });
+      bus.emit('markLogRead', { state, logId });
     }
   };
   
   // Handle marking all logs as read
   const handleMarkAllAsRead = () => {
-    dispatch({ type: 'MARK_ALL_LOGS_READ' });
+    bus.emit('markAllLogsRead', { state });
   };
   
   // Get all available categories from discovered logs

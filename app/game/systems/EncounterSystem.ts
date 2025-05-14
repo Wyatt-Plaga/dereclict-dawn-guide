@@ -39,6 +39,15 @@ export class EncounterSystem {
           this.completeEncounter(state, choiceId);
           this.eventBus.emit('stateUpdated', state);
         });
+
+        // Handle jump initiation to generate encounters
+        this.eventBus.on('initiateJump', ({ state }) => {
+          const encounter = this.generateEncounter(state);
+          state.encounters.active = true;
+          state.encounters.encounter = encounter;
+          // After generating, emit state update
+          this.eventBus.emit('stateUpdated', state);
+        });
     }
     
     /**
@@ -261,9 +270,7 @@ export class EncounterSystem {
                                 state: state,
                                 enemyId: enemyId,
                                 regionId: this.stringToRegionType(regionIdForEvent), // Convert string back to enum
-                                subRegionId: subRegionToUse,
-                                sourceEncounterId: encounter.id,
-                                sourceChoiceId: choiceId
+                                subRegionId: subRegionToUse
                             });
                             
                             // Mark the encounter as completed, but combat as active

@@ -72,18 +72,18 @@ _Dependency:_ Phase 1 complete so files can land in correct folders.
 |4.2| ~~Migrate `GameState` to entity-component structure~~ | `world` snapshot via `createWorldFromGameState()` |
 |4.3| ~~Generalize `ResourceSystem.update()` to loop over entities~~ | Uses ECS path when `state.world` exists |
 |4.4| ~~Register systems array in `GameSystemManager`~~ | Generic `systemsList` + `IGameSystem` interface |
-|4.5| Smoke test: add dummy resource entity via JSON, verify UI renders | Proves scalability |
-|4.6| Implement save-game migration or auto-wipe with warning banner | Data versioned & backward-compatible |
+|4.5| ~~Smoke test: add dummy resource entity via JSON, verify UI renders~~ | Proves scalability |
+|4.6| ~~Implement save-game migration or auto-wipe with warning banner~~ | Data versioned & backward-compatible |
 
 ---
 
 ## Phase 5 – Modular Action Handling (Research Step 3)
 | # | Task | Details |
 |---|------|---------|
-|5.1| Replace central `ActionSystem` switch with domain handlers | Each system registers its own action listeners |
-|5.2| Move resource-click logic into `ResourceSystem` | No cross-system reach-through |
-|5.3| Update React dispatch helper to emit namespaced events (`ACTION_RESOURCE_CLICK`, ...) | UI unchanged otherwise |
-|5.4| Delete `ActionSystem` once all call-sites are removed | Dead code eliminated |
+|5.1| ~~Replace central `ActionSystem` switch with domain handlers~~ | Each system registers its own action listeners |
+|5.2| ~~Move resource-click logic into `ResourceSystem`~~ | No cross-system reach-through |
+|5.3| ~~Update React dispatch helper to emit namespaced events (`ACTION_RESOURCE_CLICK`, ...)~~ | UI unchanged otherwise |
+|5.4| ~~Delete `ActionSystem` once all call-sites are removed~~ | Dead code eliminated |
 
 ---
 

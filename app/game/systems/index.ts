@@ -1,4 +1,3 @@
-import { ActionSystem } from './ActionSystem';
 import { EncounterSystem } from './EncounterSystem';
 import { ResourceSystem } from './ResourceSystem';
 import { UpgradeSystem } from './UpgradeSystem';
@@ -6,7 +5,6 @@ import { LogSystem } from './LogSystem';
 import { CombatSystem } from './CombatSystem';
 import { EventBus } from 'core/EventBus';
 import { GameState } from '../types';
-import { GameActions } from '../types/actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { ResourceManager } from 'core/managers/ResourceManager';
 import { CombatEncounterManager } from 'core/managers/CombatEncounterManager';
@@ -22,11 +20,6 @@ export class GameSystemManager {
    * Resource production system
    */
   public resource: ResourceSystem;
-
-  /**
-   * Action handling system
-   */
-  public action: ActionSystem;
 
   /**
    * Upgrade management system
@@ -68,20 +61,10 @@ export class GameSystemManager {
    */
   constructor(private eventBus: EventBus) {
     this.resource = new ResourceSystem(eventBus);
-    this.upgrade = new UpgradeSystem();
-    this.log = new LogSystem();
+    this.upgrade = new UpgradeSystem(eventBus);
+    this.log = new LogSystem(eventBus);
     this.encounter = new EncounterSystem(eventBus);
     this.combat = new CombatSystem(eventBus);
-    
-    // Initialize the action system last since it depends on other systems
-    this.action = new ActionSystem(eventBus);
-    
-    // Set the manager reference in the ActionSystem
-    this.action.setManager(this);
-    
-    // Configure system dependencies where needed (now handled by dedicated managers)
-    // this.setupSystemDependencies();
-    // this.setupEventListeners();
     
     // Initialize the game stats based on upgrades
     // This will be done during initialization when loading a game
@@ -115,14 +98,5 @@ export class GameSystemManager {
         sys.update(state, delta);
       }
     });
-  }
-
-  /**
-   * Process an action through the appropriate system
-   */
-  processAction(state: GameState, action: GameActions): GameState {
-    // Pass action to the ActionSystem
-    // Note: ActionSystem might need access to other systems via this manager
-    return this.action.processAction(state, action);
   }
 } 

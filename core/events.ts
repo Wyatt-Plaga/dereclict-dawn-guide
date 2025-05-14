@@ -17,5 +17,13 @@ export interface GameEventMap {
     automationType: string;
     direction: 'increase' | 'decrease';
   };
+  purchaseUpgrade: {
+    state: GameState;
+    category: string;
+    upgradeType: string;
+  };
+  markLogRead: { state: GameState; logId: string };
+  markAllLogsRead: { state: GameState };
+  initiateJump: { state: GameState };
   DISPATCH_ACTION: GameActions;
 } 

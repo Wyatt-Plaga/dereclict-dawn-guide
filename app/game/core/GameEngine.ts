@@ -307,12 +307,21 @@ export class GameEngine {
             context
         );
         
-        // Pass the action to game systems and get updated state
-        const updatedState = this.systems.processAction(this.state, action);
-        
-        // Update the internal state
-        this.state = updatedState;
-        
+        // Legacy fallback: directly forward to specific systems until fully migrated
+        // Upgrade purchases
+        if (action.type === 'PURCHASE_UPGRADE') {
+            this.eventBus.emit('purchaseUpgrade', {
+              state: this.state,
+              category: (action as any).payload.category,
+              upgradeType: (action as any).payload.upgradeType,
+            });
+        } else if (action.type === 'MARK_LOG_READ') {
+            this.eventBus.emit('markLogRead', { state: this.state, logId: (action as any).payload.logId });
+        } else if (action.type === 'MARK_ALL_LOGS_READ') {
+            this.eventBus.emit('markAllLogsRead', { state: this.state });
+        }
+         
+        // No direct state mutation here; listeners mutate this.state reference
         // Log state after processing
         const afterEnergy = this.state.categories.reactor.resources.energy;
         Logger.debug(

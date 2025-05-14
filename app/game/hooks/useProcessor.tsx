@@ -11,7 +11,7 @@ const formatResourceCosts = (costs: ResourceCost[]): string => {
 };
 
 export const useProcessor = () => {
-  const { state, dispatch } = useGame();
+  const { state } = useGame();
   const bus = useGameBus();
   const upgradeSystem = new UpgradeSystem();
 
@@ -67,13 +67,13 @@ export const useProcessor = () => {
 
   const upgradeThreads = () => {
     if (canUpgradeThreads) {
-      dispatch({ type: 'PURCHASE_UPGRADE', payload: { category: 'processor', upgradeType: 'processingThreads' } });
+      bus.emit('purchaseUpgrade', { state, category: 'processor', upgradeType: 'processingThreads' });
     }
   };
 
   const upgradeBuffers = () => {
     if (canUpgradeBuffers) {
-      dispatch({ type: 'PURCHASE_UPGRADE', payload: { category: 'processor', upgradeType: 'mainframeExpansions' } });
+      bus.emit('purchaseUpgrade', { state, category: 'processor', upgradeType: 'mainframeExpansions' });
     }
   };
 
