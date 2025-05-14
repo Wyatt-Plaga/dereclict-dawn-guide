@@ -168,6 +168,10 @@ export interface StoryEncounter extends BaseEncounter {
     type: 'story';
     choices: EncounterChoice[];
     message?: string;
+    /**
+     * Primary region where this encounter can occur (redundant with validLocations but useful for quick filters)
+     */
+    region?: RegionType;
 }
 
 export interface EncounterChoice {

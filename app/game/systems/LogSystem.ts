@@ -27,6 +27,17 @@ export class LogSystem {
                 this.markAllLogsRead(state);
                 this.bus?.emit('stateUpdated', state);
             });
+
+            // Re-run unlock checks when key lifecycle events occur
+            const triggerRecheck = (state: GameState) => {
+                // Re-evaluate unlock conditions immediately
+                this.update(state, 0);
+                this.bus?.emit('stateUpdated', state);
+            };
+
+            this.bus.on('combatEnded', ({ state }) => triggerRecheck(state));
+            this.bus.on('encounterCompleted', ({ state }) => triggerRecheck(state));
+            this.bus.on('upgradePurchased', ({ state }) => triggerRecheck(state));
         }
     }
 

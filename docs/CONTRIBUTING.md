@@ -17,4 +17,6 @@ Cross-feature calls **must** go through the global `EventBus` (defined in `core/
   2. Emit via `eventBus.emit('<eventName>', payload)`.
   3. Listen with `eventBus.on('<eventName>', handler)` and remember to unsubscribe where relevant.
 
-PRs that introduce cross-feature reach-through will be rejected. 
+PRs that introduce cross-feature reach-through will be rejected.
+
+> ℹ️ The linter enforces this automatically.  Any import matching `**/ResourceSystem` (or other future system files) will fail CI via the `no-restricted-imports` rule in `.eslintrc.json`.  If you see that error, refactor to an event-based flow instead of reaching across boundaries. 

@@ -23,4 +23,58 @@ Legacy code still lives in `app/`, `components/`, etc.  We'll migrate code into 
 
 ---
 
-_For details on the phased migration, see `docs/refactor-plan.md`._ 
+_For details on the phased migration, see `docs/refactor-plan.md`._
+
+## Entity-Component System (ECS)
+_Phase 4 introduced a lightweight ECS layer that co-exists with the legacy `GameState` during migration._
+
+### Key types
+* **Component** – a plain data object that implements the marker interface `Component` found in `game/components/interfaces.ts`.
+* **Entity** – a container (`core/ecs/Entity.ts`) that owns an ID and a bag of components. It offers `add / get / has / remove` helpers.
+* **ComponentRegistry** – a singleton map that allows runtime lookup/creation of components by string key. It's optional but handy for JSON-driven content.
+* **System** – a service class (e.g. `ResourceSystem`) that iterates over entities possessing the component set it cares about.
+
+### Runtime flow (current example)
+1. At load time the **SaveSystem** lazily builds `state.world` via `createWorldFromGameState()` if it's missing.
+2. Each tick the **ResourceSystem** calls `updateWorld()` which:
+   1. Finds every `Generator` component.
+   2. Locates a matching `ResourceStorage` on the same entity.
+   3. Emits `resourceChange` events for the produced amount.
+3. Other systems (Upgrade, Combat, etc.) are being refactored to follow the same pattern.
+
+### UML
+```mermaid
+classDiagram
+    class Entity{
+      +id : string
+      +add(c)
+      +get(type)
+      +has(type)
+      +all()
+    }
+    class Component <interface>
+    class ComponentRegistry{
+      +register(key,ctor)
+      +resolve(key)
+      +create(key,...)
+    }
+    class ResourceStorage{
+      resourceType : string
+      amount : number
+      capacity : number
+    }
+    class Generator{
+      outputType : string
+      ratePerSecond : number
+      active : boolean
+    }
+    Entity "1" *-- "*" Component
+    ComponentRegistry ..> Component : creates
+    ResourceStorage --|> Component
+    Generator --|> Component
+```
+
+### Migration strategy
+The world snapshot is _additive_ – legacy category data remains for now so UI code keeps working.  Once all systems rely exclusively on ECS data we'll strip the old fields and replace the factory with forward-only saves.
+
+--- 

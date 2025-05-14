@@ -365,6 +365,17 @@ export class EncounterSystem {
         // Clear the active encounter
         state.encounters.active = false;
         state.encounters.encounter = undefined;
+
+        // Emit encounterCompleted event for cross-system listeners
+        this.eventBus.emit('encounterCompleted', {
+            state,
+            encounterId: encounter.id,
+            encounterType: encounter.type,
+            result: choiceId || 'completed',
+        });
+
+        // Update UI immediately
+        this.eventBus.emit('stateUpdated', state);
         
         return state;
     }

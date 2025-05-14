@@ -20,11 +20,6 @@ export class EventBus<Events extends Record<string, any> = GameEventMap> {
     // Logging context heuristics
     let context = LogContext.NONE;
     if (event === 'stateUpdated') context = LogContext.NONE;
-    else if (event === 'DISPATCH_ACTION' && data?.type) {
-      if (data.type === 'CLICK_RESOURCE' && data.payload?.category === 'reactor') context = LogContext.REACTOR_LIFECYCLE;
-      else if (data.type === 'CLICK_RESOURCE' && data.payload?.category === 'processor') context = LogContext.PROCESSOR_LIFECYCLE;
-      else if (data.type === 'PURCHASE_UPGRADE') context = LogContext.UPGRADE_PURCHASE;
-    }
 
     Logger.debug(LogCategory.EVENT_BUS, `Emitting event: "${String(event)}"`, context);
 

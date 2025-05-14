@@ -8,7 +8,6 @@ import {
   ManufacturingConstants
 } from '../config/gameConstants';
 import { ResourceCost } from '../types/combat';
-import { ResourceSystem } from './ResourceSystem';
 import { EventBus } from 'core/EventBus';
 
 /**
@@ -18,12 +17,7 @@ import { EventBus } from 'core/EventBus';
  * Think of this as the R&D department that improves your capabilities.
  */
 export class UpgradeSystem {
-  // Instantiate ResourceSystem once for the class instance
-  private resourceSystem: ResourceSystem;
-
   constructor(private bus?: EventBus) {
-    this.resourceSystem = new ResourceSystem(bus as any);
-
     if (this.bus) {
       this.bus.on('purchaseUpgrade', (data: { state: GameState; category: string; upgradeType: string }) => {
         const { state, category, upgradeType } = data;
@@ -50,23 +44,39 @@ export class UpgradeSystem {
       LogContext.UPGRADE_PURCHASE
     );
     
+    let success = false;
     switch (category) {
       case 'reactor':
-        return this.purchaseReactorUpgrade(state, upgradeType);
+        success = this.purchaseReactorUpgrade(state, upgradeType);
+        break;
       case 'processor':
-        return this.purchaseProcessorUpgrade(state, upgradeType);
+        success = this.purchaseProcessorUpgrade(state, upgradeType);
+        break;
       case 'crewQuarters':
-        return this.purchaseCrewQuartersUpgrade(state, upgradeType);
+        success = this.purchaseCrewQuartersUpgrade(state, upgradeType);
+        break;
       case 'manufacturing':
-        return this.purchaseManufacturingUpgrade(state, upgradeType);
+        success = this.purchaseManufacturingUpgrade(state, upgradeType);
+        break;
       default:
         Logger.warn(
           LogCategory.UPGRADES,
           `Unknown category: ${category}`,
           LogContext.UPGRADE_PURCHASE
         );
-        return false;
+        success = false;
     }
+
+    // If purchase succeeded, notify listeners
+    if (success) {
+      this.bus?.emit('upgradePurchased', {
+        state,
+        category,
+        upgradeType,
+      });
+    }
+
+    return success;
   }
   
   /**
@@ -89,9 +99,9 @@ export class UpgradeSystem {
         );
         
         // Check if all resources are available
-        if (this.resourceSystem.hasResources(state, expansionCosts)) {
+        if (this.hasResources(state, expansionCosts)) {
           // Consume resources
-          this.resourceSystem.consumeResources(state, expansionCosts);
+          this.consumeResources(state, expansionCosts);
           
           // Increment upgrade
           reactor.upgrades.reactorExpansions += 1;
@@ -129,8 +139,8 @@ export class UpgradeSystem {
         );
         
         // Use ResourceSystem for checking/consuming
-        if (this.resourceSystem.hasResources(state, converterCosts)) {
-          this.resourceSystem.consumeResources(state, converterCosts);
+        if (this.hasResources(state, converterCosts)) {
+          this.consumeResources(state, converterCosts);
           
           // Increment upgrade
           reactor.upgrades.energyConverters += 1;
@@ -185,9 +195,9 @@ export class UpgradeSystem {
         );
         
         // Check if all resources are available
-        if (this.resourceSystem.hasResources(state, expansionCosts)) {
+        if (this.hasResources(state, expansionCosts)) {
           // Consume resources
-          this.resourceSystem.consumeResources(state, expansionCosts);
+          this.consumeResources(state, expansionCosts);
           
           // Increment upgrade
           processor.upgrades.mainframeExpansions += 1;
@@ -225,9 +235,9 @@ export class UpgradeSystem {
         );
         
         // Check if all resources are available
-        if (this.resourceSystem.hasResources(state, threadCosts)) {
+        if (this.hasResources(state, threadCosts)) {
           // Consume resources
-          this.resourceSystem.consumeResources(state, threadCosts);
+          this.consumeResources(state, threadCosts);
           
           // Increment upgrade
           processor.upgrades.processingThreads += 1;
@@ -282,9 +292,9 @@ export class UpgradeSystem {
         );
         
         // Check if all resources are available
-        if (this.resourceSystem.hasResources(state, quartersCosts)) {
+        if (this.hasResources(state, quartersCosts)) {
            // Consume resources
-           this.resourceSystem.consumeResources(state, quartersCosts);
+           this.consumeResources(state, quartersCosts);
           
           // Increment upgrade
           crewQuarters.upgrades.additionalQuarters += 1;
@@ -332,9 +342,9 @@ export class UpgradeSystem {
         );
         
         // Check if all resources are available
-        if (this.resourceSystem.hasResources(state, workerCosts)) {
+        if (this.hasResources(state, workerCosts)) {
           // Consume resources
-          this.resourceSystem.consumeResources(state, workerCosts);
+          this.consumeResources(state, workerCosts);
           
           // Increment upgrade
           crewQuarters.upgrades.workerCrews += 1;
@@ -389,9 +399,9 @@ export class UpgradeSystem {
         );
         
         // Check if all resources are available
-        if (this.resourceSystem.hasResources(state, expansionCosts)) {
+        if (this.hasResources(state, expansionCosts)) {
           // Consume resources
-          this.resourceSystem.consumeResources(state, expansionCosts);
+          this.consumeResources(state, expansionCosts);
           
           // Increment upgrade
           manufacturing.upgrades.cargoHoldExpansions += 1;
@@ -429,9 +439,9 @@ export class UpgradeSystem {
         );
         
         // Check if all resources are available
-        if (this.resourceSystem.hasResources(state, bayCosts)) {
+        if (this.hasResources(state, bayCosts)) {
           // Consume resources
-          this.resourceSystem.consumeResources(state, bayCosts);
+          this.consumeResources(state, bayCosts);
           
           // Increment upgrade
           manufacturing.upgrades.manufacturingBays += 1;
@@ -712,6 +722,81 @@ export class UpgradeSystem {
    * @returns True if the player has enough resources, false otherwise
    */
   canAffordUpgrade(state: GameState, costs: ResourceCost[]): boolean {
-    return this.resourceSystem.hasResources(state, costs);
+    return this.hasResources(state, costs);
+  }
+
+  /**
+   * ----------------------------------------------------------------------
+   * Resource helpers (formerly provided by ResourceSystem)
+   * ----------------------------------------------------------------------
+   */
+
+  private hasResources(state: GameState, costs: ResourceCost[]): boolean {
+    for (const cost of costs) {
+      const { type, amount } = cost;
+      if (amount <= 0) continue;
+
+      switch (type) {
+        case 'energy':
+          if (state.categories.reactor.resources.energy < amount) return false;
+          break;
+        case 'insight':
+          if (state.categories.processor.resources.insight < amount) return false;
+          break;
+        case 'crew':
+          if (state.categories.crewQuarters.resources.crew < amount) return false;
+          break;
+        case 'scrap':
+          if (state.categories.manufacturing.resources.scrap < amount) return false;
+          break;
+        case 'combatComponents':
+          if (state.combatComponents < amount) return false;
+          break;
+        case 'bossMatrix':
+          if (state.bossMatrix < amount) return false;
+          break;
+        default:
+          Logger.warn(LogCategory.RESOURCES, `Unknown resource type: ${type}`, LogContext.UPGRADE_PURCHASE);
+          return false;
+      }
+    }
+    return true;
+  }
+
+  private consumeResources(state: GameState, costs: ResourceCost[]): boolean {
+    if (!this.hasResources(state, costs)) return false;
+
+    for (const cost of costs) {
+      const { type, amount } = cost;
+      if (amount <= 0) continue;
+
+      switch (type) {
+        case 'energy':
+        case 'insight':
+        case 'crew':
+        case 'scrap': {
+          // Use event-driven path when possible
+          if (this.bus) {
+            this.bus.emit('resourceChange', { state, resourceType: type, amount: -amount, source: 'upgrade' });
+          } else {
+            // Fallback – mutate directly
+            if (type === 'energy') state.categories.reactor.resources.energy -= amount;
+            else if (type === 'insight') state.categories.processor.resources.insight -= amount;
+            else if (type === 'crew') state.categories.crewQuarters.resources.crew -= amount;
+            else if (type === 'scrap') state.categories.manufacturing.resources.scrap -= amount;
+          }
+          break;
+        }
+        case 'combatComponents':
+          state.combatComponents -= amount;
+          break;
+        case 'bossMatrix':
+          state.bossMatrix -= amount;
+          break;
+        default:
+          Logger.warn(LogCategory.RESOURCES, `Unknown resource type: ${type}`, LogContext.UPGRADE_PURCHASE);
+      }
+    }
+    return true;
   }
 } 

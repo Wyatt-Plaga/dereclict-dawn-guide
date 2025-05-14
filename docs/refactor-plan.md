@@ -39,6 +39,8 @@ _Risk:_ Broken import paths. _Mitigation:_ CI tests + TypeScript compiler catch 
 
 _Dependency:_ Phase 1 complete so files can land in correct folders.
 
+_FollowUp:_ Phase 1: Minor Structural Adjustments. The overall re-org is done, but consider aligning it exactly with the plan if desired – for instance, one could move app/game/core and app/game/systems to a top-level game/ folder (and adjust import paths) to match the proposed namespaces (though in a Next.js app, keeping them under app/ is acceptable). Ensure any straggling old file paths (if any) are removed. Update documentation if needed to reflect the final folder layout (e.g. note that "ui" is in app/ and components/ rather than a single folder).
+
 **DONE criteria:** New managers depend only on interfaces (no concrete class imports); enforced via `import/no-cycle`.
 
 ---
@@ -60,8 +62,12 @@ _Dependency:_ Phase 1 complete so files can land in correct folders.
 |3.1| ~~Implement lightweight `EventBus` singleton (pub/sub)~~ | `core/EventBus` + typed `GameEventMap` |
 |3.2| ~~Refactor at least three direct cross-calls to events~~ | Resource gen, encounter rewards & automation drain now emit `resourceChange` |
 |3.3| ~~Codify rule in `CONTRIBUTING.md`~~ | Event-boundary policy committed |
+|3.4| ~~Expand EventBus usage to cover remaining cross-system interactions (e.g. combat ↔ logs, encounters ↔ upgrades)~~ | No direct subsystem calls remain |
+|3.5| ~~Enforce "events-only" boundary with custom ESLint rule & update docs~~ | CI fails on forbidden cross-imports |
 
 **Additional notes:** Events must be strongly typed (`publish<UpgradePurchasedEvent>()`) and support `AbortController`-based unsubscribe to avoid memory leaks.
+
+Phase 3: Expand Event-Driven Design. Leverage the EventBus more broadly so that subsystems communicate via events instead of direct manager calls. For example, when an Encounter ends, the EncounterSystem could emit an event like "encounterCompleted" that the CombatSystem or LogSystem listens to, rather than the ActionSystem directly invoking CombatSystem. Introduce a guideline in CONTRIBUTING.md or the architecture docs explicitly instructing developers to use the EventBus for cross-system interactions (preventing future tight coupling). Essentially, push the publish/subscribe model further into the game logic.
 
 ---
 
@@ -74,6 +80,12 @@ _Dependency:_ Phase 1 complete so files can land in correct folders.
 |4.4| ~~Register systems array in `GameSystemManager`~~ | Generic `systemsList` + `IGameSystem` interface |
 |4.5| ~~Smoke test: add dummy resource entity via JSON, verify UI renders~~ | Proves scalability |
 |4.6| ~~Implement save-game migration or auto-wipe with warning banner~~ | Data versioned & backward-compatible |
+|4.7| ~~Introduce `Entity` container & runtime component registry~~ | `core/ecs/Entity.ts` + `ComponentRegistry` |
+|4.8| ~~Refactor `ResourceSystem.update()` (and others) to iterate over `Generator` components generically~~ | Eliminates hard-coded category branches |
+|4.9| ~~Migrate `GameState` save format to ECS world & supply conversion helper~~ | Legacy saves auto-upgrade on load |
+|4.10| Document ECS model & add UML diagram to `ARCHITECTURE.md` | New devs understand component flow |
+
+Phase 4: Implement ECS Component Patterns. This is the largest remaining gap. Introduce generic data components to remove duplication in resource handling. For instance, define interfaces or base classes: e.g. a ResourceStorage component (with current amount and capacity), a Generator component (with production rate, perhaps with a method produce(delta)), an Upgradable component (with level and effect on stats). Then refactor the category data structures so that Reactor, Processor, etc. are composed of these components or at least implement these interfaces. This might involve creating a simple Entity class that holds a set of components for each subsystem. Then, rewrite ResourceSystem.update() to iterate over all entities that have a Generator component and invoke their production logic uniformly, instead of one hardcoded function per category. This will require substantial changes to how state is structured and updated, but will make the architecture truly flexible for adding new resource systems or features. Start by abstracting duplicate logic (for example, all four categories have similar resource-capacity updates) into reusable functions or component classes, and gradually migrate the state to a more data-driven form.
 
 ---
 
@@ -84,6 +96,15 @@ _Dependency:_ Phase 1 complete so files can land in correct folders.
 |5.2| ~~Move resource-click logic into `ResourceSystem`~~ | No cross-system reach-through |
 |5.3| ~~Update React dispatch helper to emit namespaced events (`ACTION_RESOURCE_CLICK`, ...)~~ | UI unchanged otherwise |
 |5.4| ~~Delete `ActionSystem` once all call-sites are removed~~ | Dead code eliminated |
+|5.5| Define granular action events (e.g. `combatAction`, `purchaseUpgrade`) & update UI hooks | UI emits specific events instead of generic dispatch |
+|5.6| Register each game system as listener for its relevant action events | Logic handled inside domain system |
+|5.7| ~~Remove `ActionSystem` shim & strip legacy fallback from `GameEngine`~~ | Central dispatcher fully retired |
+
+Phase 5: Modularize Action Handling. Finish replacing the ActionSystem's monolithic design with an event-driven action handling scheme:
+Event Namespacing: Define specific event names for each action or group of actions (e.g. "ACTION:RESOURCE_CLICK", "ACTION:PURCHASE_UPGRADE", "ACTION:COMBAT_MOVE", etc.). The UI (or GameEngine dispatch) can emit those instead of a single 'DISPATCH_ACTION'.
+System Listeners: Have each relevant system register an eventBus.on('ACTION:XYZ', handler) for the actions it needs to handle. For example, ResourceSystem listens for resource clicks, UpgradeSystem listens for upgrade purchases, CombatSystem for combat moves, etc. In those handlers, they would update state accordingly. This eliminates the giant switch in ActionSystem.
+Refactor or Remove ActionSystem: With the above in place, the ActionSystem class can be deprecated. It might be kept as a thin shim during transition (possibly just translating 'DISPATCH_ACTION' into specific events for backward compatibility), but ultimately it should be removed once all actions are handled by the appropriate system modules. Any legacy references to GameSystemManager.action or ActionSystem.processAction should be updated to instead emit or respond to the new events.
+Cleanup: Once confident in the new approach, remove the old action processing code and adjust GameEngine.setupEventHandlers() to no longer funnel everything to ActionSystem. The UI's engine.dispatch could even be simplified to directly emit the specific action events (or call a lightweight wrapper in GameEngine for that purpose). Ensure the documentation is updated to explain the new action handling flow.
 
 ---
 

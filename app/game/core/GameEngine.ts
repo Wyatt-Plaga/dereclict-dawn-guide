@@ -91,10 +91,7 @@ export class GameEngine {
      * Set up event handlers for the game engine
      */
     private setupEventHandlers() {
-        // Listen for action dispatch events
-        this.eventBus.on('DISPATCH_ACTION', (action: GameActions) => {
-            this.processAction(action);
-        });
+        // No generic dispatch listener needed – UI calls processAction via dispatch().
         
         Logger.debug(LogCategory.ENGINE, "Event handlers configured", LogContext.STARTUP);
     }
@@ -307,18 +304,82 @@ export class GameEngine {
             context
         );
         
-        // Legacy fallback: directly forward to specific systems until fully migrated
-        // Upgrade purchases
-        if (action.type === 'PURCHASE_UPGRADE') {
+        // Map each action to a domain-specific event so individual systems handle their own logic.
+        switch (action.type) {
+          case 'CLICK_RESOURCE':
+            this.eventBus.emit('resourceClick', {
+              state: this.state,
+              category: (action as any).payload.category,
+            });
+            break;
+
+          case 'PURCHASE_UPGRADE':
             this.eventBus.emit('purchaseUpgrade', {
               state: this.state,
               category: (action as any).payload.category,
               upgradeType: (action as any).payload.upgradeType,
             });
-        } else if (action.type === 'MARK_LOG_READ') {
-            this.eventBus.emit('markLogRead', { state: this.state, logId: (action as any).payload.logId });
-        } else if (action.type === 'MARK_ALL_LOGS_READ') {
+            break;
+
+          case 'MARK_LOG_READ':
+            this.eventBus.emit('markLogRead', {
+              state: this.state,
+              logId: (action as any).payload.logId,
+            });
+            break;
+
+          case 'MARK_ALL_LOGS_READ':
             this.eventBus.emit('markAllLogsRead', { state: this.state });
+            break;
+
+          case 'INITIATE_JUMP':
+            this.eventBus.emit('initiateJump', { state: this.state });
+            break;
+
+          case 'MAKE_STORY_CHOICE':
+            this.eventBus.emit('storyChoice', {
+              state: this.state,
+              choiceId: (action as any).payload.choiceId,
+            });
+            break;
+
+          case 'COMBAT_ACTION':
+            this.eventBus.emit('combatAction', {
+              state: this.state,
+              actionId: (action as any).payload.actionId,
+            });
+            break;
+
+          case 'RETREAT_FROM_BATTLE':
+            this.eventBus.emit('retreatFromBattle', { state: this.state });
+            break;
+
+          case 'ADJUST_AUTOMATION': {
+            const p = (action as any).payload;
+            this.eventBus.emit('adjustAutomation', {
+              state: this.state,
+              category: p.category,
+              automationType: p.automationType,
+              direction: p.direction,
+            });
+            break;
+          }
+
+          case 'COMPLETE_ENCOUNTER': {
+            // For story encounters without explicit choice (e.g., empty) we pass choiceId if present.
+            const choiceId = (action as any).payload?.choiceId;
+            this.eventBus.emit('storyChoice', { state: this.state, choiceId });
+            break; }
+
+          case 'SELECT_REGION': {
+            // simple state mutation – handled here for now
+            const region = (action as any).payload.region;
+            this.state.navigation.currentRegion = region as any;
+            // future: emit navigation change event if needed
+            break; }
+
+          default:
+            Logger.warn(LogCategory.ENGINE, `Unhandled action type: ${(action as any).type}`, context);
         }
          
         // No direct state mutation here; listeners mutate this.state reference
@@ -344,7 +405,7 @@ export class GameEngine {
      * @param action - The action to dispatch
      */
     dispatch(action: GameActions) {
-        this.eventBus.emit('DISPATCH_ACTION', action);
+        this.processAction(action);
     }
 
     /**

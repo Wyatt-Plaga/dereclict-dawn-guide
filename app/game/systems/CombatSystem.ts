@@ -329,6 +329,14 @@ export class CombatSystem {
       text: message,
       type: 'SYSTEM'
     });
+
+    // Notify other systems and UI
+    this.eventBus.emit('combatEnded', {
+      state,
+      outcome,
+      enemyId: state.combat.currentEnemy ?? undefined,
+    });
+    this.eventBus.emit('stateUpdated', state);
   }
 
   /**

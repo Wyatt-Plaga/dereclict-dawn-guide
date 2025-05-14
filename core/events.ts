@@ -24,6 +24,18 @@ export interface GameEventMap {
   };
   markLogRead: { state: GameState; logId: string };
   markAllLogsRead: { state: GameState };
+  // Cross-system lifecycle events
+  combatEnded: { state: GameState; outcome: 'victory' | 'defeat' | 'retreat'; enemyId?: string };
+  encounterCompleted: {
+    state: GameState;
+    encounterId: string;
+    encounterType: string;
+    result: string;
+  };
+  upgradePurchased: {
+    state: GameState;
+    category: string;
+    upgradeType: string;
+  };
   initiateJump: { state: GameState };
-  DISPATCH_ACTION: GameActions;
 } 

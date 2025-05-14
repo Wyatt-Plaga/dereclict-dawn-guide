@@ -1,9 +1,10 @@
 import { GameState } from '../types';
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
-import { ProcessorConstants, CrewQuartersConstants, ManufacturingConstants } from '../config/gameConstants';
 import { EventBus } from 'core/EventBus';
 import { GameEventMap } from 'core/events';
 import { Entity, Generator, ResourceStorage } from '../components/interfaces';
+import { createWorldFromGameState } from '../ecs/factory';
+import { CrewQuartersConstants } from '../config/gameConstants';
 
 /**
  * ResourceSystem
@@ -30,84 +31,13 @@ export class ResourceSystem {
    * @param automationHasPower - Flag indicating if automation units have power
    */
   update(state: GameState, delta: number, automationHasPower: boolean = true): void {
-    // If we have an ECS world attached, prefer that path.
-    if (state.world && state.world.length) {
-      this.updateWorld(state, state.world, delta, automationHasPower);
-      return;
+    // Ensure a world snapshot exists (lazy convert legacy state on first run)
+    if (!state.world || state.world.length === 0) {
+      state.world = createWorldFromGameState(state);
     }
 
-    // 1. Energy Generation (Reactor) - Not affected by automation power cost
-    const reactor = state.categories.reactor;
-    if (reactor) {
-      const energyPerSecond = reactor.stats.energyPerSecond;
-      if (energyPerSecond > 0) {
-        const capacityLeft = reactor.stats.energyCapacity - reactor.resources.energy;
-        const generated = Math.min(capacityLeft, energyPerSecond * delta);
-        if (generated > 0) {
-          if (this.bus) {
-            this.bus.emit('resourceChange', { state, resourceType: 'energy', amount: generated, source: 'auto-gen' });
-          } else {
-            reactor.resources.energy += generated;
-          }
-        }
-      }
-    }
-    
-    // 2. Insight Generation (Processor)
-    const processor = state.categories.processor;
-    if (processor && automationHasPower) { // Check power
-      const insightPerSecond = processor.stats.insightPerSecond;
-      if (insightPerSecond > 0) {
-        const capacityLeft = processor.stats.insightCapacity - processor.resources.insight;
-        const generated = Math.min(capacityLeft, insightPerSecond * delta);
-        if (generated > 0) {
-          if (this.bus) {
-            this.bus.emit('resourceChange', { state, resourceType: 'insight', amount: generated, source: 'auto-gen' });
-          } else {
-            processor.resources.insight += generated;
-          }
-        }
-      }
-    } // If !automationHasPower, insight doesn't increase
-    
-    // 3. Crew Awakening (Crew Quarters)
-    const crewQuarters = state.categories.crewQuarters;
-    if (crewQuarters && automationHasPower) { // Check power
-      const crewPerSecond = crewQuarters.stats.crewPerSecond;
-      if (crewPerSecond > 0 && crewQuarters.resources.crew < crewQuarters.stats.crewCapacity) {
-        crewQuarters.stats.awakeningProgress += crewPerSecond * delta;
-        if (crewQuarters.stats.awakeningProgress >= CrewQuartersConstants.AWAKENING_THRESHOLD) {
-          const newCrew = Math.floor(crewQuarters.stats.awakeningProgress / CrewQuartersConstants.AWAKENING_THRESHOLD);
-          const capacityLeft = crewQuarters.stats.crewCapacity - crewQuarters.resources.crew;
-          const generated = Math.min(capacityLeft, newCrew);
-          if (generated > 0) {
-            if (this.bus) {
-              this.bus.emit('resourceChange', { state, resourceType: 'crew', amount: generated, source: 'auto-gen' });
-            } else {
-              crewQuarters.resources.crew += generated;
-            }
-          }
-          crewQuarters.stats.awakeningProgress %= CrewQuartersConstants.AWAKENING_THRESHOLD;
-        }
-      }
-    } // If !automationHasPower, awakening progress doesn't increase
-    
-    // 4. Scrap Collection (Manufacturing)
-    const manufacturing = state.categories.manufacturing;
-    if (manufacturing && automationHasPower) { // Check power
-      const scrapPerSecond = manufacturing.stats.scrapPerSecond;
-      if (scrapPerSecond > 0) {
-        const capacityLeft = manufacturing.stats.scrapCapacity - manufacturing.resources.scrap;
-        const generated = Math.min(capacityLeft, scrapPerSecond * delta);
-        if (generated > 0) {
-          if (this.bus) {
-            this.bus.emit('resourceChange', { state, resourceType: 'scrap', amount: generated, source: 'auto-gen' });
-          } else {
-            manufacturing.resources.scrap += generated;
-          }
-        }
-      }
-    } // If !automationHasPower, scrap doesn't increase
+    // Use the ECS-driven pathway exclusively
+    this.updateWorld(state, state.world, delta, automationHasPower);
   }
 
   /**
