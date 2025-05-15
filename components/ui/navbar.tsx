@@ -2,9 +2,13 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Zap, CpuIcon, Users, Package, BookOpen, Settings, Rocket } from "lucide-react"
+import { Zap, CpuIcon, Users, Package, BookOpen, Rocket } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/app/game/hooks/useGame"
+import { useReactor } from '@/app/game/hooks/useReactor';
+import { useProcessor } from '@/app/game/hooks/useProcessor';
+import { useCrewQuarters } from '@/app/game/hooks/useCrewQuarters';
+import { useManufacturing } from '@/app/game/hooks/useManufacturing';
 
 const navigation = [
   { name: "Reactor", href: "/reactor", icon: Zap },
@@ -17,9 +21,15 @@ const navigation = [
 
 export function NavBar() {
   const pathname = usePathname()
-  const { status, statusText, shouldFlicker } = useSystemStatus()
+  const { statusText, shouldFlicker } = useSystemStatus()
   const { state } = useGame()
   
+  // Live resource values via ECS hooks (must be called unconditionally)
+  const { energy } = useReactor();
+  const { insight } = useProcessor();
+  const { crew } = useCrewQuarters();
+  const { scrap } = useManufacturing();
+
   // Check if there's an active combat - if so, don't render the navbar
   const isInCombat = state?.combat?.active === true
   
@@ -89,28 +99,28 @@ export function NavBar() {
             <Zap className="h-6 w-6 text-chart-1" />
             <span className="text-muted-foreground text-lg">Energy:</span>
             <span className="ml-auto text-primary text-lg font-medium">
-              {state?.categories?.reactor ? formatNumber(state.categories.reactor.resources.energy) : '0'}
+              {formatNumber(energy)}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <CpuIcon className="h-6 w-6 text-chart-2" />
             <span className="text-muted-foreground text-lg">Insight:</span>
             <span className="ml-auto text-primary text-lg font-medium">
-              {state?.categories?.processor ? formatNumber(state.categories.processor.resources.insight) : '0'}
+              {formatNumber(insight)}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <Users className="h-6 w-6 text-chart-3" />
             <span className="text-muted-foreground text-lg">Crew:</span>
             <span className="ml-auto text-primary text-lg font-medium">
-              {state?.categories?.crewQuarters ? formatNumber(state.categories.crewQuarters.resources.crew) : '0'}
+              {formatNumber(crew)}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <Package className="h-6 w-6 text-chart-4" />
             <span className="text-muted-foreground text-lg">Scrap:</span>
             <span className="ml-auto text-primary text-lg font-medium">
-              {state?.categories?.manufacturing ? formatNumber(state.categories.manufacturing.resources.scrap) : '0'}
+              {formatNumber(scrap)}
             </span>
           </div>
         </div>

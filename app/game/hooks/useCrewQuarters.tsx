@@ -15,14 +15,15 @@ import {
   getAwakeningStageText,
   getRandomAwakeningFlavor,
   formatCrewCount,
-  calculateAwakeningProgressWidth
+  calculateAwakeningProgressWidth,
+  formatTemplate
 } from '../utils/crewUtils';
-import { CrewQuartersConstants } from '../config/gameConstants';
+import { CrewQuartersConstants, AutomationConstants } from '../config/gameConstants';
 import { CrewQuartersTexts } from '../content/texts';
-import { formatTemplate } from '../utils/crewUtils';
 import { formatResourceCosts } from '../utils/formattingUtils';
 import { ResourceCost } from '../types/combat';
-import { AutomationConstants } from '../config/gameConstants';
+import { getCategoryEntity } from 'core/ecs/selectors';
+import { ResourceStorage, Generator, Upgradable } from '../components/interfaces';
 
 /**
  * Hook for accessing and manipulating crew quarters data
@@ -35,39 +36,37 @@ export function useCrewQuarters() {
   // Create an instance of UpgradeSystem for cost calculations
   const upgradeSystem = new UpgradeSystem();
   
-  // Get crew quarters data from game state
-  const crewQuarters = state.categories.crewQuarters || {
-    resources: { crew: 0 },
-    stats: { 
-      crewCapacity: 5, 
-      crewPerSecond: 0, 
-      awakeningProgress: 0, 
-      activeWorkerCrews: 0 
-    },
-    upgrades: { additionalQuarters: 0, workerCrews: 0 },
-  };
+  const entity = getCategoryEntity(state.world, 'crewQuarters');
+  const storage = entity?.get<ResourceStorage>('ResourceStorage');
+  const generator = entity?.get<Generator>('Generator');
+  const quartersUpg = entity?.get<Upgradable>('crew:quartersExpansion');
+  const workerCrewsUpg = entity?.get<Upgradable>('crew:workerCrews');
 
-  const { crew } = crewQuarters.resources;
-  const { crewCapacity, crewPerSecond, awakeningProgress } = crewQuarters.stats;
-  
-  // Need reactor energy state for checks
-  const currentEnergy = state.categories.reactor?.resources?.energy ?? 0;
-  
+  const crew = storage?.current ?? 0;
+  const crewCapacity = storage?.capacity ?? CrewQuartersConstants.BASE_CREW_CAPACITY;
+  const crewPerSecond = generator?.ratePerSecond ?? 0;
+  const awakeningProgress = 0; // placeholder until CrewAwakening component exists
+
+  // Need reactor energy state for manual awaken
+  const reactorEntity = getCategoryEntity(state.world, 'reactor');
+  const reactorStorage = reactorEntity?.get<ResourceStorage>('ResourceStorage');
+  const currentEnergy = reactorStorage?.current ?? 0;
+
   // Upgrades Data
-  const workerCrews = crewQuarters.upgrades.workerCrews;
+  const workerCrews = workerCrewsUpg?.level ?? 0;
   const workerCrewCosts = upgradeSystem.calculateWorkerCrewCost(workerCrews);
   const workerCrewCost = formatResourceCosts(workerCrewCosts);
   const workerCrewDescription = "Increases automatic Crew awakening rate."; // Placeholder
   const canUpgradeWorkerCrews = upgradeSystem.canAffordUpgrade(state, workerCrewCosts);
 
-  const additionalQuarters = crewQuarters.upgrades.additionalQuarters;
+  const additionalQuarters = quartersUpg?.level ?? 0;
   const quarterCosts = upgradeSystem.calculateQuartersCost(additionalQuarters, crewCapacity);
   const quarterCost = formatResourceCosts(quarterCosts);
   const quarterDescription = "Increases Crew capacity."; // Placeholder
   const canUpgradeQuarters = upgradeSystem.canAffordUpgrade(state, quarterCosts);
 
   // Active automation
-  const activeWorkerCrews = crewQuarters.stats.activeWorkerCrews ?? 0;
+  const activeWorkerCrews = generator?.active ? workerCrews : 0;
   const canIncreaseCrews = activeWorkerCrews < workerCrews;
   const canDecreaseCrews = activeWorkerCrews > 0;
 
@@ -75,14 +74,12 @@ export function useCrewQuarters() {
   const canAwaken = crew < crewCapacity;
   const canAwakenWithEnergy = canAwaken && currentEnergy >= AutomationConstants.ENERGY_COST_PER_CLICK;
 
-  // Calculate upgrade costs (returns ResourceCost[])
-  const quartersCostArray = upgradeSystem.calculateQuartersCost(crewQuarters.upgrades.additionalQuarters, crewCapacity);
-  const workerCrewCostArray = upgradeSystem.calculateWorkerCrewCost(crewQuarters.upgrades.workerCrews);
+  // Max limits
   const maxWorkerCrews = upgradeSystem.getMaxWorkerCrews();
 
-  // Format costs for display
-  const formattedQuartersCost = formatResourceCosts(quartersCostArray);
-  const formattedWorkerCrewCost = formatResourceCosts(workerCrewCostArray);
+  // Formatted costs for UI reuse
+  const formattedQuartersCost = quarterCost;
+  const formattedWorkerCrewCost = workerCrewCost;
   
   // Calculate what capacity would be after purchasing quarters upgrade
   const newCapacityAfterUpgrade = crewCapacity + CrewQuartersConstants.QUARTERS_UPGRADE_CAPACITY_INCREASE;

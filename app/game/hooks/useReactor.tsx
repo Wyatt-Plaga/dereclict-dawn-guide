@@ -10,18 +10,28 @@ import { UpgradeSystem } from '../systems/UpgradeSystem';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { formatResourceCosts } from '../utils/formattingUtils';
 import { ReactorTexts } from '../content/texts';
+import { getCategoryEntity } from 'core/ecs/selectors';
+import { ResourceStorage, Upgradable, Generator } from '../components/interfaces';
 
 export function useReactor() {
   const { state } = useGame();
   const bus = useGameBus();
+  const { dispatchAction } = useGame();
   
   const upgradeSystem = new UpgradeSystem();
   
-  const reactor = state.categories.reactor;
-  const { energy } = reactor.resources;
-  const activeEnergyConverters = reactor.stats.activeEnergyConverters ?? 0;
-  const { energyCapacity, energyPerSecond } = reactor.stats;
-  const { reactorExpansions, energyConverters } = reactor.upgrades;
+  const entity = getCategoryEntity(state.world, 'reactor');
+  const storage = entity?.get<ResourceStorage>('ResourceStorage');
+  const generator = entity?.get<Generator>('Generator');
+  const expansions = entity?.get<Upgradable>('reactor:expansions');
+  const converters = entity?.get<Upgradable>('reactor:converters');
+
+  const energy = storage?.current ?? 0;
+  const energyCapacity = storage?.capacity ?? 0;
+  const energyPerSecond = generator?.ratePerSecond ?? 0;
+  const reactorExpansions = expansions?.level ?? 0;
+  const energyConverters = converters?.level ?? 0;
+  const activeEnergyConverters = generator?.active ? energyConverters : 0;
 
   // Calculate costs
   const expansionCostArray = upgradeSystem.calculateReactorExpansionCost(reactorExpansions, energyCapacity);
@@ -35,7 +45,13 @@ export function useReactor() {
   const generateEnergy = () => {
     if (energy >= energyCapacity) return;
     Logger.debug(LogCategory.UI, 'Generate energy button clicked', LogContext.REACTOR_LIFECYCLE);
-    bus.emit('resourceClick', { state, category: 'reactor' });
+    if (entity) {
+      // Prefer new namespaced action
+      dispatchAction('action:resource_click', { entityId: entity.id, amount: 1 });
+    } else {
+      // Fallback to legacy event for safety
+      bus.emit('resourceClick', { state, category: 'reactor' });
+    }
   };
 
   // Upgrade actions

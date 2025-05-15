@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { LocalForageAdapter, StorageAdapter } from 'core/storage/StorageAdapter';
 import { GameState } from '@/app/game/types';
 import { createWorldFromGameState } from '@/app/game/ecs/factory';
+import { World } from 'core/ecs/World';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 
 export interface SaveData {
@@ -41,11 +42,12 @@ export class SaveSystem {
     this.gameStartTime = now;
 
     const id = this.currentSaveId || uuidv4();
+    const worldSnapshot = (state.world as any)?.toJSON ? (state.world as any).toJSON() : state.world;
     const save: SaveData = {
       id,
       version: this.version,
       timestamp: now,
-      state,
+      state: { ...state, world: worldSnapshot } as GameState,
       metadata: { playTime: Math.floor(this.totalPlayTime), lastPlayed: new Date(now).toISOString().split('T')[0], ...metadata }
     };
     const key = `save:${id}`;
@@ -63,6 +65,17 @@ export class SaveSystem {
     const data = await this.storage.load(key);
     if (!data) return null;
     if (data.version !== this.version) data.state = this.migrateSaveData(data).state;
+
+    // Revive World instance if serialized as plain object
+    if (data.state.world && !(data.state.world instanceof World)) {
+      try {
+        data.state.world = World.fromJSON(data.state.world as any);
+      } catch (err) {
+        Logger.error(LogCategory.ENGINE, 'Failed to revive World from save – rebuilding from game state', LogContext.SAVE_LOAD);
+        data.state.world = createWorldFromGameState(data.state);
+      }
+    }
+
     this.totalPlayTime = data.metadata.playTime || 0;
     this.gameStartTime = Date.now();
     this.currentSaveId = id;

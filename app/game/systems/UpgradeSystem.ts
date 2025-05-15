@@ -9,6 +9,21 @@ import {
 } from '../config/gameConstants';
 import { ResourceCost } from '../types/combat';
 import { EventBus } from 'core/EventBus';
+import { getCategoryEntity } from 'core/ecs/selectors';
+import { Upgradable, UpgradeKey, ResourceStorage, Generator } from '../components/interfaces';
+import { ResourceSystem } from './ResourceSystem';
+
+// Map legacy upgrade keys (from UI/events) to namespaced UpgradeKey
+const legacyToUpgradeKey: Record<string, UpgradeKey> = {
+  reactorExpansions: 'reactor:expansions',
+  energyConverters: 'reactor:converters',
+  mainframeExpansions: 'processor:expansions',
+  processingThreads: 'processor:threads',
+  additionalQuarters: 'crew:quartersExpansion',
+  workerCrews: 'crew:workerCrews',
+  cargoHoldExpansions: 'manufacturing:expansions',
+  manufacturingBays: 'manufacturing:bays',
+};
 
 /**
  * UpgradeSystem
@@ -17,15 +32,25 @@ import { EventBus } from 'core/EventBus';
  * Think of this as the R&D department that improves your capabilities.
  */
 export class UpgradeSystem {
-  constructor(private bus?: EventBus) {
+  private currentState?: GameState;
+  private world?: import('core/ecs/World').World;
+  constructor(private bus?: EventBus, private resourceSystem?: ResourceSystem) {
     if (this.bus) {
       this.bus.on('purchaseUpgrade', (data: { state: GameState; category: string; upgradeType: string }) => {
         const { state, category, upgradeType } = data;
-        this.purchaseUpgrade(state, category as any, upgradeType);
+        const key = legacyToUpgradeKey[upgradeType];
+        if (!key) {
+          Logger.warn(LogCategory.UPGRADES, `Unmapped legacy upgradeType ${upgradeType}`, LogContext.UPGRADE_PURCHASE);
+          return;
+        }
+        this.purchaseUpgrade(state, category as any, key);
         // ensure stats update after purchase
         this.updateAllStats(state);
         this.bus?.emit('stateUpdated', state);
       });
+
+      // Phase-5 namespaced action
+      this.bus.on('action:purchase_upgrade', this.handleActionPurchaseUpgrade.bind(this));
     }
   }
 
@@ -34,448 +59,71 @@ export class UpgradeSystem {
    * 
    * @param state - Current game state
    * @param category - Category the upgrade belongs to
-   * @param upgradeType - Type of upgrade to purchase
+   * @param upgradeKey - Namespaced key of the upgrade to purchase
    * @returns Whether the purchase was successful
    */
-  purchaseUpgrade(state: GameState, category: GameCategory, upgradeType: string): boolean {
+  purchaseUpgrade(state: GameState, category: GameCategory, upgradeKey: UpgradeKey): boolean {
     Logger.debug(
-      LogCategory.UPGRADES, 
-      `Attempting to purchase ${upgradeType} in ${category}`,
+      LogCategory.UPGRADES,
+      `Attempting to purchase ${upgradeKey} in ${category}`,
       LogContext.UPGRADE_PURCHASE
     );
-    
-    let success = false;
-    switch (category) {
-      case 'reactor':
-        success = this.purchaseReactorUpgrade(state, upgradeType);
-        break;
-      case 'processor':
-        success = this.purchaseProcessorUpgrade(state, upgradeType);
-        break;
-      case 'crewQuarters':
-        success = this.purchaseCrewQuartersUpgrade(state, upgradeType);
-        break;
-      case 'manufacturing':
-        success = this.purchaseManufacturingUpgrade(state, upgradeType);
-        break;
+
+    const entity = getCategoryEntity(state.world, category);
+    if (!entity) return false;
+    const upg = entity.get<Upgradable>(upgradeKey);
+    if (!upg) return false;
+    const storage = entity.get<ResourceStorage>('ResourceStorage');
+    const costs = this.getCostsFor(upgradeKey, upg, storage);
+    if (!this.hasResources(state, costs)) return false;
+    this.consumeResources(state, costs);
+    upg.level += 1;
+    // Update stats after purchase
+    this.updateAllStats(state);
+    if (this.bus) {
+      const payload = { category, upgradeType: upgradeKey as string, state };
+      (this.bus as any).publish?.('upgrade:purchased', payload);
+      this.bus.emit('upgradePurchased', { state, category, upgradeType: upgradeKey as string });
+      this.bus.emit('stateUpdated', state);
+    }
+    return true;
+  }
+
+  /**
+   * Get resource costs for a namespaced upgrade key
+   */
+  public getCostsFor(
+    upgradeKey: UpgradeKey,
+    upg: Upgradable,
+    storage?: ResourceStorage
+  ): ResourceCost[] {
+    switch (upgradeKey) {
+      case 'reactor:expansions':
+        return this.calculateReactorExpansionCost(upg.level, storage?.capacity ?? 0);
+      case 'reactor:converters':
+        return this.calculateEnergyConverterCost(upg.level);
+      case 'processor:expansions':
+        return this.calculateMainframeExpansionCost(upg.level, storage?.capacity ?? 0);
+      case 'processor:threads':
+        return this.calculateProcessingThreadCost(upg.level);
+      case 'crew:quartersExpansion':
+        return this.calculateQuartersCost(upg.level, storage?.capacity ?? 0);
+      case 'crew:workerCrews':
+        return this.calculateWorkerCrewCost(upg.level);
+      case 'manufacturing:expansions':
+        return this.calculateCargoHoldExpansionCost(upg.level, storage?.capacity ?? 0);
+      case 'manufacturing:bays':
+        return this.calculateManufacturingBayCost(upg.level);
       default:
         Logger.warn(
           LogCategory.UPGRADES,
-          `Unknown category: ${category}`,
+          `Unknown upgrade key: ${upgradeKey}`,
           LogContext.UPGRADE_PURCHASE
         );
-        success = false;
+        return [];
     }
+  }
 
-    // If purchase succeeded, notify listeners
-    if (success) {
-      this.bus?.emit('upgradePurchased', {
-        state,
-        category,
-        upgradeType,
-      });
-    }
-
-    return success;
-  }
-  
-  /**
-   * Attempt to purchase a reactor upgrade
-   */
-  private purchaseReactorUpgrade(state: GameState, upgradeType: string): boolean {
-    const reactor = state.categories.reactor;
-    
-    switch (upgradeType) {
-      case 'reactorExpansions':
-        // Calculate cost (now returns ResourceCost[])
-        const expansionCosts = this.calculateReactorExpansionCost(reactor.upgrades.reactorExpansions, reactor.stats.energyCapacity);
-        
-        // Log the multi-resource cost
-        const costString = expansionCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Reactor expansion costs: ${costString}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-        );
-        
-        // Check if all resources are available
-        if (this.hasResources(state, expansionCosts)) {
-          // Consume resources
-          this.consumeResources(state, expansionCosts);
-          
-          // Increment upgrade
-          reactor.upgrades.reactorExpansions += 1;
-          
-          // Update stats
-          this.updateReactorStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased reactor expansion (level ${reactor.upgrades.reactorExpansions})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient resources for reactor expansion`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-        );
-        
-        return false;
-        
-      case 'energyConverters':
-        // Calculate cost (now returns ResourceCost[])
-        const converterCosts = this.calculateEnergyConverterCost(reactor.upgrades.energyConverters);
-        
-        // Log the multi-resource cost
-        const converterCostString = converterCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Energy converter costs: ${converterCostString}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-        );
-        
-        // Use ResourceSystem for checking/consuming
-        if (this.hasResources(state, converterCosts)) {
-          this.consumeResources(state, converterCosts);
-          
-          // Increment upgrade
-          reactor.upgrades.energyConverters += 1;
-          
-          // Update stats
-          this.updateReactorStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased energy converter (level ${reactor.upgrades.energyConverters})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient energy for energy converter`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-        );
-        
-        return false;
-        
-      default:
-        Logger.warn(
-          LogCategory.UPGRADES,
-          `Unknown reactor upgrade: ${upgradeType}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-        );
-        return false;
-    }
-  }
-  
-  /**
-   * Attempt to purchase a processor upgrade
-   */
-  private purchaseProcessorUpgrade(state: GameState, upgradeType: string): boolean {
-    const processor = state.categories.processor;
-    
-    switch (upgradeType) {
-      case 'mainframeExpansions':
-        // Calculate cost (now returns ResourceCost[])
-        const expansionCosts = this.calculateMainframeExpansionCost(processor.upgrades.mainframeExpansions, processor.stats.insightCapacity);
-        
-        // Log the multi-resource cost
-        const expansionCostString = expansionCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Mainframe expansion costs: ${expansionCostString}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
-        );
-        
-        // Check if all resources are available
-        if (this.hasResources(state, expansionCosts)) {
-          // Consume resources
-          this.consumeResources(state, expansionCosts);
-          
-          // Increment upgrade
-          processor.upgrades.mainframeExpansions += 1;
-          
-          // Update stats
-          this.updateProcessorStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased mainframe expansion (level ${processor.upgrades.mainframeExpansions})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient resources for mainframe expansion`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
-        );
-        
-        return false;
-        
-      case 'processingThreads':
-        // Calculate cost (now returns ResourceCost[])
-        const threadCosts = this.calculateProcessingThreadCost(processor.upgrades.processingThreads);
-        
-        // Log the multi-resource cost
-        const threadCostString = threadCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Processing thread costs: ${threadCostString}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
-        );
-        
-        // Check if all resources are available
-        if (this.hasResources(state, threadCosts)) {
-          // Consume resources
-          this.consumeResources(state, threadCosts);
-          
-          // Increment upgrade
-          processor.upgrades.processingThreads += 1;
-          
-          // Update stats
-          this.updateProcessorStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased processing thread (level ${processor.upgrades.processingThreads})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient resources for processing thread`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
-        );
-        
-        return false;
-        
-      default:
-        Logger.warn(
-          LogCategory.UPGRADES,
-          `Unknown processor upgrade: ${upgradeType}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
-        );
-        return false;
-    }
-  }
-  
-  /**
-   * Attempt to purchase a crew quarters upgrade
-   */
-  private purchaseCrewQuartersUpgrade(state: GameState, upgradeType: string): boolean {
-    const crewQuarters = state.categories.crewQuarters;
-    
-    switch (upgradeType) {
-      case 'additionalQuarters':
-        // Calculate cost (now returns ResourceCost[])
-        const quartersCosts = this.calculateQuartersCost(crewQuarters.upgrades.additionalQuarters, crewQuarters.stats.crewCapacity);
-        
-        // Log the multi-resource cost
-        const quartersCostString = quartersCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Additional quarters costs: ${quartersCostString}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-        );
-        
-        // Check if all resources are available
-        if (this.hasResources(state, quartersCosts)) {
-           // Consume resources
-           this.consumeResources(state, quartersCosts);
-          
-          // Increment upgrade
-          crewQuarters.upgrades.additionalQuarters += 1;
-          
-          // Update stats
-          this.updateCrewQuartersStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased additional quarters (level ${crewQuarters.upgrades.additionalQuarters})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient resources for additional quarters`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-        );
-        
-        return false;
-        
-      case 'workerCrews':
-        // Calculate cost (now returns ResourceCost[])
-        const workerCosts = this.calculateWorkerCrewCost(crewQuarters.upgrades.workerCrews);
-        
-        // Check if maxed out (max 5 worker crews)
-        if (crewQuarters.upgrades.workerCrews >= this.getMaxWorkerCrews()) {
-          Logger.debug(
-            LogCategory.UPGRADES,
-            `Worker crews already at maximum level (${this.getMaxWorkerCrews()})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-          );
-          return false;
-        }
-        
-        // Log the multi-resource cost
-        const workerCostString = workerCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Worker crew costs: ${workerCostString}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-        );
-        
-        // Check if all resources are available
-        if (this.hasResources(state, workerCosts)) {
-          // Consume resources
-          this.consumeResources(state, workerCosts);
-          
-          // Increment upgrade
-          crewQuarters.upgrades.workerCrews += 1;
-          
-          // Update stats
-          this.updateCrewQuartersStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased worker crew (level ${crewQuarters.upgrades.workerCrews})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient resources for worker crew`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-        );
-        
-        return false;
-        
-      default:
-        Logger.warn(
-          LogCategory.UPGRADES,
-          `Unknown crew quarters upgrade: ${upgradeType}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-        );
-        return false;
-    }
-  }
-  
-  /**
-   * Attempt to purchase a manufacturing upgrade
-   */
-  private purchaseManufacturingUpgrade(state: GameState, upgradeType: string): boolean {
-    const manufacturing = state.categories.manufacturing;
-    
-    switch (upgradeType) {
-      case 'cargoHoldExpansions':
-        // Calculate cost (now returns ResourceCost[])
-        const expansionCosts = this.calculateCargoHoldExpansionCost(manufacturing.upgrades.cargoHoldExpansions, manufacturing.stats.scrapCapacity);
-        
-        // Log the multi-resource cost
-        const expansionCostString = expansionCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Cargo hold expansion costs: ${expansionCostString}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-        );
-        
-        // Check if all resources are available
-        if (this.hasResources(state, expansionCosts)) {
-          // Consume resources
-          this.consumeResources(state, expansionCosts);
-          
-          // Increment upgrade
-          manufacturing.upgrades.cargoHoldExpansions += 1;
-          
-          // Update stats
-          this.updateManufacturingStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased cargo hold expansion (level ${manufacturing.upgrades.cargoHoldExpansions})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient resources for cargo hold expansion`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-        );
-        
-        return false;
-        
-      case 'manufacturingBays':
-        // Calculate cost (now returns ResourceCost[])
-        const bayCosts = this.calculateManufacturingBayCost(manufacturing.upgrades.manufacturingBays);
-        
-        // Log the multi-resource cost
-        const bayCostString = bayCosts.map((c: ResourceCost) => `${c.amount} ${c.type}`).join(', ');
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Manufacturing bay costs: ${bayCostString}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-        );
-        
-        // Check if all resources are available
-        if (this.hasResources(state, bayCosts)) {
-          // Consume resources
-          this.consumeResources(state, bayCosts);
-          
-          // Increment upgrade
-          manufacturing.upgrades.manufacturingBays += 1;
-          
-          // Update stats
-          this.updateManufacturingStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased manufacturing bay (level ${manufacturing.upgrades.manufacturingBays})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient resources for manufacturing bay`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-        );
-        
-        return false;
-        
-      default:
-        Logger.warn(
-          LogCategory.UPGRADES,
-          `Unknown manufacturing upgrade: ${upgradeType}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-        );
-        return false;
-    }
-  }
-  
   /**
    * Update all stats based on current upgrade levels
    * 
@@ -493,56 +141,84 @@ export class UpgradeSystem {
    * Update reactor stats based on upgrades
    */
   private updateReactorStats(state: GameState): void {
-    const reactor = state.categories.reactor;
+    const entity = getCategoryEntity(state.world, 'reactor');
+    if (!entity) return;
     
-    // Calculate energy capacity based on expansions
-    reactor.stats.energyCapacity = ReactorConstants.BASE_ENERGY_CAPACITY * 
-      Math.pow(ReactorConstants.ENERGY_CAPACITY_MULTIPLIER, reactor.upgrades.reactorExpansions);
-    
-    // Calculate energy production based on *active* converters
-    reactor.stats.energyPerSecond = reactor.stats.activeEnergyConverters * ReactorConstants.ENERGY_PER_CONVERTER;
+    const storage = entity.get<ResourceStorage>('ResourceStorage');
+    const expansions = entity.get<Upgradable>('reactor:expansions');
+    if (storage && expansions) {
+      storage.capacity = ReactorConstants.BASE_ENERGY_CAPACITY * 
+        Math.pow(ReactorConstants.ENERGY_CAPACITY_MULTIPLIER, expansions.level);
+    }
+
+    const generator = entity.get<Generator>('Generator');
+    const converters = entity.get<Upgradable>('reactor:converters');
+    if (generator && converters) {
+      generator.ratePerSecond = converters.level * ReactorConstants.ENERGY_PER_CONVERTER;
+    }
   }
   
   /**
    * Update processor stats based on upgrades
    */
   private updateProcessorStats(state: GameState): void {
-    const processor = state.categories.processor;
+    const entity = getCategoryEntity(state.world, 'processor');
+    if (!entity) return;
     
-    // Calculate insight capacity based on mainframe expansions
-    processor.stats.insightCapacity = ProcessorConstants.BASE_INSIGHT_CAPACITY * 
-      Math.pow(ProcessorConstants.INSIGHT_CAPACITY_MULTIPLIER, processor.upgrades.mainframeExpansions);
-    
-    // Calculate insight production based on *active* processing threads
-    processor.stats.insightPerSecond = processor.stats.activeProcessingThreads * ProcessorConstants.INSIGHT_PER_THREAD;
+    const storage = entity.get<ResourceStorage>('ResourceStorage');
+    const expansions = entity.get<Upgradable>('processor:expansions');
+    if (storage && expansions) {
+      storage.capacity = ProcessorConstants.BASE_INSIGHT_CAPACITY * 
+        Math.pow(ProcessorConstants.INSIGHT_CAPACITY_MULTIPLIER, expansions.level);
+    }
+
+    const generator = entity.get<Generator>('Generator');
+    const threads = entity.get<Upgradable>('processor:threads');
+    if (generator && threads) {
+      generator.ratePerSecond = threads.level * ProcessorConstants.INSIGHT_PER_THREAD;
+    }
   }
   
   /**
    * Update crew quarters stats based on upgrades
    */
   private updateCrewQuartersStats(state: GameState): void {
-    const crewQuarters = state.categories.crewQuarters;
+    const entity = getCategoryEntity(state.world, 'crewQuarters');
+    if (!entity) return;
     
-    // Calculate crew capacity based on additional quarters
-    crewQuarters.stats.crewCapacity = CrewQuartersConstants.BASE_CREW_CAPACITY + 
-      (crewQuarters.upgrades.additionalQuarters * CrewQuartersConstants.QUARTERS_UPGRADE_CAPACITY_INCREASE);
-    
-    // Calculate crew production based on *active* worker crews
-    crewQuarters.stats.crewPerSecond = crewQuarters.stats.activeWorkerCrews * CrewQuartersConstants.WORKER_CREW_PRODUCTION_RATE;
+    const storage = entity.get<ResourceStorage>('ResourceStorage');
+    const quartersExpansion = entity.get<Upgradable>('crew:quartersExpansion');
+    if (storage && quartersExpansion) {
+      storage.capacity = CrewQuartersConstants.BASE_CREW_CAPACITY + 
+        (quartersExpansion.level * CrewQuartersConstants.QUARTERS_UPGRADE_CAPACITY_INCREASE);
+    }
+
+    const generator = entity.get<Generator>('Generator');
+    const workerCrews = entity.get<Upgradable>('crew:workerCrews');
+    if (generator && workerCrews) {
+      generator.ratePerSecond = workerCrews.level * CrewQuartersConstants.WORKER_CREW_PRODUCTION_RATE;
+    }
   }
   
   /**
    * Update manufacturing stats based on upgrades
    */
   private updateManufacturingStats(state: GameState): void {
-    const manufacturing = state.categories.manufacturing;
+    const entity = getCategoryEntity(state.world, 'manufacturing');
+    if (!entity) return;
     
-    // Calculate scrap capacity based on cargo hold expansions
-    manufacturing.stats.scrapCapacity = ManufacturingConstants.BASE_SCRAP_CAPACITY * 
-      Math.pow(ManufacturingConstants.SCRAP_CAPACITY_MULTIPLIER, manufacturing.upgrades.cargoHoldExpansions);
-    
-    // Calculate scrap production based on *active* manufacturing bays
-    manufacturing.stats.scrapPerSecond = manufacturing.stats.activeManufacturingBays * ManufacturingConstants.SCRAP_PER_BAY;
+    const storage = entity.get<ResourceStorage>('ResourceStorage');
+    const expansions = entity.get<Upgradable>('manufacturing:expansions');
+    if (storage && expansions) {
+      storage.capacity = ManufacturingConstants.BASE_SCRAP_CAPACITY * 
+        Math.pow(ManufacturingConstants.SCRAP_CAPACITY_MULTIPLIER, expansions.level);
+    }
+
+    const generator = entity.get<Generator>('Generator');
+    const bays = entity.get<Upgradable>('manufacturing:bays');
+    if (generator && bays) {
+      generator.ratePerSecond = bays.level * ManufacturingConstants.SCRAP_PER_BAY;
+    }
   }
 
   /*** Utility methods for cost calculations ***/
@@ -732,71 +408,43 @@ export class UpgradeSystem {
    */
 
   private hasResources(state: GameState, costs: ResourceCost[]): boolean {
-    for (const cost of costs) {
-      const { type, amount } = cost;
-      if (amount <= 0) continue;
-
-      switch (type) {
-        case 'energy':
-          if (state.categories.reactor.resources.energy < amount) return false;
-          break;
-        case 'insight':
-          if (state.categories.processor.resources.insight < amount) return false;
-          break;
-        case 'crew':
-          if (state.categories.crewQuarters.resources.crew < amount) return false;
-          break;
-        case 'scrap':
-          if (state.categories.manufacturing.resources.scrap < amount) return false;
-          break;
-        case 'combatComponents':
-          if (state.combatComponents < amount) return false;
-          break;
-        case 'bossMatrix':
-          if (state.bossMatrix < amount) return false;
-          break;
-        default:
-          Logger.warn(LogCategory.RESOURCES, `Unknown resource type: ${type}`, LogContext.UPGRADE_PURCHASE);
-          return false;
-      }
+    if (!this.resourceSystem) {
+      Logger.warn(LogCategory.UPGRADES, 'ResourceSystem not available in UpgradeSystem for hasResources check');
+      return false;
     }
-    return true;
+    return this.resourceSystem.hasResources(state, costs);
   }
 
   private consumeResources(state: GameState, costs: ResourceCost[]): boolean {
-    if (!this.hasResources(state, costs)) return false;
-
-    for (const cost of costs) {
-      const { type, amount } = cost;
-      if (amount <= 0) continue;
-
-      switch (type) {
-        case 'energy':
-        case 'insight':
-        case 'crew':
-        case 'scrap': {
-          // Use event-driven path when possible
-          if (this.bus) {
-            this.bus.emit('resourceChange', { state, resourceType: type, amount: -amount, source: 'upgrade' });
-          } else {
-            // Fallback – mutate directly
-            if (type === 'energy') state.categories.reactor.resources.energy -= amount;
-            else if (type === 'insight') state.categories.processor.resources.insight -= amount;
-            else if (type === 'crew') state.categories.crewQuarters.resources.crew -= amount;
-            else if (type === 'scrap') state.categories.manufacturing.resources.scrap -= amount;
-          }
-          break;
-        }
-        case 'combatComponents':
-          state.combatComponents -= amount;
-          break;
-        case 'bossMatrix':
-          state.bossMatrix -= amount;
-          break;
-        default:
-          Logger.warn(LogCategory.RESOURCES, `Unknown resource type: ${type}`, LogContext.UPGRADE_PURCHASE);
-      }
+    if (!this.resourceSystem) {
+      Logger.warn(LogCategory.UPGRADES, 'ResourceSystem not available in UpgradeSystem for consumeResources');
+      return false; // Or throw error, depending on desired handling
     }
-    return true;
+    // hasResources check is done within ResourceSystem.consumeResources, no need to repeat here.
+    return this.resourceSystem.consumeResources(state, costs);
+  }
+
+  /** Cache latest state & world so action handlers can mutate */
+  setState(state: GameState) {
+    this.currentState = state;
+    this.world = state.world;
+  }
+
+  // -------------------------------------------------------------------------
+  // Phase-5 action handler – mutate via ECS entityId/upgradable key
+  // -------------------------------------------------------------------------
+  private handleActionPurchaseUpgrade(data: { entityId: string; upgradeId: string }) {
+    if (!this.currentState || !this.world) return;
+    const { entityId, upgradeId } = data;
+    const entity = this.world.entities.get(entityId);
+    if (!entity) return;
+
+    // Determine category from tag – assume first tag is category
+    const tagComp = entity.get<{ tags: Set<string> }>('Tag');
+    const category = tagComp ? Array.from(tagComp.tags.values())[0] : undefined;
+    if (!category) return;
+
+    const key = upgradeId as UpgradeKey; // Assume already namespaced
+    this.purchaseUpgrade(this.currentState, category as any, key);
   }
 } 

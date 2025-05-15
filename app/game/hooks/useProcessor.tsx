@@ -2,7 +2,9 @@ import { useGame } from './useGame';
 import { useGameBus } from './useGameBus';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import { ResourceCost } from '../types/combat';
-import { AutomationConstants } from '../config/gameConstants';
+import { AutomationConstants, ProcessorConstants } from '../config/gameConstants';
+import { getCategoryEntity } from 'core/ecs/selectors';
+import { ResourceStorage, Generator, Upgradable } from '../components/interfaces';
 
 // Helper to format resource costs
 const formatResourceCosts = (costs: ResourceCost[]): string => {
@@ -15,54 +17,42 @@ export const useProcessor = () => {
   const bus = useGameBus();
   const upgradeSystem = new UpgradeSystem();
 
-  // Ensure processor data exists, provide defaults if not
-  const processor = state.categories.processor || {
-    resources: { insight: 0 },
-    stats: { 
-      insightCapacity: 10, 
-      insightPerClick: 0.5, 
-      insightPerSecond: 0,
-      activeProcessingThreads: 0 
-    },
-    upgrades: { mainframeExpansions: 0, processingThreads: 0 },
-  };
+  const entity = getCategoryEntity(state.world, 'processor');
+  const storage = entity?.get<ResourceStorage>('ResourceStorage');
+  const generator = entity?.get<Generator>('Generator');
+  const threadsUpg = entity?.get<Upgradable>('processor:threads');
+  const expansionsUpg = entity?.get<Upgradable>('processor:expansions');
 
-  const insight = processor.resources.insight;
-  const insightCapacity = processor.stats.insightCapacity;
-  const insightPerClick = processor.stats.insightPerClick;
-  const insightPerSecond = processor.stats.insightPerSecond;
-  
-  // Need reactor energy state for checks
-  const currentEnergy = state.categories.reactor?.resources?.energy ?? 0;
-  
-  // Upgrades Data
-  const processingThreads = processor.upgrades.processingThreads;
+  const insight = storage?.current ?? 0;
+  const insightCapacity = storage?.capacity ?? 0;
+  const insightPerClick = ProcessorConstants.INSIGHT_PER_CLICK;
+  const insightPerSecond = generator?.ratePerSecond ?? 0;
+
+  const processingThreads = threadsUpg?.level ?? 0;
   const threadCosts = upgradeSystem.calculateProcessingThreadCost(processingThreads);
   const threadCost = formatResourceCosts(threadCosts);
   const threadDescription = "Increases automatic Insight generation.";
   const canUpgradeThreads = upgradeSystem.canAffordUpgrade(state, threadCosts);
 
-  const dataBuffers = processor.upgrades.mainframeExpansions;
+  const dataBuffers = expansionsUpg?.level ?? 0;
   const bufferCosts = upgradeSystem.calculateMainframeExpansionCost(dataBuffers, insightCapacity);
   const bufferCost = formatResourceCosts(bufferCosts);
   const bufferDescription = "Increases Insight storage capacity.";
   const canUpgradeBuffers = upgradeSystem.canAffordUpgrade(state, bufferCosts);
 
-  // Active automation
-  const activeProcessingThreads = processor.stats.activeProcessingThreads ?? 0;
+  const activeProcessingThreads = generator?.active ? processingThreads : 0;
   const canIncreaseThreads = activeProcessingThreads < processingThreads;
   const canDecreaseThreads = activeProcessingThreads > 0;
 
-  // Check if manual generation is possible based on energy
+  const reactorEntity = getCategoryEntity(state.world, 'reactor');
+  const reactorStorage = reactorEntity?.get<ResourceStorage>('ResourceStorage');
+  const currentEnergy = reactorStorage?.current ?? 0;
   const canGenerateWithEnergy = currentEnergy >= AutomationConstants.ENERGY_COST_PER_CLICK;
 
-  // Actions
   const generateInsight = () => {
-    // Check energy before dispatching
     if (!canGenerateWithEnergy) return; 
     
     bus.emit('resourceClick', { state, category: 'processor' });
-    // Note: Energy consumption for clicks will be handled in ActionSystem
   };
 
   const upgradeThreads = () => {

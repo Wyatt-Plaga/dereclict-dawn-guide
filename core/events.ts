@@ -1,13 +1,14 @@
 import { GameState } from '@/app/game/types';
 import { RegionType } from '@/app/game/types/combat';
-import { GameActions } from '@/app/game/types/actions';
+import { ActionMap } from '@/app/game/actions';
 
-export interface GameEventMap {
+// Legacy / core event definitions (non-action events)
+interface CoreEventMap {
   stateUpdated: GameState;
   resourceChange: { state: GameState; resourceType: string; amount: number; source: string };
   combatEncounterTriggered: { state: GameState; enemyId: string; regionId: RegionType; subRegionId?: string };
   resourceClick: { state: GameState; category: string };
-  // Modular action events (Phase 5)
+  // Modular action events (pre-Phase-5 names – will be removed later)
   combatAction: { state: GameState; actionId: string };
   retreatFromBattle: { state: GameState };
   storyChoice: { state: GameState; choiceId?: string };
@@ -38,4 +39,9 @@ export interface GameEventMap {
     upgradeType: string;
   };
   initiateJump: { state: GameState };
-} 
+}
+
+// ---------------------------------------------------------------------------
+// Unified event map: core events PLUS the new namespaced action events.
+// ---------------------------------------------------------------------------
+export type GameEventMap = CoreEventMap & ActionMap; 

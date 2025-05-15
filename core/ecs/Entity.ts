@@ -71,6 +71,23 @@ export class Entity {
     const key = typeof ctorOrKey === 'string' ? ctorOrKey : (ctorOrKey as any).name;
     return this.components.has(key);
   }
+
+  /** Serialize entity to plain JSON (components are already plain-data). */
+  toJSON() {
+    return {
+      id: this.id,
+      components: Object.fromEntries(this.components),
+    };
+  }
+
+  /** Recreate an Entity from its serialized form */
+  static fromJSON(data: { id: string; components: Record<string, any> }): Entity {
+    const e = new Entity(data.id);
+    for (const [key, value] of Object.entries(data.components)) {
+      e.add(value as Component, key);
+    }
+    return e;
+  }
 }
 
 // -----------------------------------------------------------------------------

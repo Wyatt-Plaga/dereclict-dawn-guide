@@ -3,7 +3,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { GameEngine } from 'core/GameEngine';
 import { GameState } from '../types';
-import { GameAction } from '../types/actions';
+import { GameActions } from '../types/actions';
+import { ActionKey, ActionMap } from '../actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { getCachedState } from 'core/memoryCache';
 
@@ -12,7 +13,8 @@ import { getCachedState } from 'core/memoryCache';
  */
 interface GameContextType {
   state: GameState;
-  dispatch: (action: GameAction) => void;
+  dispatch: (action: GameActions) => void;
+  dispatchAction: <K extends ActionKey>(type: K, payload: ActionMap[K]) => void;
   engine: GameEngine; // Exposing the engine for advanced use cases
   isInitializing: boolean; // Indicates if game is still loading
 }
@@ -51,7 +53,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   });
 
   // Create a stable dispatch function that won't change on re-renders
-  const dispatch = useCallback((action: GameAction) => {
+  const dispatch = useCallback((action: GameActions) => {
     // Determine appropriate context based on action type
     let context = LogContext.NONE;
     if (action.type === 'CLICK_RESOURCE') {
@@ -71,6 +73,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
     
     Logger.debug(LogCategory.ACTIONS, `Dispatching action: ${action.type}`, context);
     engine.dispatch(action);
+  }, [engine]);
+
+  // ---------------------------------------------------------------------
+  // Phase-5 typed action dispatcher – bypasses GameEngine.dispatch
+  // ---------------------------------------------------------------------
+  const dispatchAction = useCallback(<K extends ActionKey>(type: K, payload: ActionMap[K]) => {
+    // We assert here because ActionKey subset exists in GameEventMap.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    engine.eventBus.publish(type as any, payload as any);
   }, [engine]);
 
   // Fix by using a ref to stabilize the engine reference:
@@ -119,11 +130,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       lastUpdateTime = now;
       
       // Use functional setState to avoid dependency on current state
-      setState((prevState: GameState) => {
-        // Only update if something meaningful changed
-        // Optional: implement deep comparison here
-        return JSON.parse(JSON.stringify(newState));
-      });
+      setState(() => JSON.parse(JSON.stringify(newState)));
     };
     
     const unsubscribe = engineRef.current.eventBus.on('stateUpdated', handleStateUpdate);
@@ -138,6 +145,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const contextValue: GameContextType = {
     state,
     dispatch,
+    dispatchAction,
     engine,
     isInitializing
   };

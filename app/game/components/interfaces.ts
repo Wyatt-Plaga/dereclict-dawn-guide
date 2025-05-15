@@ -1,30 +1,45 @@
-export interface Component {
-  /** Optional unique component identifier */
-  id?: string;
+export * from './ResourceStorage';
+export * from './Generator';
+export * from './Upgradable';
+export * from './ManualCollector';
+export * from './Tag';
+
+export type ComponentKey =
+  | 'ResourceStorage'
+  | 'Generator'
+  | 'Upgradable'
+  | 'ManualCollector'
+  | 'Tag';
+
+export interface ComponentMap {
+  ResourceStorage: import('./ResourceStorage').ResourceStorage;
+  Generator: import('./Generator').Generator;
+  Upgradable: import('./Upgradable').Upgradable;
+  ManualCollector: import('./ManualCollector').ManualCollector;
+  Tag: import('./Tag').Tag;
 }
+
+// Marker interface for all components
+export interface Component {}
 
 /**
  * Marks an entity as having stor-able resources (energy, insight, etc.)
  */
 export interface ResourceStorage extends Component {
-  /** canonical resource id e.g. "energy" */
-  resourceType: string;
   /** current amount held */
-  amount: number;
+  current: number;
   /** hard capacity */
   capacity: number;
 }
 
 /**
- * Produces resources every tick while `active === true`.
+ * Produces resources every tick.
  */
 export interface Generator extends Component {
-  /** resource produced */
-  outputType: string;
   /** units per second (float) */
   ratePerSecond: number;
-  /** whether the generator is currently running */
-  active: boolean;
+  /** optional flag for automation toggles */
+  active?: boolean;
 }
 
 /**
@@ -32,14 +47,22 @@ export interface Generator extends Component {
  */
 export interface Upgradable extends Component {
   level: number;
-  maxLevel: number;
-  /**
-   * Apply an upgrade to the owning entity.
-   * NB: entities are kept generic at this stage; when we introduce concrete
-   *     systems we can type-narrow via generics.
-   */
-  applyUpgrade: (nextLevel: number) => void;
+  maxLevel?: number;
+  costRef: string;
 }
+
+// ---------------------------------------------------------------------------
+// Upgrade Keys
+// ---------------------------------------------------------------------------
+export type UpgradeKey =
+  | 'reactor:expansions'
+  | 'reactor:converters'
+  | 'processor:expansions'
+  | 'processor:threads'
+  | 'crew:quartersExpansion'
+  | 'crew:workerCrews'
+  | 'manufacturing:expansions'
+  | 'manufacturing:bays';
 
 /**
  * A thin wrapper for an ID + open component bag.

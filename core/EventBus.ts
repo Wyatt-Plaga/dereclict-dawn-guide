@@ -9,6 +9,20 @@ export class EventBus<Events extends Record<string, any> = GameEventMap> {
   private listeners: { [K in keyof Events]?: Array<(data: Events[K]) => void> } = {};
   private lastStateUpdateTime = 0;
 
+  /**
+   * Wrapper alias for backwards-compat – preferred API going forward.
+   */
+  publish<K extends keyof Events>(event: K, data: Events[K]) {
+    this.emit(event, data);
+  }
+
+  /**
+   * Wrapper alias for backwards-compat – preferred API going forward.
+   */
+  subscribe<K extends keyof Events>(event: K, cb: (data: Events[K]) => void) {
+    return this.on(event, cb);
+  }
+
   emit<K extends keyof Events>(event: K, data: Events[K]) {
     // Throttle stateUpdated spam
     if (event === 'stateUpdated') {
@@ -30,6 +44,66 @@ export class EventBus<Events extends Record<string, any> = GameEventMap> {
 
     const payload = event === 'stateUpdated' ? (JSON.parse(JSON.stringify(data)) as Events[K]) : data;
     callbacks.forEach((cb) => cb(payload));
+
+    // Dev-only orphan check after micro-task to catch cases where listener registers after publish.
+    if (process.env.NODE_ENV !== 'production') {
+      if (callbacks.length === 0) {
+        queueMicrotask(() => {
+          // re-check after microtask – still zero?
+          const post = (this.listeners[event] || []).length;
+          if (post === 0) {
+            // eslint-disable-next-line no-console
+            console.warn(`[EventBus] Orphan event "${String(event)}" – no subscribers reacted.`);
+          }
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Back-compat ⇢ canonical registry bridge
+    // When an old camelCase event fires we immediately publish its
+    // equivalent `feature:verb` key so early adopters can subscribe.
+    // -------------------------------------------------------------
+    const bridge = (
+      evt: string,
+      d: any,
+    ): { key: string; payload: any } | null => {
+      switch (evt) {
+        case 'resourceChange':
+          return {
+            key: 'resource:changed',
+            payload: { category: d.resourceType, delta: d.amount, state: d.state },
+          };
+        case 'upgradePurchased':
+          return {
+            key: 'upgrade:purchased',
+            payload: { category: d.category, upgrade: d.upgradeType, state: d.state },
+          };
+        case 'combatEncounterTriggered':
+          return {
+            key: 'combat:started',
+            payload: { enemyId: d.enemyId, region: d.regionId, state: d.state },
+          };
+        case 'combatEnded':
+          return {
+            key: 'combat:ended',
+            payload: { victory: d.outcome === 'victory', enemyId: d.enemyId, state: d.state },
+          };
+        case 'encounterCompleted':
+          return {
+            key: 'encounter:completed',
+            payload: { encounterId: d.encounterId, result: d.result, state: d.state },
+          };
+        default:
+          return null;
+      }
+    };
+
+    const mapped = bridge(String(event), data);
+    if (mapped) {
+      // We use any because canonical registry is separate type.
+      (this as any).emit(mapped.key, mapped.payload);
+    }
   }
 
   on<K extends keyof Events>(event: K, cb: (data: Events[K]) => void) {

@@ -4,16 +4,13 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { NavBar } from "@/components/ui/navbar";
 import { useGame } from '@/app/game/hooks/useGame';
-import { useGameBus } from '@/app/game/hooks/useGameBus';
 import EncounterDisplay from '@/app/components/EncounterDisplay';
 import GameLoader from '@/app/components/GameLoader';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
-import { EmptyEncounter } from '../game/types';
 
 export default function EncounterPage() {
-  const { state } = useGame();
+  const { state, dispatchAction } = useGame();
   const router = useRouter();
-  const bus = useGameBus();
   
   // Log component render
   Logger.debug(
@@ -49,7 +46,8 @@ export default function EncounterPage() {
       LogContext.NONE
     );
     
-    bus.emit('storyChoice', { state, choiceId });
+    const encounterId = state.encounters.encounter?.id || '';
+    dispatchAction('action:story_choice', { encounterId, choiceId: choiceId ?? '' });
 
     // Navigate away shortly after to reflect updated state
     setTimeout(() => router.push('/navigation'), 100);

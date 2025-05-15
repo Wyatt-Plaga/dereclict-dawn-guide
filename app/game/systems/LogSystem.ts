@@ -2,6 +2,8 @@ import { GameState, LogUnlockCondition, ResourceThresholdCondition, UpgradePurch
 import { LOG_DEFINITIONS } from '../content/logDefinitions';
 import { EventBus } from 'core/EventBus';
 import { GameEventMap } from 'core/events';
+import { getCategoryEntity } from 'core/ecs/selectors';
+import { ResourceStorage, Upgradable, UpgradeKey } from '../components/interfaces';
 
 /**
  * LogSystem
@@ -13,6 +15,7 @@ import { GameEventMap } from 'core/events';
  */
 export class LogSystem {
     private logDefinitions: Record<string, LogDefinition>;
+    private currentState?: GameState;
 
     constructor(private bus?: EventBus<GameEventMap>) {
         this.logDefinitions = LOG_DEFINITIONS;
@@ -26,6 +29,19 @@ export class LogSystem {
             this.bus.on('markAllLogsRead', ({ state }) => {
                 this.markAllLogsRead(state);
                 this.bus?.emit('stateUpdated', state);
+            });
+
+            // Phase-5 namespaced actions
+            this.bus.on('action:mark_log_read', ({ logId }) => {
+                if (!this.currentState) return;
+                this.markLogRead(this.currentState, logId);
+                this.bus?.emit('stateUpdated', this.currentState);
+            });
+
+            this.bus.on('action:mark_all_logs', () => {
+                if (!this.currentState) return;
+                this.markAllLogsRead(this.currentState);
+                this.bus?.emit('stateUpdated', this.currentState);
             });
 
             // Re-run unlock checks when key lifecycle events occur
@@ -48,7 +64,10 @@ export class LogSystem {
      * @param state - Current game state
      * @param delta - Time passed in seconds
      */
-    update(state: GameState, delta: number) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    update(state: GameState, _delta: number) {
+        // cache state for action handlers
+        this.currentState = state;
         // Check for unlockable logs based on state
         this.checkForUnlockableLogs(state);
     }
@@ -165,7 +184,7 @@ export class LogSystem {
             case 'UPGRADE_PURCHASED':
                 return this.checkUpgradePurchased(state, condition as UpgradePurchasedCondition);
             case 'MULTI_CONDITION':
-                const multiCondition = condition as any; // TypeScript workaround
+                const multiCondition = condition as unknown as { operator: 'AND' | 'OR'; conditions: LogUnlockCondition[] };
                 return multiCondition.operator === 'AND' 
                     ? multiCondition.conditions.every((c: LogUnlockCondition) => this.checkSingleCondition(state, c))
                     : multiCondition.conditions.some((c: LogUnlockCondition) => this.checkSingleCondition(state, c));
@@ -183,38 +202,27 @@ export class LogSystem {
      */
     private checkResourceThreshold(state: GameState, condition: ResourceThresholdCondition): boolean {
         const { category, resourceType, threshold } = condition;
-        
+
         try {
-            // Safety check: Make sure category exists
-            if (!state.categories[category]) {
-                return false;
+            if (['energy', 'insight', 'crew', 'scrap'].includes(resourceType)) {
+                const entity = getCategoryEntity(state.world, category);
+                if (!entity) return false;
+                const storage = entity.get<ResourceStorage>('ResourceStorage');
+                if (!storage) return false;
+                return storage.current >= threshold;
             }
-            
-            // Get category resources with proper typing
-            const categoryResources = state.categories[category].resources;
-            
-            // Safety check: Make sure resources object exists
-            if (!categoryResources) {
-                return false;
+
+            // Non-storage scalar resources remain on GameState (combatComponents, bossMatrix)
+            switch (resourceType) {
+                case 'combatComponents':
+                    return (state.combatComponents ?? 0) >= threshold;
+                case 'bossMatrix':
+                    return (state.bossMatrix ?? 0) >= threshold;
+                default:
+                    return false;
             }
-            
-            // Use type assertion to access the dynamic property
-            const resourceValue = categoryResources[resourceType as keyof typeof categoryResources];
-            
-            // Return false if resource doesn't exist
-            if (resourceValue === undefined) {
-                return false;
-            }
-            
-            // Handle different resource structures (object vs number)
-            const amount = typeof resourceValue === 'object' && resourceValue !== null
-                ? (resourceValue as any).amount ?? 0 // Use ?? for potentially undefined amount
-                : (typeof resourceValue === 'number' ? resourceValue : 0); // Handle non-object/non-number case
-            
-            return amount >= threshold;
         } catch (error) {
-            // Log error and return false if any exception occurs
-            console.error('Error checking resource threshold:', error);
+            console.error('Error checking resource threshold (ECS refactor):', error);
             return false;
         }
     }
@@ -228,35 +236,31 @@ export class LogSystem {
      */
     private checkUpgradePurchased(state: GameState, condition: UpgradePurchasedCondition): boolean {
         const { category, upgradeId } = condition;
-        
+
+        const upgradeKey = legacyToUpgradeKey[upgradeId];
+        if (!upgradeKey) return false;
+
         try {
-            // Safety check: Make sure category exists
-            if (!state.categories[category]) {
-                return false;
-            }
-            
-            // Get category upgrades with proper typing
-            const categoryUpgrades = state.categories[category].upgrades;
-            
-            // Safety check: Make sure upgrades object exists
-            if (!categoryUpgrades) {
-                return false;
-            }
-            
-            // Use type assertion to access the dynamic property
-            const upgradeValue = categoryUpgrades[upgradeId as keyof typeof categoryUpgrades];
-            
-            // Return false if upgrade doesn't exist
-            if (upgradeValue === undefined) {
-                return false;
-            }
-            
-            // Check if upgrade level is greater than 0
-            return upgradeValue > 0;
+            const entity = getCategoryEntity(state.world, category);
+            if (!entity) return false;
+            const upg = entity.get<Upgradable>(upgradeKey);
+            if (!upg) return false;
+            return upg.level > 0;
         } catch (error) {
-            // Log error and return false if any exception occurs
-            console.error('Error checking upgrade purchased:', error);
+            console.error('Error checking upgrade purchased (ECS refactor):', error);
             return false;
         }
     }
-} 
+}
+
+// Map legacy upgrade IDs to namespaced keys (copy from UpgradeSystem until shared config is made)
+const legacyToUpgradeKey: Record<string, UpgradeKey> = {
+    reactorExpansions: 'reactor:expansions',
+    energyConverters: 'reactor:converters',
+    mainframeExpansions: 'processor:expansions',
+    processingThreads: 'processor:threads',
+    additionalQuarters: 'crew:quartersExpansion',
+    workerCrews: 'crew:workerCrews',
+    cargoHoldExpansions: 'manufacturing:expansions',
+    manufacturingBays: 'manufacturing:bays',
+}; 

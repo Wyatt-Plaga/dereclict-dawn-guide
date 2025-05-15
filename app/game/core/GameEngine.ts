@@ -8,6 +8,8 @@ import { getCachedState, cacheState } from 'core/memoryCache';
 import { AutomationConstants } from '../config/gameConstants';
 import { GameEventMap } from 'core/events';
 import { createWorldFromGameState } from '../ecs/factory';
+import { getCategoryEntity } from 'core/ecs/selectors';
+import { Generator, Upgradable, ResourceStorage } from '../components/interfaces';
 
 /**
  * GameEngine: The heart of the game
@@ -228,32 +230,38 @@ export class GameEngine {
         // --- Calculate energy cost for automation ---
         let totalAutomationEnergyCost = 0;
         
-        const activeThreads = this.state.categories.processor?.stats?.activeProcessingThreads ?? 0;
-        const activeCrews = this.state.categories.crewQuarters?.stats?.activeWorkerCrews ?? 0;
-        const activeBays = this.state.categories.manufacturing?.stats?.activeManufacturingBays ?? 0;
-        
-        totalAutomationEnergyCost += activeThreads * AutomationConstants.ENERGY_COST_PER_ACTIVE_UNIT_PER_SECOND;
-        totalAutomationEnergyCost += activeCrews * AutomationConstants.ENERGY_COST_PER_ACTIVE_UNIT_PER_SECOND;
-        totalAutomationEnergyCost += activeBays * AutomationConstants.ENERGY_COST_PER_ACTIVE_UNIT_PER_SECOND;
+        const procEntity = getCategoryEntity(this.state.world, 'processor');
+        const crewEntity = getCategoryEntity(this.state.world, 'crewQuarters');
+        const manuEntity = getCategoryEntity(this.state.world, 'manufacturing');
+        const reactorEntity = getCategoryEntity(this.state.world, 'reactor');
+
+        const threadsUpg = procEntity?.get<Upgradable>('processor:threads');
+        const procGen = procEntity?.get<Generator>('Generator');
+        const activeThreads = procGen?.active ? threadsUpg?.level ?? 0 : 0;
+
+        const crewsUpg = crewEntity?.get<Upgradable>('crew:workerCrews');
+        const crewGen = crewEntity?.get<Generator>('Generator');
+        const activeCrews = crewGen?.active ? crewsUpg?.level ?? 0 : 0;
+
+        const baysUpg = manuEntity?.get<Upgradable>('manufacturing:bays');
+        const manuGen = manuEntity?.get<Generator>('Generator');
+        const activeBays = manuGen?.active ? baysUpg?.level ?? 0 : 0;
+
+        totalAutomationEnergyCost = (activeThreads + activeCrews + activeBays) * AutomationConstants.ENERGY_COST_PER_ACTIVE_UNIT_PER_SECOND;
 
         const energyCostPerTick = totalAutomationEnergyCost * delta;
-        const currentEnergy = this.state.categories.reactor?.resources?.energy ?? 0;
+
+        const reactorStorage = reactorEntity?.get<ResourceStorage>('ResourceStorage');
+        const currentEnergy = reactorStorage?.current ?? 0;
+
         let automationHasPower = true;
 
         if (energyCostPerTick > 0) {
           if (currentEnergy >= energyCostPerTick) {
-            // Consume energy
-            if (this.state.categories.reactor) {
-               this.eventBus.emit('resourceChange', {
-                 state: this.state,
-                 resourceType: 'energy',
-                 amount: -energyCostPerTick,
-                 source: 'automation'
-               });
-            }
+            // Consume energy directly through ResourceSystem helper
+            this.systems.resource.consumeResources(this.state, [{ type: 'energy', amount: energyCostPerTick }]);
           } else {
-            // Not enough energy, automation stops
-            automationHasPower = false;
+            automationHasPower = false; // Not enough power to run automation
           }
         }
         // --- End of energy cost calculation ---
@@ -297,7 +305,8 @@ export class GameEngine {
         Logger.debug(LogCategory.ENGINE, `Processing action: ${action.type}`, context);
         
         // Log state before processing
-        const beforeEnergy = this.state.categories.reactor.resources.energy;
+        const reactorEntity = getCategoryEntity(this.state.world, 'reactor');
+        const beforeEnergy = reactorEntity?.get<ResourceStorage>('ResourceStorage')?.current ?? 0;
         Logger.debug(
             LogCategory.ENGINE, 
             `State BEFORE action: ${action.type} - Energy: ${beforeEnergy}`, 
@@ -384,10 +393,10 @@ export class GameEngine {
          
         // No direct state mutation here; listeners mutate this.state reference
         // Log state after processing
-        const afterEnergy = this.state.categories.reactor.resources.energy;
+        const afterEnergy = reactorEntity?.get<ResourceStorage>('ResourceStorage')?.current ?? 0;
         Logger.debug(
-            LogCategory.ENGINE, 
-            `State AFTER action: ${action.type} - Energy: ${afterEnergy} (Changed: ${afterEnergy !== beforeEnergy})`, 
+            LogCategory.ENGINE,
+            `State AFTER action: ${action.type} - Energy: ${afterEnergy} (Changed: ${afterEnergy !== beforeEnergy})`,
             context
         );
         

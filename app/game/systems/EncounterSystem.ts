@@ -5,7 +5,6 @@ import {
     EmptyEncounter, 
     StoryEncounter,
     ResourceReward, 
-    EncounterChoice,
 } from '../types';
 import { RegionType } from '../types/combat';
 import { 
@@ -22,13 +21,13 @@ import {
 import { ALL_ENEMIES_LIST, EnemyDefinition } from '../content/enemies/index';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { EventBus } from 'core/EventBus';
-import { REGION_DEFINITIONS } from '../content/regions';
 
 /**
  * System responsible for generating and managing encounters
  */
 export class EncounterSystem {
     private eventBus: EventBus;
+    private currentState?: GameState;
 
     constructor(eventBus: EventBus) {
         this.eventBus = eventBus;
@@ -38,6 +37,13 @@ export class EncounterSystem {
         this.eventBus.on('storyChoice', ({ state, choiceId }) => {
           this.completeEncounter(state, choiceId);
           this.eventBus.emit('stateUpdated', state);
+        });
+
+        // Phase-5 namespaced action handler
+        this.eventBus.on('action:story_choice', ({ choiceId }) => {
+          if (!this.currentState) return;
+          this.completeEncounter(this.currentState, choiceId);
+          this.eventBus.emit('stateUpdated', this.currentState);
         });
 
         // Handle jump initiation to generate encounters
@@ -367,12 +373,17 @@ export class EncounterSystem {
         state.encounters.encounter = undefined;
 
         // Emit encounterCompleted event for cross-system listeners
-        this.eventBus.emit('encounterCompleted', {
-            state,
-            encounterId: encounter.id,
-            encounterType: encounter.type,
-            result: choiceId || 'completed',
-        });
+        if (this.eventBus) {
+            const payload = { encounterId: encounter.id, result: choiceId || 'completed', state };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (this.eventBus as any).publish?.('encounter:completed', payload);
+            this.eventBus.emit('encounterCompleted', {
+                state,
+                encounterId: encounter.id,
+                encounterType: encounter.type,
+                result: choiceId || 'completed',
+            });
+        }
 
         // Update UI immediately
         this.eventBus.emit('stateUpdated', state);
@@ -514,5 +525,10 @@ export class EncounterSystem {
         // Placeholder: Implement logic to determine the current subregion based on game state if needed
         // For now, assumes subregion is stored in state.navigation.currentSubRegion
         return state?.navigation?.currentSubRegion;
+    }
+
+    /** Cache latest state for Phase-5 action handlers */
+    setState(state: GameState) {
+      this.currentState = state;
     }
 } 

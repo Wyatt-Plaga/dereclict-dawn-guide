@@ -1,91 +1,73 @@
-import { v4 as uuidv4 } from 'uuid';
 import { GameState } from '../types';
-import { Entity, ResourceStorage, Generator } from '../components/interfaces';
+import { World } from 'core/ecs/World';
+import { ResourceStorage, Generator, Tag } from '../components/interfaces';
 
 /**
  * createWorldFromGameState
  * -----------------------
  * Temporary bridge that snapshots the legacy GameState structure and produces a
- * list of ECS-style entities/components.  During the migration we keep the
- * original state intact while systems are ported incrementally.
+ * World populated with ECS-style entities/components.  During the migration we
+ * keep the original state intact while systems are ported incrementally.
  */
-export function createWorldFromGameState(state: GameState): Entity[] {
-  const world: Entity[] = [];
+export function createWorldFromGameState(state: GameState): World {
+  const world = new World();
 
-  /* Reactor entity (energy storage + generator) */
-  const reactorId = uuidv4();
-  const reactorStorage: ResourceStorage = {
-    id: `${reactorId}-storage`,
-    resourceType: 'energy',
-    amount: state.categories.reactor.resources.energy,
-    capacity: state.categories.reactor.stats.energyCapacity,
-  };
-  const reactorGenerator: Generator = {
-    id: `${reactorId}-gen`,
-    outputType: 'energy',
-    ratePerSecond: state.categories.reactor.stats.energyPerSecond,
-    active: true,
-  };
-  world.push({ id: reactorId, components: [reactorStorage, reactorGenerator] });
+  // `categories` still exist on the legacy initialGameState even though the
+  // GameState type no longer declares it.  Cast to any for the one-time
+  // migration.
+  const legacy = (state as any).categories;
 
-  /* Processor entity (insight storage + generator) */
-  const processorId = uuidv4();
-  world.push({
-    id: processorId,
-    components: [
-      {
-        id: `${processorId}-storage`,
-        resourceType: 'insight',
-        amount: state.categories.processor.resources.insight,
-        capacity: state.categories.processor.stats.insightCapacity,
-      } as ResourceStorage,
-      {
-        id: `${processorId}-gen`,
-        outputType: 'insight',
-        ratePerSecond: state.categories.processor.stats.insightPerSecond,
-        active: true,
-      } as Generator,
-    ],
+  if (!legacy) {
+    // Nothing to migrate – return empty world for fresh games.
+    return world;
+  }
+
+  // Reactor entity ---------------------------------------------------------
+  world.createEntity({
+    ResourceStorage: {
+      current: legacy.reactor.resources.energy,
+      capacity: legacy.reactor.stats.energyCapacity,
+    } as ResourceStorage,
+    Generator: {
+      ratePerSecond: legacy.reactor.stats.energyPerSecond,
+    } as Generator,
+    Tag: { tags: new Set(['reactor']) } as Tag,
   });
 
-  /* Crew Quarters entity (crew storage + generator for awakening) */
-  const crewId = uuidv4();
-  world.push({
-    id: crewId,
-    components: [
-      {
-        id: `${crewId}-storage`,
-        resourceType: 'crew',
-        amount: state.categories.crewQuarters.resources.crew,
-        capacity: state.categories.crewQuarters.stats.crewCapacity,
-      } as ResourceStorage,
-      {
-        id: `${crewId}-gen`,
-        outputType: 'crew',
-        ratePerSecond: state.categories.crewQuarters.stats.crewPerSecond,
-        active: true,
-      } as Generator,
-    ],
+  // Processor entity -------------------------------------------------------
+  world.createEntity({
+    ResourceStorage: {
+      current: legacy.processor.resources.insight,
+      capacity: legacy.processor.stats.insightCapacity,
+    } as ResourceStorage,
+    Generator: {
+      ratePerSecond: legacy.processor.stats.insightPerSecond,
+    } as Generator,
+    Tag: { tags: new Set(['processor']) } as Tag,
   });
 
-  /* Manufacturing entity (scrap storage + generator) */
-  const manuId = uuidv4();
-  world.push({
-    id: manuId,
-    components: [
-      {
-        id: `${manuId}-storage`,
-        resourceType: 'scrap',
-        amount: state.categories.manufacturing.resources.scrap,
-        capacity: state.categories.manufacturing.stats.scrapCapacity,
-      } as ResourceStorage,
-      {
-        id: `${manuId}-gen`,
-        outputType: 'scrap',
-        ratePerSecond: state.categories.manufacturing.stats.scrapPerSecond,
-        active: true,
-      } as Generator,
-    ],
+  // Crew Quarters entity ----------------------------------------------------
+  world.createEntity({
+    ResourceStorage: {
+      current: legacy.crewQuarters.resources.crew,
+      capacity: legacy.crewQuarters.stats.crewCapacity,
+    } as ResourceStorage,
+    Generator: {
+      ratePerSecond: legacy.crewQuarters.stats.crewPerSecond,
+    } as Generator,
+    Tag: { tags: new Set(['crewQuarters']) } as Tag,
+  });
+
+  // Manufacturing entity ----------------------------------------------------
+  world.createEntity({
+    ResourceStorage: {
+      current: legacy.manufacturing.resources.scrap,
+      capacity: legacy.manufacturing.stats.scrapCapacity,
+    } as ResourceStorage,
+    Generator: {
+      ratePerSecond: legacy.manufacturing.stats.scrapPerSecond,
+    } as Generator,
+    Tag: { tags: new Set(['manufacturing']) } as Tag,
   });
 
   return world;

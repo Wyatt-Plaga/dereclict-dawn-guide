@@ -27,6 +27,9 @@ console.log('ALL_ENEMIES_MAP loaded status:', ALL_ENEMIES_MAP ? 'Defined' : 'Und
             'Keys:', ALL_ENEMIES_MAP ? Object.keys(ALL_ENEMIES_MAP).length : 'N/A');
 
 import { EventBus } from 'core/EventBus';
+import { ResourceSystem } from './ResourceSystem';
+import { getCategoryEntity } from 'core/ecs/selectors';
+import { ResourceStorage } from '../components/interfaces';
 
 /**
  * Combat System
@@ -39,12 +42,15 @@ import { EventBus } from 'core/EventBus';
  */
 export class CombatSystem {
   private eventBus: EventBus;
+  private resourceSystem?: ResourceSystem;
+  private currentState?: GameState;
 
   /**
    * Constructor now takes EventBus instead of using setResourceSystem
    */
-  constructor(eventBus: EventBus) {
+  constructor(eventBus: EventBus, resourceSystem?: ResourceSystem) {
     this.eventBus = eventBus;
+    this.resourceSystem = resourceSystem;
     this.setupEventListeners();
   }
 
@@ -72,10 +78,25 @@ export class CombatSystem {
       return result;
     });
 
+    // Phase-5 namespaced combat move
+    this.eventBus.on('action:combat_move', ({ moveId }) => {
+      if (!this.currentState) return;
+      const res = this.performCombatAction(this.currentState, moveId);
+      this.eventBus.emit('stateUpdated', this.currentState);
+      return res;
+    });
+
     // Listen for player retreat actions
     this.eventBus.on('retreatFromBattle', ({ state }) => {
       this.retreatFromCombat(state);
       this.eventBus.emit('stateUpdated', state);
+    });
+
+    // Phase-5 retreat action
+    this.eventBus.on('action:retreat', () => {
+      if (!this.currentState) return;
+      this.retreatFromCombat(this.currentState);
+      this.eventBus.emit('stateUpdated', this.currentState);
     });
   }
 
@@ -282,6 +303,16 @@ export class CombatSystem {
       text: `${enemy.description}`,
       type: 'ANALYSIS'
     });
+
+    if (this.eventBus) {
+      const payload = { enemyId, regionId, state };
+      (this.eventBus as any).publish?.('combat:started', payload);
+      this.eventBus.emit('combatEncounterTriggered', {
+        state,
+        enemyId,
+        regionId,
+      });
+    }
   }
 
   /**
@@ -331,11 +362,15 @@ export class CombatSystem {
     });
 
     // Notify other systems and UI
-    this.eventBus.emit('combatEnded', {
-      state,
-      outcome,
-      enemyId: state.combat.currentEnemy ?? undefined,
-    });
+    if (this.eventBus) {
+      const payload = { victory: outcome === 'victory', enemyId: state.combat.currentEnemy ?? undefined, state };
+      (this.eventBus as any).publish?.('combat:ended', payload);
+      this.eventBus.emit('combatEnded', {
+        state,
+        outcome,
+        enemyId: state.combat.currentEnemy ?? undefined,
+      });
+    }
     this.eventBus.emit('stateUpdated', state);
   }
 
@@ -343,37 +378,49 @@ export class CombatSystem {
    * Helper method to check if sufficient resources are available for a cost
    */
   private hasSufficientResources(state: GameState, cost: ResourceCost): boolean {
-    let currentAmount: number | undefined;
-    
-    // Use switch to help TypeScript narrow types
-    switch (cost.type) {
-        case 'energy':
-            currentAmount = state.categories.reactor?.resources?.energy;
-            break;
-        case 'insight':
-            currentAmount = state.categories.processor?.resources?.insight;
-            break;
-        case 'crew':
-            currentAmount = state.categories.crewQuarters?.resources?.crew;
-            break;
-        case 'scrap':
-            currentAmount = state.categories.manufacturing?.resources?.scrap;
-            break;
-        default:
-            Logger.warn(LogCategory.COMBAT, `Unknown resource type in cost check: ${cost.type}`, LogContext.COMBAT_ACTION);
-            return false; // Cannot afford if resource type is unknown
-    }
-    
-    if (currentAmount === undefined) {
-         Logger.warn(LogCategory.COMBAT, `Resource ${cost.type} not found in state for cost check`, LogContext.COMBAT_ACTION);
-        return false; // Cannot afford if resource doesn't exist in state
+    // Prefer centralized ResourceSystem logic if available
+    if (this.resourceSystem) {
+      return this.resourceSystem.hasResources(state, [cost]);
     }
 
-    const hasEnough = currentAmount >= cost.amount;
-    if (!hasEnough) {
+    // Fallback direct check via ECS if ResourceSystem not injected
+    if (['energy', 'insight', 'crew', 'scrap'].includes(cost.type)) {
+      const category = this.categoryForResource(cost.type);
+      const entity = getCategoryEntity(state.world, category);
+      const storage = entity?.get<ResourceStorage>('ResourceStorage');
+      const currentAmount = storage?.current ?? 0;
+      const enough = currentAmount >= cost.amount;
+      if (!enough) {
         Logger.debug(LogCategory.COMBAT, `Insufficient ${cost.type}: Has ${currentAmount}, needs ${cost.amount}`, LogContext.COMBAT_ACTION);
+      }
+      return enough;
     }
-    return hasEnough;
+
+    // Scalar global resources
+    switch (cost.type) {
+      case 'combatComponents':
+        return (state.combatComponents ?? 0) >= cost.amount;
+      case 'bossMatrix':
+        return (state.bossMatrix ?? 0) >= cost.amount;
+      default:
+        Logger.warn(LogCategory.COMBAT, `Unknown resource type in cost check: ${cost.type}`, LogContext.COMBAT_ACTION);
+        return false;
+    }
+  }
+
+  private categoryForResource(type: string): string {
+    switch (type) {
+      case 'energy':
+        return 'reactor';
+      case 'insight':
+        return 'processor';
+      case 'crew':
+        return 'crewQuarters';
+      case 'scrap':
+        return 'manufacturing';
+      default:
+        return '';
+    }
   }
 
   /**
@@ -427,29 +474,6 @@ export class CombatSystem {
         });
       }
     });
-  }
-
-  /**
-   * Helper method to get the category for a resource type
-   */
-  private getResourceCategory(resourceType: string): keyof GameState['categories'] | null {
-    switch (resourceType) {
-      case 'energy':
-        return 'reactor';
-      case 'insight':
-        return 'processor';
-      case 'crew':
-        return 'crewQuarters';
-      case 'scrap':
-        return 'manufacturing';
-      default:
-        Logger.warn(
-          LogCategory.COMBAT,
-          `Unknown resource type: ${resourceType}`,
-          LogContext.COMBAT
-        );
-        return null;
-    }
   }
 
   /**
@@ -983,61 +1007,26 @@ export class CombatSystem {
     Logger.info(LogCategory.COMBAT, `Player retreating from combat with ${state.combat.currentEnemy}`, LogContext.COMBAT);
     
     const retreatPenalty = 0.25;
-    const resourcesToPenalize = ['energy', 'insight', 'crew', 'scrap'];
 
-    resourcesToPenalize.forEach(resourceType => {
-        let currentAmount: number | undefined;
-        let penaltyAmount = 0;
-
-        // Use switch for type safety
-        switch (resourceType) {
-            case 'energy':
-                currentAmount = state.categories.reactor?.resources?.energy;
-                if (currentAmount !== undefined) {
-                    penaltyAmount = Math.floor(currentAmount * retreatPenalty);
-                }
-                break;
-            case 'insight':
-                currentAmount = state.categories.processor?.resources?.insight;
-                 if (currentAmount !== undefined) {
-                    penaltyAmount = Math.floor(currentAmount * retreatPenalty);
-                }
-                break;
-            case 'crew':
-                currentAmount = state.categories.crewQuarters?.resources?.crew;
-                 if (currentAmount !== undefined) {
-                    penaltyAmount = Math.floor(currentAmount * retreatPenalty);
-                }
-                break;
-            case 'scrap':
-                currentAmount = state.categories.manufacturing?.resources?.scrap;
-                 if (currentAmount !== undefined) {
-                    penaltyAmount = Math.floor(currentAmount * retreatPenalty);
-                }
-                break;
-            default:
-                // Should not happen with defined array, but good practice
-                Logger.warn(LogCategory.COMBAT, `Unknown resource type in retreat penalty: ${resourceType}`, LogContext.COMBAT);
-                return; // Use return instead of continue
-        }
-
-        if (currentAmount === undefined) {
-            Logger.warn(LogCategory.COMBAT, `Resource ${resourceType} not found in state for retreat penalty`, LogContext.COMBAT);
-            return; // Use return instead of continue
-        }
-            
-        if (penaltyAmount > 0) {
-            // Emit event with negative amount for penalty
-            this.eventBus.emit('resourceChange', {
-                state: state, 
-                resourceType: resourceType,
-                amount: -penaltyAmount,
-                source: 'combat-retreat'
-            });
-            Logger.debug(LogCategory.RESOURCES, `Applied retreat penalty to ${resourceType}: -${penaltyAmount}`, LogContext.COMBAT);
-        }
+    const costArray: { type: string; amount: number }[] = ['energy', 'insight', 'crew', 'scrap'].map((t) => {
+      // Determine current amount via ResourceSystem or ECS lookup
+      let current = 0;
+      if (this.resourceSystem) {
+        const entity = getCategoryEntity(state.world, this.categoryForResource(t));
+        const storage = entity?.get<ResourceStorage>('ResourceStorage');
+        current = storage?.current ?? 0;
+      }
+      return { type: t, amount: Math.floor(current * retreatPenalty) };
     });
-    
+
+    // Deduct via ResourceSystem
+    this.resourceSystem?.consumeResources(state, costArray);
+
+    costArray.forEach((c) => {
+      if (c.amount > 0)
+        Logger.debug(LogCategory.RESOURCES, `Applied retreat penalty to ${c.type}: -${c.amount}`, LogContext.COMBAT);
+    });
+
     // Update the combat state to reflect the retreat
     state.combat.active = false;
     state.combat.encounterCompleted = true;
@@ -1059,5 +1048,10 @@ export class CombatSystem {
     }
     
     return state;
+  }
+
+  /** Cache state for Phase-5 handlers */
+  setState(state: GameState) {
+    this.currentState = state;
   }
 } 

@@ -38,14 +38,14 @@ export type LogUnlockCondition =
 
 export interface ResourceThresholdCondition {
     type: 'RESOURCE_THRESHOLD';
-    category: keyof GameState['categories'];
+    category: 'reactor' | 'processor' | 'crewQuarters' | 'manufacturing';
     resourceType: string;
     threshold: number;
 }
 
 export interface UpgradePurchasedCondition {
     type: 'UPGRADE_PURCHASED';
-    category: keyof GameState['categories'];
+    category: 'reactor' | 'processor' | 'crewQuarters' | 'manufacturing';
     upgradeId: string;
 }
 
@@ -271,16 +271,6 @@ export interface CombatEncounter extends BaseEncounter {
  */
 export interface GameState {
     /**
-     * All game categories
-     */
-    categories: {
-        reactor: ReactorCategory;
-        processor: ProcessorCategory;
-        crewQuarters: CrewQuartersCategory;
-        manufacturing: ManufacturingCategory;
-    };
-    
-    /**
      * Timestamp of the last update
      */
     lastUpdate: number;
@@ -330,73 +320,16 @@ export interface GameState {
      * Experimental ECS world – array of entities generated from legacy state.
      * Present only during the migration period.
      */
-    world?: import('../components/interfaces').Entity[];
+    /**
+     * ECS world: all game entities and components
+     */
+    world: import('../../../core/ecs/World').World;
 }
 
 /**
  * Initial state for a new game
  */
 export const initialGameState: GameState = {
-    categories: {
-        reactor: {
-            resources: {
-                energy: 0,
-            },
-            upgrades: {
-                reactorExpansions: 0,
-                energyConverters: 0,
-            },
-            stats: {
-                energyCapacity: 100,
-                energyPerSecond: 0,
-                activeEnergyConverters: 0,
-            }
-        },
-        processor: {
-            resources: {
-                insight: 0,
-            },
-            upgrades: {
-                mainframeExpansions: 0,
-                processingThreads: 0,
-            },
-            stats: {
-                insightCapacity: 50,
-                insightPerSecond: 0,
-                insightPerClick: 0.5,
-                activeProcessingThreads: 0,
-            }
-        },
-        crewQuarters: {
-            resources: {
-                crew: 0,
-            },
-            upgrades: {
-                additionalQuarters: 0,
-                workerCrews: 0,
-            },
-            stats: {
-                crewCapacity: 5,
-                crewPerSecond: 0,
-                awakeningProgress: 0,
-                activeWorkerCrews: 0,
-            }
-        },
-        manufacturing: {
-            resources: {
-                scrap: 0,
-            },
-            upgrades: {
-                cargoHoldExpansions: 0,
-                manufacturingBays: 0,
-            },
-            stats: {
-                scrapCapacity: 100,
-                scrapPerSecond: 0,
-                activeManufacturingBays: 0,
-            }
-        }
-    },
     lastUpdate: Date.now(),
     version: 1,
     logs: {
@@ -448,7 +381,7 @@ export const initialGameState: GameState = {
     },
     combatComponents: 0,
     bossMatrix: 0,
-    world: undefined
+    world: undefined as any
 };
 
 // Export RegionType so it can be imported from this index file

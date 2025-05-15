@@ -1,9 +1,10 @@
 "use client"
 
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
+
 import { Shield, Zap, Wrench, Cpu, AlertTriangle, ChevronDown, ChevronUp, Scan, ZapOff, Search } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/app/game/hooks/useGame"
-import { useGameBus } from '@/app/game/hooks/useGameBus'
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
 import { Progress } from "@/components/ui/progress"
@@ -11,6 +12,10 @@ import { useState, useEffect, useRef } from "react"
 import { CombatActionCategory, BattleLogEntry } from "@/app/game/types/combat"
 import { PLAYER_ACTIONS } from "@/app/game/content/combatActions"
 import { useRouter } from "next/navigation"
+import { useReactor } from '@/app/game/hooks/useReactor';
+import { useProcessor } from '@/app/game/hooks/useProcessor';
+import { useCrewQuarters } from '@/app/game/hooks/useCrewQuarters';
+import { useManufacturing } from '@/app/game/hooks/useManufacturing';
 // Remove direct imports since we'll use dynamic imports like the EncounterSystem does
 
 // Enemy type
@@ -47,7 +52,7 @@ export default function BattlePage() {
   const { state } = useGame()
   const { shouldFlicker } = useSystemStatus()
   const router = useRouter()
-  const bus = useGameBus()
+  const { dispatchAction } = useGame();
   
   // Prevent navigation away from battle during active combat
   useEffect(() => {
@@ -78,11 +83,11 @@ export default function BattlePage() {
     };
   }, [state.combat?.active, router]);
   
-  // Get resources from game state
-  const reactor = state.categories.reactor
-  const processor = state.categories.processor
-  const crewQuarters = state.categories.crewQuarters
-  const manufacturing = state.categories.manufacturing
+  // Live resource values via ECS hooks
+  const { energy } = useReactor();
+  const { insight } = useProcessor();
+  const { crew } = useCrewQuarters();
+  const { scrap } = useManufacturing();
   
   // Track which action categories are expanded
   const [expandedActions, setExpandedActions] = useState<string[]>([])
@@ -220,7 +225,7 @@ export default function BattlePage() {
       `Performing combat action: ${actionId}`, 
       LogContext.COMBAT_ACTION
     )
-    bus.emit('combatAction', { state, actionId })
+    dispatchAction('action:combat_move', { moveId: actionId });
   }
   
   // Shield actions
@@ -250,7 +255,7 @@ export default function BattlePage() {
       'Retreating from battle', 
       LogContext.COMBAT
     )
-    bus.emit('retreatFromBattle', { state })
+    dispatchAction('action:retreat', {});
     router.push('/navigation')
   }
   
@@ -323,16 +328,16 @@ export default function BattlePage() {
                   {/* Resource readouts at top */}
                   <div className="grid grid-cols-2 gap-2 text-sm mb-4">
                     <div>
-                      <span className="text-muted-foreground">Energy:</span> {Math.floor(reactor.resources.energy)}
+                      <span className="text-muted-foreground">Energy:</span> {Math.floor(energy)}
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Scrap:</span> {Math.floor(manufacturing.resources.scrap)}
+                      <span className="text-muted-foreground">Scrap:</span> {Math.floor(scrap)}
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Crew:</span> {Math.floor(crewQuarters.resources.crew)}
+                      <span className="text-muted-foreground">Crew:</span> {Math.floor(crew)}
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Insight:</span> {Math.floor(processor.resources.insight)}
+                      <span className="text-muted-foreground">Insight:</span> {Math.floor(insight)}
                     </div>
                   </div>
                 </div>

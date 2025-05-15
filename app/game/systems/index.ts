@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-imports, @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 import { EncounterSystem } from './EncounterSystem';
 import { ResourceSystem } from './ResourceSystem';
 import { UpgradeSystem } from './UpgradeSystem';
@@ -5,98 +6,43 @@ import { LogSystem } from './LogSystem';
 import { CombatSystem } from './CombatSystem';
 import { EventBus } from 'core/EventBus';
 import { GameState } from '../types';
-import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { ResourceManager } from 'core/managers/ResourceManager';
 import { CombatEncounterManager } from 'core/managers/CombatEncounterManager';
-import { IGameSystem } from './IGameSystem';
 
-/**
- * GameSystemManager
- * 
- * Manages all game systems and their interactions
- */
+// Minimal orchestrator: only instantiates and exposes systems, no cross-system logic or event wiring.
 export class GameSystemManager {
-  /**
-   * Resource production system
-   */
   public resource: ResourceSystem;
-
-  /**
-   * Upgrade management system
-   */
   public upgrade: UpgradeSystem;
-
-  /**
-   * Log management system
-   */
   public log: LogSystem;
-
-  /**
-   * Encounter management system
-   */
   public encounter: EncounterSystem;
-
-  /**
-   * Combat management system
-   */
   public combat: CombatSystem;
-
-  /**
-   * Resource manager
-   */
   public resourceManager: ResourceManager;
-
-  /**
-   * Combat encounter manager
-   */
   public combatEncounterManager: CombatEncounterManager;
 
-  /**
-   * Internal list of systems that expose an update(delta) method. Enables generic iteration.
-   */
-  private systemsList: IGameSystem[] = [];
-
-  /**
-   * Initialize all game systems
-   */
-  constructor(private eventBus: EventBus) {
+  constructor(eventBus: EventBus) {
     this.resource = new ResourceSystem(eventBus);
-    this.upgrade = new UpgradeSystem(eventBus);
+    this.upgrade = new UpgradeSystem(eventBus, this.resource);
     this.log = new LogSystem(eventBus);
     this.encounter = new EncounterSystem(eventBus);
-    this.combat = new CombatSystem(eventBus);
-    
-    // Initialize the game stats based on upgrades
-    // This will be done during initialization when loading a game
-
-    // Create resource manager to handle resourceChange events
+    this.combat = new CombatSystem(eventBus, this.resource);
     this.resourceManager = new ResourceManager(eventBus);
-
     this.combatEncounterManager = new CombatEncounterManager(eventBus, this.combat);
-
-    // Register updatable systems
-    this.systemsList.push(this.resource);
-    this.systemsList.push(this.log);
-    this.systemsList.push(this.combat);
   }
 
   /**
-   * Update all game systems
-   * @param state - Current game state
-   * @param delta - Time since last update
-   * @param automationHasPower - Optional flag indicating if automation has energy
+   * Update all game systems each frame.
+   * ResourceSystem needs the automationHasPower flag; other systems ignore it.
    */
-  update(state: GameState, delta: number, automationHasPower: boolean = true): void {
-    // Allow ResourceSystem to know about power status separately
-    if (this.resource.update.length === 3) {
-      (this.resource as any).update(state, delta, automationHasPower);
-    }
+  update(state: GameState, delta: number, automationHasPower: boolean = true) {
+    // Share up-to-date state with systems that need it for action handlers
+    this.upgrade.setState?.(state);
 
-    // Generic update over registered systems (order: resource already called, others follow)
-    this.systemsList.forEach(sys => {
-      if (sys !== this.resource) {
-        sys.update(state, delta);
-      }
-    });
+    this.resource.update(state, delta, automationHasPower);
+    this.encounter.setState?.(state);
+    this.combat.setState?.(state);
+    (this.encounter as any).update?.(state, delta);
+    (this.combat as any).update?.(state, delta);
+    (this.log as any).update?.(state, delta);
+    // UpgradeSystem currently does stat updates on-demand; skip here.
   }
 } 

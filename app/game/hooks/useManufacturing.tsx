@@ -2,7 +2,9 @@ import { useGame } from './useGame';
 import { useGameBus } from './useGameBus';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import { ResourceCost } from '../types/combat';
-import { AutomationConstants } from '../config/gameConstants';
+import { AutomationConstants, ManufacturingConstants } from '../config/gameConstants';
+import { getCategoryEntity } from 'core/ecs/selectors';
+import { ResourceStorage, Generator, Upgradable } from '../components/interfaces';
 
 // Helper to format resource costs
 const formatResourceCosts = (costs: ResourceCost[]): string => {
@@ -15,39 +17,34 @@ export const useManufacturing = () => {
   const bus = useGameBus();
   const upgradeSystem = new UpgradeSystem();
 
-  // Ensure manufacturing data exists, provide defaults if not
-  const manufacturing = state.categories.manufacturing || {
-    resources: { scrap: 0 },
-    stats: { 
-      scrapCapacity: 50, 
-      scrapPerSecond: 0, 
-      activeManufacturingBays: 0 
-    },
-    upgrades: { cargoHoldExpansions: 0, manufacturingBays: 0 },
-  };
+  const entity = getCategoryEntity(state.world, 'manufacturing');
+  const storage = entity?.get<ResourceStorage>('ResourceStorage');
+  const generator = entity?.get<Generator>('Generator');
+  const expansionsUpg = entity?.get<Upgradable>('manufacturing:expansions');
+  const baysUpg = entity?.get<Upgradable>('manufacturing:bays');
 
-  const scrap = manufacturing.resources.scrap;
-  const scrapCapacity = manufacturing.stats.scrapCapacity;
-  const scrapPerSecond = manufacturing.stats.scrapPerSecond;
-  
-  // Need reactor energy state for checks
-  const currentEnergy = state.categories.reactor?.resources?.energy ?? 0;
-  
-  // Upgrades Data
-  const manufacturingBays = manufacturing.upgrades.manufacturingBays;
+  const scrap = storage?.current ?? 0;
+  const scrapCapacity = storage?.capacity ?? ManufacturingConstants.BASE_SCRAP_CAPACITY;
+  const scrapPerSecond = generator?.ratePerSecond ?? 0;
+
+  // Need reactor energy
+  const reactorEntity = getCategoryEntity(state.world, 'reactor');
+  const reactorStorage = reactorEntity?.get<ResourceStorage>('ResourceStorage');
+  const currentEnergy = reactorStorage?.current ?? 0;
+
+  const manufacturingBays = baysUpg?.level ?? 0;
   const bayCosts = upgradeSystem.calculateManufacturingBayCost(manufacturingBays);
   const bayCost = formatResourceCosts(bayCosts);
   const bayDescription = "Increases automatic Scrap collection rate."; // Placeholder
   const canUpgradeBays = upgradeSystem.canAffordUpgrade(state, bayCosts);
 
-  const cargoHoldExpansions = manufacturing.upgrades.cargoHoldExpansions;
+  const cargoHoldExpansions = expansionsUpg?.level ?? 0;
   const expansionCosts = upgradeSystem.calculateCargoHoldExpansionCost(cargoHoldExpansions, scrapCapacity);
   const expansionCost = formatResourceCosts(expansionCosts);
   const expansionDescription = "Increases Scrap storage capacity."; // Placeholder
   const canUpgradeExpansions = upgradeSystem.canAffordUpgrade(state, expansionCosts);
 
-  // Active automation
-  const activeManufacturingBays = manufacturing.stats.activeManufacturingBays ?? 0;
+  const activeManufacturingBays = generator?.active ? manufacturingBays : 0;
   const canIncreaseBays = activeManufacturingBays < manufacturingBays;
   const canDecreaseBays = activeManufacturingBays > 0;
 
