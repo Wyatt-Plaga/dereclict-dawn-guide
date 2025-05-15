@@ -36,19 +36,6 @@ export class UpgradeSystem {
   private world?: import('core/ecs/World').World;
   constructor(private bus?: EventBus, private resourceSystem?: ResourceSystem) {
     if (this.bus) {
-      this.bus.on('purchaseUpgrade', (data: { state: GameState; category: string; upgradeType: string }) => {
-        const { state, category, upgradeType } = data;
-        const key = legacyToUpgradeKey[upgradeType];
-        if (!key) {
-          Logger.warn(LogCategory.UPGRADES, `Unmapped legacy upgradeType ${upgradeType}`, LogContext.UPGRADE_PURCHASE);
-          return;
-        }
-        this.purchaseUpgrade(state, category as any, key);
-        // ensure stats update after purchase
-        this.updateAllStats(state);
-        this.bus?.emit('stateUpdated', state);
-      });
-
       // Phase-5 namespaced action
       this.bus.on('action:purchase_upgrade', this.handleActionPurchaseUpgrade.bind(this));
     }

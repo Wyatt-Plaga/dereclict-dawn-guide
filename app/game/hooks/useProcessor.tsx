@@ -1,5 +1,4 @@
 import { useGame } from './useGame';
-import { useGameBus } from './useGameBus';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import { ResourceCost } from '../types/combat';
 import { AutomationConstants, ProcessorConstants } from '../config/gameConstants';
@@ -13,8 +12,7 @@ const formatResourceCosts = (costs: ResourceCost[]): string => {
 };
 
 export const useProcessor = () => {
-  const { state } = useGame();
-  const bus = useGameBus();
+  const { state, dispatchAction } = useGame();
   const upgradeSystem = new UpgradeSystem();
 
   const entity = getCategoryEntity(state.world, 'processor');
@@ -52,28 +50,31 @@ export const useProcessor = () => {
   const generateInsight = () => {
     if (!canGenerateWithEnergy) return; 
     
-    bus.emit('resourceClick', { state, category: 'processor' });
+    if (entity) {
+      dispatchAction('action:resource_click', { entityId: entity.id, amount: 1 });
+    }
   };
 
   const upgradeThreads = () => {
     if (canUpgradeThreads) {
-      bus.emit('purchaseUpgrade', { state, category: 'processor', upgradeType: 'processingThreads' });
+      if (entity) {
+        dispatchAction('action:purchase_upgrade', { entityId: entity.id, upgradeId: 'processor:threads' });
+      }
     }
   };
 
   const upgradeBuffers = () => {
     if (canUpgradeBuffers) {
-      bus.emit('purchaseUpgrade', { state, category: 'processor', upgradeType: 'mainframeExpansions' });
+      if (entity) {
+        dispatchAction('action:purchase_upgrade', { entityId: entity.id, upgradeId: 'processor:expansions' });
+      }
     }
   };
 
   const adjustActiveThreads = (direction: 'increase' | 'decrease') => {
-    bus.emit('adjustAutomation', {
-      state,
-      category: 'processor',
-      automationType: 'processingThreads',
-      direction,
-    });
+    if (entity) {
+      dispatchAction('action:adjust_automation', { entityId: entity.id, automationType: 'processingThreads', direction });
+    }
   };
 
   return {

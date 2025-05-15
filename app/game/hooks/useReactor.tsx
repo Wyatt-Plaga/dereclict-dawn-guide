@@ -5,7 +5,6 @@
  */
 
 import { useGame } from './useGame';
-import { useGameBus } from './useGameBus';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { formatResourceCosts } from '../utils/formattingUtils';
@@ -14,9 +13,7 @@ import { getCategoryEntity } from 'core/ecs/selectors';
 import { ResourceStorage, Upgradable, Generator } from '../components/interfaces';
 
 export function useReactor() {
-  const { state } = useGame();
-  const bus = useGameBus();
-  const { dispatchAction } = useGame();
+  const { state, dispatchAction } = useGame();
   
   const upgradeSystem = new UpgradeSystem();
   
@@ -48,9 +45,6 @@ export function useReactor() {
     if (entity) {
       // Prefer new namespaced action
       dispatchAction('action:resource_click', { entityId: entity.id, amount: 1 });
-    } else {
-      // Fallback to legacy event for safety
-      bus.emit('resourceClick', { state, category: 'reactor' });
     }
   };
 
@@ -58,24 +52,25 @@ export function useReactor() {
   const upgradeExpansions = () => {
     if (!upgradeSystem.canAffordUpgrade(state, expansionCostArray)) return;
     Logger.debug(LogCategory.UI, 'Upgrade reactor expansions clicked', [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]);
-    bus.emit('purchaseUpgrade', { state, category: 'reactor', upgradeType: 'reactorExpansions' });
+    if (entity) {
+      dispatchAction('action:purchase_upgrade', { entityId: entity.id, upgradeId: 'reactor:expansions' });
+    }
   };
 
   const upgradeConverters = () => {
     if (!upgradeSystem.canAffordUpgrade(state, converterCostArray)) return;
     Logger.debug(LogCategory.UI, 'Upgrade energy converters clicked', [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]);
-    bus.emit('purchaseUpgrade', { state, category: 'reactor', upgradeType: 'energyConverters' });
+    if (entity) {
+      dispatchAction('action:purchase_upgrade', { entityId: entity.id, upgradeId: 'reactor:converters' });
+    }
   };
 
   // --- Adjustable Automation Logic ---
   const adjustActiveConverters = (direction: 'increase' | 'decrease') => {
     Logger.debug(LogCategory.UI, `Adjust active converters: ${direction}`, LogContext.REACTOR_LIFECYCLE);
-    bus.emit('adjustAutomation', {
-      state,
-      category: 'reactor',
-      automationType: 'energyConverters',
-      direction,
-    });
+    if (entity) {
+      dispatchAction('action:adjust_automation', { entityId: entity.id, automationType: 'energyConverters', direction });
+    }
   };
 
   const canIncreaseConverters = activeEnergyConverters < energyConverters;

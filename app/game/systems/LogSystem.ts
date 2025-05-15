@@ -21,16 +21,6 @@ export class LogSystem {
         this.logDefinitions = LOG_DEFINITIONS;
 
         if (this.bus) {
-            this.bus.on('markLogRead', ({ state, logId }) => {
-                this.markLogRead(state, logId);
-                this.bus?.emit('stateUpdated', state);
-            });
-
-            this.bus.on('markAllLogsRead', ({ state }) => {
-                this.markAllLogsRead(state);
-                this.bus?.emit('stateUpdated', state);
-            });
-
             // Phase-5 namespaced actions
             this.bus.on('action:mark_log_read', ({ logId }) => {
                 if (!this.currentState) return;

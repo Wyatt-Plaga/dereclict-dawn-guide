@@ -11,7 +11,7 @@ import GameLoader from '@/app/components/GameLoader'
 import { Button } from "@/components/ui/button"
 
 export default function ProcessorPage() {
-  const { state, dispatch } = useGame()
+  const { state } = useGame()
   const { shouldFlicker } = useSystemStatus()
   const processor = useProcessor()
   
@@ -22,21 +22,7 @@ export default function ProcessorPage() {
     [LogContext.UI_RENDER, LogContext.PROCESSOR_LIFECYCLE]
   );
   
-  // Generate insight on manual click
-  const generateInsight = () => {
-    Logger.debug(
-      LogCategory.UI, 
-      'Process data button clicked', 
-      LogContext.PROCESSOR_LIFECYCLE
-    );
-    
-    dispatch({
-      type: 'CLICK_RESOURCE',
-      payload: {
-        category: 'processor'
-      }
-    })
-  }
+  // Local insight generation handled by useProcessor hook (processor.generateInsight)
   
   return (
     <GameLoader>

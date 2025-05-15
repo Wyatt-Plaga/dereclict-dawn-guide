@@ -2,9 +2,8 @@ import { GameState } from '../types';
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import { EventBus } from 'core/EventBus';
 import { GameEventMap } from 'core/events';
-import { Entity, Generator, ResourceStorage, Upgradable, UpgradeKey } from '../components/interfaces';
+import { Generator, ResourceStorage, Upgradable, UpgradeKey } from '../components/interfaces';
 import { createWorldFromGameState } from '../ecs/factory';
-import { CrewQuartersConstants } from '../config/gameConstants';
 import { getCategoryEntity, getComponent } from 'core/ecs/selectors';
 import { World } from 'core/ecs/World';
 import { UpgradeSystem } from './UpgradeSystem';
@@ -23,10 +22,9 @@ export class ResourceSystem {
   constructor(eventBus?: EventBus<GameEventMap>) {
     this.bus = eventBus;
     if (this.bus) {
-      this.bus.on('resourceClick', this.handleResourceClick.bind(this));
-      this.bus.on('adjustAutomation', this.handleAdjustAutomation.bind(this));
       this.bus.on('upgradePurchased', this.handleUpgradePurchased.bind(this));
       this.bus.on('action:resource_click', this.handleActionResourceClick.bind(this));
+      this.bus.on('action:adjust_automation', this.handleActionAdjustAutomation.bind(this));
     }
   }
 
@@ -149,79 +147,6 @@ export class ResourceSystem {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Resource click logic (moved from ActionSystem)
-  // -------------------------------------------------------------------------
-
-  private handleResourceClick(data: { state: GameState; category: string }) {
-    const { state, category } = data;
-    const energyCost = 1;
-    let canAffordEnergy = true;
-    let requiresEnergy = false;
-    if (category === 'processor' || category === 'crewQuarters' || category === 'manufacturing') {
-      requiresEnergy = true;
-      const reactor = getCategoryEntity(state.world, 'reactor');
-      const storage = reactor && getComponent<ResourceStorage>(reactor, 'ResourceStorage');
-      const currentEnergy = storage?.current ?? 0;
-      if (currentEnergy < energyCost) canAffordEnergy = false;
-    }
-    if (requiresEnergy && !canAffordEnergy) return;
-    if (requiresEnergy) {
-      this.bus?.emit('resourceChange', { state, resourceType: 'energy', amount: -energyCost, source: 'click' });
-    }
-    const entity = getCategoryEntity(state.world, category);
-    const storage = entity && getComponent<ResourceStorage>(entity, 'ResourceStorage');
-    switch (category) {
-      case 'reactor':
-        if (storage && storage.current < storage.capacity) {
-          this.bus?.emit('resourceChange', { state, resourceType: 'energy', amount: 1, source: 'click' });
-        }
-        break;
-      case 'processor':
-        // For now, assume insightPerClick is 1
-        if (storage && storage.current < storage.capacity) {
-          this.bus?.emit('resourceChange', { state, resourceType: 'insight', amount: 1, source: 'click' });
-        }
-        break;
-      case 'manufacturing':
-        if (storage && storage.current < storage.capacity) {
-          this.bus?.emit('resourceChange', { state, resourceType: 'scrap', amount: 1, source: 'click' });
-        }
-        break;
-      case 'crewQuarters':
-        // For now, increment crew if under capacity
-        if (storage && storage.current < storage.capacity) {
-          // Simulate awakening progress
-          // (You may want to add a CrewAwakening component for full ECS)
-          storage.current += 1;
-          this.bus?.emit('resourceChange', { state, resourceType: 'crew', amount: 1, source: 'click' });
-        }
-        break;
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // Automation adjustment logic (migrated from ActionSystem)
-  // -------------------------------------------------------------------------
-
-  private handleAdjustAutomation(data: {
-    state: GameState;
-    category: string;
-    automationType: string;
-    direction: 'increase' | 'decrease';
-  }) {
-    const { state, category, automationType, direction } = data;
-    const entity = getCategoryEntity(state.world, category);
-    if (!entity) return;
-    // For now, assume Generator is the automation component
-    const gen = getComponent<Generator>(entity, 'Generator');
-    if (!gen) return;
-    // Simulate automation adjustment (add/remove active flag)
-    if (direction === 'increase') gen.active = true;
-    else if (direction === 'decrease') gen.active = false;
-    this.bus?.emit('stateUpdated', data.state);
-  }
-
   /**
    * Handles the 'upgrade:purchased' event to deduct resources.
    */
@@ -297,6 +222,28 @@ export class ResourceSystem {
       delta,
       state: this.currentState,
     });
+  }
+
+  // ---------------------------------------------------------------------
+  // Legacy adjustAutomation handler removed. New namespaced variant below.
+  // ---------------------------------------------------------------------
+
+  private handleActionAdjustAutomation(data: {
+    entityId: string;
+    automationType: string;
+    direction: 'increase' | 'decrease';
+  }) {
+    if (!this.world || !this.currentState) return;
+    const { entityId, direction } = data;
+    const entity = this.world.entities.get(entityId);
+    if (!entity) return;
+    const gen = getComponent<Generator>(entity, 'Generator');
+    if (!gen) return;
+
+    if (direction === 'increase') gen.active = true;
+    else if (direction === 'decrease') gen.active = false;
+
+    this.bus?.emit('stateUpdated', this.currentState);
   }
 }
 

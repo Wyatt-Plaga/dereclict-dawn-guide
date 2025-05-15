@@ -3,7 +3,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { GameEngine } from 'core/GameEngine';
 import { GameState } from '../types';
-import { GameActions } from '../types/actions';
 import { ActionKey, ActionMap } from '../actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { getCachedState } from 'core/memoryCache';
@@ -13,7 +12,6 @@ import { getCachedState } from 'core/memoryCache';
  */
 interface GameContextType {
   state: GameState;
-  dispatch: (action: GameActions) => void;
   dispatchAction: <K extends ActionKey>(type: K, payload: ActionMap[K]) => void;
   engine: GameEngine; // Exposing the engine for advanced use cases
   isInitializing: boolean; // Indicates if game is still loading
@@ -51,29 +49,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
     );
     return initialState;
   });
-
-  // Create a stable dispatch function that won't change on re-renders
-  const dispatch = useCallback((action: GameActions) => {
-    // Determine appropriate context based on action type
-    let context = LogContext.NONE;
-    if (action.type === 'CLICK_RESOURCE') {
-      const category = action.payload.category;
-      if (category === 'reactor') {
-        context = LogContext.REACTOR_LIFECYCLE;
-      } else if (category === 'processor') {
-        context = LogContext.PROCESSOR_LIFECYCLE;
-      } else if (category === 'crewQuarters') {
-        context = LogContext.CREW_LIFECYCLE;
-      } else if (category === 'manufacturing') {
-        context = LogContext.MANUFACTURING_LIFECYCLE;
-      }
-    } else if (action.type === 'PURCHASE_UPGRADE') {
-      context = LogContext.UPGRADE_PURCHASE;
-    }
-    
-    Logger.debug(LogCategory.ACTIONS, `Dispatching action: ${action.type}`, context);
-    engine.dispatch(action);
-  }, [engine]);
 
   // ---------------------------------------------------------------------
   // Phase-5 typed action dispatcher – bypasses GameEngine.dispatch
@@ -144,7 +119,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // Include isInitializing in the context value
   const contextValue: GameContextType = {
     state,
-    dispatch,
     dispatchAction,
     engine,
     isInitializing

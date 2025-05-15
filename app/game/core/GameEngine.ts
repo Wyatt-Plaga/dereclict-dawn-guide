@@ -1,7 +1,6 @@
 import { EventBus } from 'core/EventBus';
 import { GameState, initialGameState } from '../types';
 import { GameSystemManager } from '../systems';
-import { GameActions } from '../types/actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { SaveSystem } from 'core/SaveSystem';
 import { getCachedState, cacheState } from 'core/memoryCache';
@@ -93,8 +92,7 @@ export class GameEngine {
      * Set up event handlers for the game engine
      */
     private setupEventHandlers() {
-        // No generic dispatch listener needed – UI calls processAction via dispatch().
-        
+        // No action mapping required – UI dispatches typed action events directly.
         Logger.debug(LogCategory.ENGINE, "Event handlers configured", LogContext.STARTUP);
     }
 
@@ -277,144 +275,6 @@ export class GameEngine {
             
             this.eventBus.emit('stateUpdated', this.state);
         }
-    }
-
-    /**
-     * Process an action and update the game state
-     * 
-     * @param action - The action to process
-     */
-    private processAction(action: GameActions) {
-        // Determine the context based on action type
-        let context = LogContext.NONE;
-        if (action.type === 'CLICK_RESOURCE') {
-            const category = action.payload?.category;
-            if (category === 'reactor') {
-                context = LogContext.REACTOR_LIFECYCLE;
-            } else if (category === 'processor') {
-                context = LogContext.PROCESSOR_LIFECYCLE;
-            } else if (category === 'crewQuarters') {
-                context = LogContext.CREW_LIFECYCLE;
-            } else if (category === 'manufacturing') {
-                context = LogContext.MANUFACTURING_LIFECYCLE;
-            }
-        } else if (action.type === 'PURCHASE_UPGRADE') {
-            context = LogContext.UPGRADE_PURCHASE;
-        }
-        
-        Logger.debug(LogCategory.ENGINE, `Processing action: ${action.type}`, context);
-        
-        // Log state before processing
-        const reactorEntity = getCategoryEntity(this.state.world, 'reactor');
-        const beforeEnergy = reactorEntity?.get<ResourceStorage>('ResourceStorage')?.current ?? 0;
-        Logger.debug(
-            LogCategory.ENGINE, 
-            `State BEFORE action: ${action.type} - Energy: ${beforeEnergy}`, 
-            context
-        );
-        
-        // Map each action to a domain-specific event so individual systems handle their own logic.
-        switch (action.type) {
-          case 'CLICK_RESOURCE':
-            this.eventBus.emit('resourceClick', {
-              state: this.state,
-              category: (action as any).payload.category,
-            });
-            break;
-
-          case 'PURCHASE_UPGRADE':
-            this.eventBus.emit('purchaseUpgrade', {
-              state: this.state,
-              category: (action as any).payload.category,
-              upgradeType: (action as any).payload.upgradeType,
-            });
-            break;
-
-          case 'MARK_LOG_READ':
-            this.eventBus.emit('markLogRead', {
-              state: this.state,
-              logId: (action as any).payload.logId,
-            });
-            break;
-
-          case 'MARK_ALL_LOGS_READ':
-            this.eventBus.emit('markAllLogsRead', { state: this.state });
-            break;
-
-          case 'INITIATE_JUMP':
-            this.eventBus.emit('initiateJump', { state: this.state });
-            break;
-
-          case 'MAKE_STORY_CHOICE':
-            this.eventBus.emit('storyChoice', {
-              state: this.state,
-              choiceId: (action as any).payload.choiceId,
-            });
-            break;
-
-          case 'COMBAT_ACTION':
-            this.eventBus.emit('combatAction', {
-              state: this.state,
-              actionId: (action as any).payload.actionId,
-            });
-            break;
-
-          case 'RETREAT_FROM_BATTLE':
-            this.eventBus.emit('retreatFromBattle', { state: this.state });
-            break;
-
-          case 'ADJUST_AUTOMATION': {
-            const p = (action as any).payload;
-            this.eventBus.emit('adjustAutomation', {
-              state: this.state,
-              category: p.category,
-              automationType: p.automationType,
-              direction: p.direction,
-            });
-            break;
-          }
-
-          case 'COMPLETE_ENCOUNTER': {
-            // For story encounters without explicit choice (e.g., empty) we pass choiceId if present.
-            const choiceId = (action as any).payload?.choiceId;
-            this.eventBus.emit('storyChoice', { state: this.state, choiceId });
-            break; }
-
-          case 'SELECT_REGION': {
-            // simple state mutation – handled here for now
-            const region = (action as any).payload.region;
-            this.state.navigation.currentRegion = region as any;
-            // future: emit navigation change event if needed
-            break; }
-
-          default:
-            Logger.warn(LogCategory.ENGINE, `Unhandled action type: ${(action as any).type}`, context);
-        }
-         
-        // No direct state mutation here; listeners mutate this.state reference
-        // Log state after processing
-        const afterEnergy = reactorEntity?.get<ResourceStorage>('ResourceStorage')?.current ?? 0;
-        Logger.debug(
-            LogCategory.ENGINE,
-            `State AFTER action: ${action.type} - Energy: ${afterEnergy} (Changed: ${afterEnergy !== beforeEnergy})`,
-            context
-        );
-        
-        // Cache the state for in-app navigation
-        cacheState(this.state);
-        
-        // Notify that state has been updated
-        Logger.debug(LogCategory.ENGINE, "Emitting stateUpdated event", context);
-        this.eventBus.emit('stateUpdated', this.state);
-    }
-    
-    /**
-     * Dispatch an action to modify the game state
-     * 
-     * @param action - The action to dispatch
-     */
-    dispatch(action: GameActions) {
-        this.processAction(action);
     }
 
     /**

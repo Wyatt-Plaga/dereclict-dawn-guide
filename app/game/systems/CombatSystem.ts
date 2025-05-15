@@ -70,26 +70,12 @@ export class CombatSystem {
 
     // Add more event listeners as needed
 
-    // Listen for player combat actions
-    this.eventBus.on('combatAction', ({ state, actionId }) => {
-      const result = this.performCombatAction(state, actionId);
-      // Emit state update so UI refreshes immediately
-      this.eventBus.emit('stateUpdated', state);
-      return result;
-    });
-
     // Phase-5 namespaced combat move
     this.eventBus.on('action:combat_move', ({ moveId }) => {
       if (!this.currentState) return;
       const res = this.performCombatAction(this.currentState, moveId);
       this.eventBus.emit('stateUpdated', this.currentState);
       return res;
-    });
-
-    // Listen for player retreat actions
-    this.eventBus.on('retreatFromBattle', ({ state }) => {
-      this.retreatFromCombat(state);
-      this.eventBus.emit('stateUpdated', state);
     });
 
     // Phase-5 retreat action

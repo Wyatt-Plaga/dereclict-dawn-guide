@@ -33,26 +33,20 @@ export class EncounterSystem {
         this.eventBus = eventBus;
         Logger.info(LogCategory.LIFECYCLE, 'EncounterSystem initialized', LogContext.STARTUP);
 
-        // Listen for story choice / encounter completion actions
-        this.eventBus.on('storyChoice', ({ state, choiceId }) => {
-          this.completeEncounter(state, choiceId);
-          this.eventBus.emit('stateUpdated', state);
-        });
-
-        // Phase-5 namespaced action handler
+        // Namespaced story choice action
         this.eventBus.on('action:story_choice', ({ choiceId }) => {
           if (!this.currentState) return;
           this.completeEncounter(this.currentState, choiceId);
           this.eventBus.emit('stateUpdated', this.currentState);
         });
 
-        // Handle jump initiation to generate encounters
-        this.eventBus.on('initiateJump', ({ state }) => {
-          const encounter = this.generateEncounter(state);
-          state.encounters.active = true;
-          state.encounters.encounter = encounter;
-          // After generating, emit state update
-          this.eventBus.emit('stateUpdated', state);
+        // Namespaced jump initiation action
+        this.eventBus.on('action:initiate_jump', () => {
+          if (!this.currentState) return;
+          const encounter = this.generateEncounter(this.currentState);
+          this.currentState.encounters.active = true;
+          this.currentState.encounters.encounter = encounter;
+          this.eventBus.emit('stateUpdated', this.currentState);
         });
     }
     

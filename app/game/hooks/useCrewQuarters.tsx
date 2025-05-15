@@ -8,7 +8,6 @@
 
 import { useState } from 'react';
 import { useGame } from './useGame';
-import { useGameBus } from './useGameBus';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import {
@@ -29,8 +28,7 @@ import { ResourceStorage, Generator, Upgradable } from '../components/interfaces
  * Hook for accessing and manipulating crew quarters data
  */
 export function useCrewQuarters() {
-  const { state } = useGame();
-  const bus = useGameBus();
+  const { state, dispatchAction } = useGame();
   const [awakeningFlavor, setAwakeningFlavor] = useState("");
   
   // Create an instance of UpgradeSystem for cost calculations
@@ -99,7 +97,9 @@ export function useCrewQuarters() {
     const randomFlavor = getRandomAwakeningFlavor();
     setAwakeningFlavor(randomFlavor);
     
-    bus.emit('resourceClick', { state, category: 'crewQuarters' });
+    if (entity) {
+      dispatchAction('action:resource_click', { entityId: entity.id, amount: 1 });
+    }
   };
   
   // Upgrade crew capacity
@@ -113,7 +113,9 @@ export function useCrewQuarters() {
       [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
     );
     
-    bus.emit('purchaseUpgrade', { state, category: 'crewQuarters', upgradeType: 'additionalQuarters' });
+    if (entity) {
+      dispatchAction('action:purchase_upgrade', { entityId: entity.id, upgradeId: 'crew:quartersExpansion' });
+    }
   };
   
   // Upgrade auto awakening
@@ -126,7 +128,9 @@ export function useCrewQuarters() {
         [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
       );
       
-      bus.emit('purchaseUpgrade', { state, category: 'crewQuarters', upgradeType: 'workerCrews' });
+      if (entity) {
+        dispatchAction('action:purchase_upgrade', { entityId: entity.id, upgradeId: 'crew:workerCrews' });
+      }
     }
   };
   
@@ -148,12 +152,9 @@ export function useCrewQuarters() {
   
   // Actions
   const adjustActiveCrews = (direction: 'increase' | 'decrease') => {
-    bus.emit('adjustAutomation', {
-      state,
-      category: 'crewQuarters',
-      automationType: 'workerCrews',
-      direction,
-    });
+    if (entity) {
+      dispatchAction('action:adjust_automation', { entityId: entity.id, automationType: 'workerCrews', direction });
+    }
   };
   
   // Return all the data and functions needed by the crew quarters page

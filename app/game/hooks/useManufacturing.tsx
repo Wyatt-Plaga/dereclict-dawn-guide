@@ -1,5 +1,4 @@
 import { useGame } from './useGame';
-import { useGameBus } from './useGameBus';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import { ResourceCost } from '../types/combat';
 import { AutomationConstants, ManufacturingConstants } from '../config/gameConstants';
@@ -13,8 +12,7 @@ const formatResourceCosts = (costs: ResourceCost[]): string => {
 };
 
 export const useManufacturing = () => {
-  const { state } = useGame();
-  const bus = useGameBus();
+  const { state, dispatchAction } = useGame();
   const upgradeSystem = new UpgradeSystem();
 
   const entity = getCategoryEntity(state.world, 'manufacturing');
@@ -56,29 +54,31 @@ export const useManufacturing = () => {
     // Check energy before dispatching
     if (!canCollectWithEnergy) return;
     
-    bus.emit('resourceClick', { state, category: 'manufacturing' });
-    // Note: Energy consumption for clicks will be handled in ActionSystem
+    if (entity) {
+      dispatchAction('action:resource_click', { entityId: entity.id, amount: 1 });
+    }
   };
 
   const upgradeManufacturingBays = () => {
     if (canUpgradeBays) {
-      bus.emit('purchaseUpgrade', { state, category: 'manufacturing', upgradeType: 'manufacturingBays' });
+      if (entity) {
+        dispatchAction('action:purchase_upgrade', { entityId: entity.id, upgradeId: 'manufacturing:bays' });
+      }
     }
   };
 
   const upgradeCargoHoldExpansions = () => {
     if (canUpgradeExpansions) {
-      bus.emit('purchaseUpgrade', { state, category: 'manufacturing', upgradeType: 'cargoHoldExpansions' });
+      if (entity) {
+        dispatchAction('action:purchase_upgrade', { entityId: entity.id, upgradeId: 'manufacturing:expansions' });
+      }
     }
   };
 
   const adjustActiveBays = (direction: 'increase' | 'decrease') => {
-    bus.emit('adjustAutomation', {
-      state,
-      category: 'manufacturing',
-      automationType: 'manufacturingBays',
-      direction,
-    });
+    if (entity) {
+      dispatchAction('action:adjust_automation', { entityId: entity.id, automationType: 'manufacturingBays', direction });
+    }
   };
 
   return {
