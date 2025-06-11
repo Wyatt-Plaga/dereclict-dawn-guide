@@ -15,40 +15,31 @@ export class ResourceSystem {
    * @param delta - Time passed in seconds since last update
    */
   update(state: GameState, delta: number) {
-    this.updateReactor(state, delta);
-    this.updateProcessor(state, delta);
+    // Generic updates for simple resource categories
+    this.updateResourceCategory(state.categories.reactor, 'energy', 'energyPerSecond', 'energyCapacity', delta);
+    this.updateResourceCategory(state.categories.processor, 'insight', 'insightPerSecond', 'insightCapacity', delta);
+    this.updateResourceCategory(state.categories.manufacturing, 'scrap', 'scrapPerSecond', 'scrapCapacity', delta);
+
+    // Crew quarters require bespoke logic
     this.updateCrewQuarters(state, delta);
-    this.updateManufacturing(state, delta);
   }
 
   /**
-   * Update reactor resources (energy)
+   * Generic helper for simple resource production categories
    */
-  private updateReactor(state: GameState, delta: number) {
-    const reactor = state.categories.reactor;
-    const energyProduced = reactor.stats.energyPerSecond * delta;
-    
-    // Only process if there's actual production
-    if (energyProduced > 0) {
-      // Add resources but don't exceed capacity
-      reactor.resources.energy = Math.min(
-        reactor.resources.energy + energyProduced,
-        reactor.stats.energyCapacity
-      );
-    }
-  }
+  private updateResourceCategory(
+    category: { resources: Record<string, number>; stats: Record<string, number> },
+    resourceKey: string,
+    rateKey: string,
+    capacityKey: string,
+    delta: number
+  ) {
+    const produced = (category.stats[rateKey] || 0) * delta;
 
-  /**
-   * Update processor resources (insight)
-   */
-  private updateProcessor(state: GameState, delta: number) {
-    const processor = state.categories.processor;
-    const insightProduced = processor.stats.insightPerSecond * delta;
-    
-    if (insightProduced > 0) {
-      processor.resources.insight = Math.min(
-        processor.resources.insight + insightProduced,
-        processor.stats.insightCapacity
+    if (produced > 0) {
+      category.resources[resourceKey] = Math.min(
+        (category.resources[resourceKey] || 0) + produced,
+        category.stats[capacityKey] || 0
       );
     }
   }
@@ -115,21 +106,6 @@ export class ResourceSystem {
           );
         }
       }
-    }
-  }
-
-  /**
-   * Update manufacturing resources (scrap)
-   */
-  private updateManufacturing(state: GameState, delta: number) {
-    const manufacturing = state.categories.manufacturing;
-    const scrapProduced = manufacturing.stats.scrapPerSecond * delta;
-    
-    if (scrapProduced > 0) {
-      manufacturing.resources.scrap = Math.min(
-        manufacturing.resources.scrap + scrapProduced,
-        manufacturing.stats.scrapCapacity
-      );
     }
   }
 
