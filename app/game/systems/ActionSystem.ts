@@ -1,10 +1,7 @@
 import { GameState, RegionType } from '../types';
 import { GameAction, GameActions, GameCategory } from '../types/actions';
-import { GameSystemManager } from './index';
-import { UpgradeSystem } from './UpgradeSystem';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
-import { EncounterSystem } from './EncounterSystem';
-import { v4 as uuidv4 } from 'uuid';
+import { EventBus } from "../core/EventBus";
 
 /**
  * ActionSystem
@@ -13,18 +10,27 @@ import { v4 as uuidv4 } from 'uuid';
  * Think of this as the customer service department that handles requests.
  */
 export class ActionSystem {
-  /**
-   * Reference to the GameSystemManager
-   * This will be set when the ActionSystem is created by the GameSystemManager
-   */
-  private manager: GameSystemManager | null = null;
+  private eventBus?: EventBus;
 
-  /**
-   * Set the GameSystemManager reference
-   */
-  setManager(manager: GameSystemManager): void {
-    this.manager = manager;
-    Logger.debug(LogCategory.ACTIONS, "ActionSystem manager set", LogContext.STARTUP);
+  private actionHandlers: Record<string, (state: GameState, action: GameAction) => GameState>;
+
+  constructor(eventBus?: EventBus) {
+    this.eventBus = eventBus;
+
+    // Initialise handler map
+    this.actionHandlers = {
+      RESOURCE_CLICK: (s, a) => this.handleResourceClick(s, a),
+      CLICK_RESOURCE: (s, a) => this.handleResourceClick(s, a),
+      PURCHASE_UPGRADE: (s, a) =>
+        this.handleUpgradePurchase(s, a.payload.category, a.payload.upgradeType),
+      MARK_LOG_READ: (s, a) => this.handleMarkLogRead(s, a.payload.logId),
+      SELECT_REGION: (s, a) => this.handleSelectRegion(s, a.payload.regionId),
+      INITIATE_JUMP: (s) => this.handleInitiateJump(s),
+      COMPLETE_ENCOUNTER: (s, a) => this.handleCompleteEncounter(s, a),
+      STORY_CHOICE: (s, a) => this.handleStoryChoice(s, a),
+      COMBAT_ACTION: (s, a) => this.handleCombatAction(s, a),
+      RETREAT_FROM_BATTLE: (s) => this.handleRetreatFromBattle(s)
+    };
   }
 
   /**
@@ -32,65 +38,25 @@ export class ActionSystem {
    */
   processAction(state: GameState, action: GameAction): GameState {
     Logger.trace(
-      LogCategory.ACTIONS, 
+      LogCategory.ACTIONS,
       `Processing action: ${action.type}`,
       LogContext.NONE
     );
-    
-    // Create a copy of the state to update
-    let newState = { ...state };
-    
-    // Process the action based on its type
-    switch (action.type) {
-      case 'RESOURCE_CLICK':
-        newState = this.handleResourceClick(newState, action);
-        break;
 
-      case 'PURCHASE_UPGRADE':
-        newState = this.handleUpgradePurchase(
-          newState, 
-          action.payload.category, 
-          action.payload.type
-        );
-        break;
+    const handler = this.actionHandlers[action.type];
 
-      case 'MARK_LOG_READ':
-        newState = this.handleMarkLogRead(newState, action.payload.logId);
-        break;
-
-      case 'SELECT_REGION': 
-        newState = this.handleSelectRegion(newState, action.payload.regionId);
-        break;
-        
-      case 'INITIATE_JUMP':
-        newState = this.handleInitiateJump(newState);
-        break;
-        
-      case 'COMPLETE_ENCOUNTER':
-        newState = this.handleCompleteEncounter(newState, action);
-        break;
-        
-      case 'STORY_CHOICE':
-        newState = this.handleStoryChoice(newState, action);
-        break;
-        
-      case 'COMBAT_ACTION':
-        newState = this.handleCombatAction(newState, action);
-        break;
-        
-      case 'RETREAT_FROM_BATTLE':
-        newState = this.handleRetreatFromBattle(newState);
-        break;
-        
-      default:
-        Logger.warn(
-          LogCategory.ACTIONS, 
-          `Unknown action type: ${action.type}`,
-          LogContext.NONE
-        );
+    if (!handler) {
+      Logger.warn(
+        LogCategory.ACTIONS,
+        `Unknown action type: ${action.type}`,
+        LogContext.NONE
+      );
+      return state;
     }
-    
-    return newState;
+
+    // Work on a shallow copy of state for safety
+    const newState = { ...state };
+    return handler(newState, action);
   }
   
   /**
@@ -255,37 +221,17 @@ export class ActionSystem {
       LogContext.UPGRADE_PURCHASE
     );
     
-    // Use the UpgradeSystem from the manager if available
-    let upgradeSystem: UpgradeSystem;
-    
-    if (this.manager) {
-      upgradeSystem = this.manager.upgrade;
-    } else {
-      // Fallback to a new instance if manager is not set
-      Logger.warn(
-        LogCategory.ACTIONS, 
-        'GameSystemManager not set in ActionSystem, creating temporary UpgradeSystem',
-        LogContext.UPGRADE_PURCHASE
-      );
-      upgradeSystem = new UpgradeSystem();
+    // Prefer event-driven flow
+    if (this.eventBus) {
+      this.eventBus.emit('PURCHASE_UPGRADE', { state, category, upgradeType });
+      return state; // state will be mutated by UpgradeSystem listener
     }
-    
-    // Attempt to purchase the upgrade
-    const success = upgradeSystem.purchaseUpgrade(state, category, upgradeType);
-    
-    if (success) {
-      Logger.info(
-        LogCategory.UPGRADES, 
-        `Successfully purchased ${upgradeType} for ${category}`,
-        LogContext.UPGRADE_PURCHASE
-      );
-    } else {
-      Logger.warn(
-        LogCategory.UPGRADES, 
-        `Failed to purchase ${upgradeType} for ${category} - insufficient resources`,
-        LogContext.UPGRADE_PURCHASE
-      );
-    }
+
+    Logger.error(
+      LogCategory.ACTIONS,
+      'EventBus unavailable for PURCHASE_UPGRADE; action ignored',
+      LogContext.UPGRADE_PURCHASE
+    );
     return state;
   }
 
@@ -293,91 +239,50 @@ export class ActionSystem {
    * Mark a log as read
    */
   private handleMarkLogRead(state: GameState, logId: string): GameState {
-    if (!this.manager) {
-      Logger.error(
-        LogCategory.ACTIONS,
-        "Cannot mark log read: ActionSystem manager not set",
-        LogContext.LOG_INTERACTION
-      );
+    if (this.eventBus) {
+      this.eventBus.emit('MARK_LOG_READ', { state, logId });
       return state;
     }
-
-    // Use the log system to mark the log as read
-    return this.manager.log.markLogRead(state, logId);
+    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for MARK_LOG_READ', LogContext.LOG_INTERACTION);
+    return state;
   }
 
   /**
    * Mark all logs as read
    */
   private handleMarkAllLogsRead(state: GameState): GameState {
-    if (!this.manager) {
-      Logger.error(
-        LogCategory.ACTIONS,
-        "Cannot mark all logs read: ActionSystem manager not set",
-        LogContext.LOG_INTERACTION
-      );
+    if (this.eventBus) {
+      this.eventBus.emit('MARK_ALL_LOGS_READ', { state });
       return state;
     }
-
-    // Use the log system to mark all logs as read
-    return this.manager.log.markAllLogsRead(state);
+    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for MARK_ALL_LOGS_READ', LogContext.LOG_INTERACTION);
+    return state;
   }
 
   /**
    * Handle initiating a jump to start an encounter
    */
   private handleInitiateJump(state: GameState): GameState {
-    if (!this.manager) {
-      Logger.error(
-        LogCategory.ACTIONS,
-        "Cannot initiate jump: ActionSystem manager not set",
-        LogContext.NONE
-      );
+    Logger.info(LogCategory.ACTIONS, 'Initiating jump sequence', LogContext.NONE);
+    if (this.eventBus) {
+      this.eventBus.emit('INITIATE_JUMP', { state });
       return state;
     }
-
-    Logger.info(
-      LogCategory.ACTIONS,
-      'Initiating jump sequence',
-      LogContext.NONE
-    );
-    
-    // Generate an encounter based on the current region
-    const encounter = this.manager.encounter.generateEncounter(state);
-    
-    // Update the game state
-    return {
-      ...state,
-      encounters: {
-        ...state.encounters,
-        active: true,
-        encounter
-      }
-    };
+    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for INITIATE_JUMP', LogContext.NONE);
+    return state;
   }
   
   /**
    * Handle completing an encounter
    */
   private handleCompleteEncounter(state: GameState, action: any): GameState {
-    if (!this.manager) {
-      Logger.error(
-        LogCategory.ACTIONS,
-        'Game system manager not set',
-        LogContext.NONE
-      );
+    Logger.info(LogCategory.ACTIONS, 'Completing encounter', LogContext.NONE);
+    if (this.eventBus) {
+      this.eventBus.emit('COMPLETE_ENCOUNTER', { state, choiceId: action.payload?.choiceId });
       return state;
     }
-
-    Logger.info(
-      LogCategory.ACTIONS,
-      'Completing encounter',
-      LogContext.NONE
-    );
-    
-    // Use the encounter system to process the encounter
-    const encounterSystem = this.manager.encounter;
-    return encounterSystem.completeEncounter(state, action.payload?.choiceId);
+    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for COMPLETE_ENCOUNTER', LogContext.NONE);
+    return state;
   }
   
   /**
@@ -418,101 +323,41 @@ export class ActionSystem {
       return state;
     }
     
-    if (!this.manager) {
-      Logger.error(
-        LogCategory.ACTIONS,
-        'Game system manager not set',
-        LogContext.NONE
-      );
+    if (this.eventBus) {
+      this.eventBus.emit('COMPLETE_ENCOUNTER', { state, choiceId: action.payload.choiceId });
       return state;
     }
-    
-    // Use the encounter system to process the choice
-    const encounterSystem = this.manager.encounter;
-    return encounterSystem.completeEncounter(state, action.payload.choiceId);
+    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for STORY_CHOICE', LogContext.NONE);
+    return state;
   }
 
   /**
    * Handle combat actions
    */
   private handleCombatAction(state: GameState, action: any): GameState {
-    if (!this.manager) {
-      Logger.error(
-        LogCategory.ACTIONS,
-        'Game system manager not set',
-        LogContext.COMBAT_ACTION
-      );
-      return state;
-    }
-
-    Logger.info(
-      LogCategory.COMBAT,
-      `Processing combat action: ${action.payload?.actionId}`,
-      LogContext.COMBAT_ACTION
-    );
-    
-    // Use the combat system to process the action
-    const actionId = action.payload?.actionId;
-    if (!actionId) {
-      Logger.error(
-        LogCategory.COMBAT,
-        'No action ID provided for combat action',
-        LogContext.COMBAT_ACTION
-      );
-      return state;
-    }
-    
-    // Create a copy of the state to update
-    const newState = { ...state };
-    
-    // Perform the combat action
-    const result = this.manager.combat.performCombatAction(newState, actionId);
-    
-    // Update the combat state with the result
-    if (result.success) {
-      // Record the action result in the combat state
-      newState.combat.lastActionResult = result;
-      
-      // Add a log entry if provided
-      if (result.message) {
-        newState.combat.battleLog.push({
-          id: uuidv4(),
-          text: result.message,
-          type: 'PLAYER',
-          timestamp: Date.now()
-        });
+    if (this.eventBus) {
+      const actionId = action.payload?.actionId;
+      if (!actionId) {
+        Logger.error(LogCategory.COMBAT, 'No action ID for COMBAT_ACTION', LogContext.COMBAT_ACTION);
+        return state;
       }
-    } else {
-      // Log the failure
-      Logger.warn(
-        LogCategory.COMBAT,
-        `Combat action failed: ${result.message}`,
-        LogContext.COMBAT_ACTION
-      );
+      this.eventBus.emit('COMBAT_ACTION', { state, actionId });
+      return state;
     }
-    
-    return newState;
+    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for COMBAT_ACTION', LogContext.COMBAT_ACTION);
+    return state;
   }
 
   /**
    * Handle retreat from battle
    */
   private handleRetreatFromBattle(state: GameState): GameState {
-    if (!this.manager) {
-      Logger.error(
-        LogCategory.ACTIONS,
-        'Game system manager not set',
-        LogContext.COMBAT
-      );
+    if (this.eventBus) {
+      Logger.info(LogCategory.COMBAT, 'Retreating from battle', LogContext.NONE);
+      this.eventBus.emit('RETREAT_FROM_BATTLE', { state });
       return state;
     }
-
-    Logger.info(
-      LogCategory.COMBAT,
-      'Retreating from battle',
-      LogContext.COMBAT
-    );
-    
-    return this.manager.combat.retreatFromCombat(state);
+    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for RETREAT_FROM_BATTLE', LogContext.NONE);
+    return state;
   }
 } 

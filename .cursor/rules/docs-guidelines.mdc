@@ -1,0 +1,16 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Project Documentation Rules
+
+1. **Single Roadmap** – `.cursor/rules/roadmap.mdc` is the canonical living roadmap / work-log. All task updates go there.
+2. **Keep docs current** – Update or delete stale docs alongside code changes.
+3. **Template leftovers** – Remove starter template docs unrelated to current code.
+4. **Authoritative docs** – Only these markdown files are canonical and must remain accurate:
+   • `documentation/architecture_overview.md`
+   • `documentation/gameplay_overview.md`
+   • `documentation/encounter_system_plan.md`
+   • `documentation/combat-system.md`
+5. **Review cycle** – At each milestone, audit docs to ensure compliance.

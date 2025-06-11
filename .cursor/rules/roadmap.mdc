@@ -1,0 +1,41 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Derelict Dawn – Roadmap & Work Log
+
+This file is the **single source of truth** for ongoing engineering tasks, ideas, and technical debt for the Derelict Dawn project.  
+Update it in every PR/commit that completes, changes, or adds work so that the roadmap always reflects reality.
+
+## How to use this document
+1. **Adding work** – append a new unchecked task under the correct section. Keep descriptions short but clear.  
+2. **Completing work** – mark the checkbox with an `x` (e.g. `[x]`) and, if helpful, add a brief bullet of what changed or link to the commit/PR.  
+3. **Re-prioritising** – feel free to move tasks around within their section to reflect current priority.  
+4. **Do not create extra roadmap docs.** All new plans should live here.
+
+## In-Progress / Next Up
+- [x] Resource tick refactor follow-ups – unit tests for `updateResourceCategory` and edge cases. (11 Jun 2025)  
+- [ ] Action dispatch map – verify hot-reload correctness & add Jest tests.
+- [x] Event-driven communication for Log, Encounter, Combat systems (12 Jun 2025).
+
+## Backlog
+- [x] Event-driven upgrade purchase flow via EventBus (11 Jun 2025).  
+- [ ] Break up `CombatSystem` into smaller modules (enemy AI, battle log, helpers).  
+- [ ] Cleanup template integrations (Clerk/Stripe) once confirmed unnecessary.  
+- [ ] Introduce `cloneState` helper (or Immer) to standardise immutability.  
+- [ ] Dynamic registration in `GameSystemManager` (array of systems).  
+- [ ] Unit-test baseline across core systems.  
+- [ ] Performance: variable tick rates or idle optimisation.
+
+## Completed (recent)
+- [x] DRY refactor of `ResourceSystem` – generic cost check/consume and tick helper (11 Jun 2025).  
+- [x] Replaced ActionSystem switch with handler map (11 Jun 2025).
+- [x] Added unit tests for ResourceSystem generation & cost logic (11 Jun 2025).
+
+---
+_Last updated: 11 Jun 2025_
+
+
+
+

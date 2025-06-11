@@ -16,24 +16,40 @@ import {
   REGION_ENCOUNTER_CHANCES 
 } from '../content/encounters';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
-import { GameSystemManager } from './index';
 import { REGION_DEFINITIONS } from '../content/regions';
+import { EventBus } from "../core/EventBus";
 
 /**
  * System responsible for generating and managing encounters
  */
 export class EncounterSystem {
-    private manager: GameSystemManager | null = null;
+    private eventBus?: EventBus;
 
-    constructor() {
-        Logger.info(LogCategory.LIFECYCLE, 'EncounterSystem initialized', LogContext.STARTUP);
-    }
-    
-    /**
-     * Set the game system manager reference
-     */
-    setManager(manager: GameSystemManager) {
-        this.manager = manager;
+    constructor(eventBus?: EventBus) {
+        this.eventBus = eventBus;
+
+        if (this.eventBus) {
+            const bus = this.eventBus;
+            bus.on('INITIATE_JUMP', (data: any) => {
+                const { state } = data as { state: GameState };
+                const encounter = this.generateEncounter(state);
+                state.encounters.active = true;
+                state.encounters.encounter = encounter;
+
+                // If combat encounter, emit start combat
+                if (encounter.type === 'combat') {
+                    const combatEnemyId = this.generateRandomEnemyForRegion(encounter.region);
+                    if (combatEnemyId) {
+                        bus.emit('START_COMBAT', { state: state, enemyId: combatEnemyId, regionId: encounter.region });
+                    }
+                }
+            });
+
+            bus.on('COMPLETE_ENCOUNTER', (data: any) => {
+                const { state, choiceId } = data as { state: GameState; choiceId?: string };
+                this.completeEncounter(state, choiceId);
+            });
+        }
     }
     
     /**
@@ -438,39 +454,20 @@ export class EncounterSystem {
             // Generate a random enemy from the region
             const enemyId = this.generateRandomEnemyForRegion(regionId);
             
-            if (enemyId && this.manager && this.manager.combat) {
-                // Start the combat encounter using the CombatSystem
-                this.manager.combat.startCombatEncounter(newState, enemyId, regionId);
-                
-                // Mark the encounter as completed, but combat as active
-                // This will clear the encounter and allow the combat to be handled by the battle page
+            if (enemyId && this.eventBus) {
+                // Emit event to start combat
+                this.eventBus.emit('START_COMBAT', { state: newState, enemyId, regionId });
+
+                // Prepare state for combat UI
                 newState.encounters.active = false;
                 newState.encounters.encounter = undefined;
                 newState.combat.active = true;
-                
-                // Add to encounter history
-                newState.encounters.history = Array.isArray(newState.encounters.history) 
-                    ? [
-                        ...newState.encounters.history,
-                        {
-                            id: encounter.id,
-                            type: encounter.type,
-                            result: 'initiated',
-                            date: Date.now(),
-                            region: encounter.region
-                        }
-                    ]
-                    : [
-                        {
-                            id: encounter.id,
-                            type: encounter.type,
-                            result: 'initiated',
-                            date: Date.now(),
-                            region: encounter.region
-                        }
-                    ];
-                
-                // Return the updated state with combat active
+
+                // Record history
+                newState.encounters.history = Array.isArray(newState.encounters.history)
+                  ? [...newState.encounters.history, { id: encounter.id, type: encounter.type, result: 'initiated', date: Date.now(), region: encounter.region }]
+                  : [{ id: encounter.id, type: encounter.type, result: 'initiated', date: Date.now(), region: encounter.region }];
+
                 return newState;
             }
         }

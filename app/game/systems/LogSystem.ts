@@ -1,5 +1,6 @@
 import { GameState, LogUnlockCondition, ResourceThresholdCondition, UpgradePurchasedCondition, LogDefinition } from '../types';
 import { LOG_DEFINITIONS } from '../content/logDefinitions';
+import { EventBus } from "../core/EventBus";
 
 /**
  * LogSystem
@@ -12,8 +13,18 @@ import { LOG_DEFINITIONS } from '../content/logDefinitions';
 export class LogSystem {
     private logDefinitions: Record<string, LogDefinition>;
 
-    constructor() {
+    constructor(eventBus?: EventBus) {
         this.logDefinitions = LOG_DEFINITIONS;
+        if (eventBus) {
+            eventBus.on('MARK_LOG_READ', (data: any) => {
+                const { state, logId } = data as { state: GameState; logId: string };
+                this.markLogRead(state, logId);
+            });
+            eventBus.on('MARK_ALL_LOGS_READ', (data: any) => {
+                const { state } = data as { state: GameState };
+                this.markAllLogsRead(state);
+            });
+        }
     }
 
     /**

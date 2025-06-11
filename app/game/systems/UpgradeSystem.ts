@@ -7,6 +7,7 @@ import {
   ProcessorConstants,
   ManufacturingConstants
 } from '../config/gameConstants';
+import { EventBus } from "../core/EventBus";
 
 /**
  * UpgradeSystem
@@ -15,6 +16,24 @@ import {
  * Think of this as the R&D department that improves your capabilities.
  */
 export class UpgradeSystem {
+  private eventBus?: EventBus;
+
+  constructor(eventBus?: EventBus) {
+    this.eventBus = eventBus;
+
+    // Listen for purchase requests if bus provided
+    if (this.eventBus) {
+      this.eventBus.on('PURCHASE_UPGRADE', (data: any) => {
+        const { state, category, upgradeType } = data as {
+          state: GameState;
+          category: GameCategory;
+          upgradeType: string;
+        };
+        this.purchaseUpgrade(state, category, upgradeType);
+      });
+    }
+  }
+
   /**
    * Attempt to purchase an upgrade
    * 

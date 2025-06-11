@@ -47,27 +47,19 @@ export class GameSystemManager {
   /**
    * Initialize all game systems
    */
-  constructor() {
+  constructor(eventBus?: import('../core/EventBus').EventBus) {
+    // Share one EventBus instance across all systems
     this.resource = new ResourceSystem();
-    this.upgrade = new UpgradeSystem();
-    this.log = new LogSystem();
-    this.encounter = new EncounterSystem();
-    this.combat = new CombatSystem();
+    this.upgrade = new UpgradeSystem(eventBus);
+    this.log = new LogSystem(eventBus);
+    this.encounter = new EncounterSystem(eventBus);
+    this.combat = new CombatSystem(eventBus);
     
     // Initialize the action system last since it depends on other systems
-    this.action = new ActionSystem();
+    this.action = new ActionSystem(eventBus);
     
-    // Set the manager reference in the ActionSystem
-    this.action.setManager(this);
-    
-    // Set the manager reference in the EncounterSystem
-    this.encounter.setManager(this);
-    
-    // Set the resource system reference in the CombatSystem
+    // Dependency injection
     this.combat.setResourceSystem(this.resource);
-    
-    // Initialize the game stats based on upgrades
-    // This will be done during initialization when loading a game
   }
 
   /**

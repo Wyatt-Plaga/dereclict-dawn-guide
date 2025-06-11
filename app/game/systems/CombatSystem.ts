@@ -15,6 +15,7 @@ import { ENEMY_ACTIONS, PLAYER_ACTIONS } from '@/app/game/content/combatActions'
 import { ENEMY_DEFINITIONS } from '@/app/game/content/enemies';
 import { REGION_DEFINITIONS } from '@/app/game/content/regions';
 import { ResourceSystem } from './ResourceSystem';
+import { EventBus } from "../core/EventBus";
 
 /**
  * Combat System
@@ -27,6 +28,28 @@ import { ResourceSystem } from './ResourceSystem';
  */
 export class CombatSystem {
   private resourceSystem: ResourceSystem | null = null;
+  private eventBus?: EventBus;
+
+  constructor(eventBus?: EventBus) {
+    this.eventBus = eventBus;
+
+    if (this.eventBus) {
+      this.eventBus.on('START_COMBAT', (data: any) => {
+        const { state, enemyId, regionId } = data as { state: GameState; enemyId: string; regionId: string };
+        this.startCombatEncounter(state, enemyId, regionId as any);
+      });
+
+      this.eventBus.on('COMBAT_ACTION', (data: any) => {
+        const { state, actionId } = data as { state: GameState; actionId: string };
+        this.performCombatAction(state, actionId);
+      });
+
+      this.eventBus.on('RETREAT_FROM_BATTLE', (data: any) => {
+        const { state } = data as { state: GameState };
+        this.retreat(state);
+      });
+    }
+  }
 
   /**
    * Set the resource system reference for resource checks

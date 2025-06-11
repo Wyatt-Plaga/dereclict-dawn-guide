@@ -62,8 +62,8 @@ export class GameEngine {
         // Create our communication system
         this.eventBus = new EventBus();
         
-        // Initialize game systems
-        this.systems = new GameSystemManager();
+        // Initialize game systems, share the same event bus instance
+        this.systems = new GameSystemManager(this.eventBus);
         
         // Initialize save system
         this.saveSystem = new SaveSystem();
