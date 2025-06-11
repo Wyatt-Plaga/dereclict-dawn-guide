@@ -1,4 +1,5 @@
 import { EventBus } from './EventBus';
+import { EventMap } from '../types/events';
 import { GameState, initialGameState } from '../types';
 import { GameSystemManager } from '../systems';
 import { GameAction } from '../types/actions';
@@ -22,7 +23,7 @@ export class GameEngine {
     /**
      * Communication system to notify about changes
      */
-    public eventBus: EventBus;
+    public eventBus: EventBus<EventMap>;
     
     /**
      * Game systems that handle different aspects of game logic
@@ -60,7 +61,7 @@ export class GameEngine {
         }
         
         // Create our communication system
-        this.eventBus = new EventBus();
+        this.eventBus = new EventBus<EventMap>();
         
         // Initialize game systems, share the same event bus instance
         this.systems = new GameSystemManager(this.eventBus);

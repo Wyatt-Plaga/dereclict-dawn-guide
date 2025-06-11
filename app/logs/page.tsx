@@ -78,20 +78,24 @@ export default function LogsPage() {
                   Recovered memory fragments and system records
                 </p>
                 
-                {/* Show mark all as read button if there are unread logs */}
-                {unreadCount > 0 && (
-                  <div className="mb-3">
-                    <button 
-                      onClick={handleMarkAllAsRead}
-                      className="px-3 py-1 bg-red-900/40 text-red-200 border border-red-700/60 text-xs rounded-md hover:bg-red-800/60 transition flex items-center"
-                    >
-                      <span>Mark all as read</span>
+                {/* Mark-all button (disabled when no unread) */}
+                <div className="mb-3">
+                  <button
+                    onClick={handleMarkAllAsRead}
+                    disabled={unreadCount === 0}
+                    className={`px-3 py-1 text-xs rounded-md flex items-center border transition
+                      ${unreadCount === 0
+                        ? 'bg-accent/20 text-muted-foreground border-border cursor-not-allowed opacity-50'
+                        : 'bg-red-900/40 text-red-200 border-red-700/60 hover:bg-red-800/60'}`}
+                  >
+                    <span>Mark all as read</span>
+                    {unreadCount > 0 && (
                       <span className="ml-2 bg-red-700/80 rounded-full h-5 w-5 flex items-center justify-center">
                         {unreadCount}
                       </span>
-                    </button>
-                  </div>
-                )}
+                    )}
+                  </button>
+                </div>
                 
                 <div className="space-y-2">
                   {sortedLogs.map(log => (

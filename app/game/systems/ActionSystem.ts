@@ -2,6 +2,7 @@ import { GameState, RegionType } from '../types';
 import { GameAction, GameActions, GameCategory } from '../types/actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { EventBus } from "../core/EventBus";
+import { EventMap } from "../types/events";
 
 /**
  * ActionSystem
@@ -10,11 +11,11 @@ import { EventBus } from "../core/EventBus";
  * Think of this as the customer service department that handles requests.
  */
 export class ActionSystem {
-  private eventBus?: EventBus;
+  private eventBus?: EventBus<EventMap>;
 
   private actionHandlers: Record<string, (state: GameState, action: GameAction) => GameState>;
 
-  constructor(eventBus?: EventBus) {
+  constructor(eventBus?: EventBus<EventMap>) {
     this.eventBus = eventBus;
 
     // Initialise handler map
@@ -24,6 +25,7 @@ export class ActionSystem {
       PURCHASE_UPGRADE: (s, a) =>
         this.handleUpgradePurchase(s, a.payload.category, a.payload.upgradeType),
       MARK_LOG_READ: (s, a) => this.handleMarkLogRead(s, a.payload.logId),
+      MARK_ALL_LOGS_READ: (s) => this.handleMarkAllLogsRead(s),
       SELECT_REGION: (s, a) => this.handleSelectRegion(s, a.payload.regionId),
       INITIATE_JUMP: (s) => this.handleInitiateJump(s),
       COMPLETE_ENCOUNTER: (s, a) => this.handleCompleteEncounter(s, a),

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { EventBus } from '../app/game/core/EventBus';
+import { EventMap } from '../app/game/types/events';
 import { initialGameState, GameState } from '../app/game/types';
 import { UpgradeSystem } from '../app/game/systems/UpgradeSystem';
 import { ActionSystem } from '../app/game/systems/ActionSystem';
@@ -7,10 +8,10 @@ import { ActionSystem } from '../app/game/systems/ActionSystem';
 const clone = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 
 describe('EventBus integration', () => {
-  let bus: EventBus;
+  let bus: EventBus<EventMap>;
   let state: GameState;
   beforeEach(() => {
-    bus = new EventBus();
+    bus = new EventBus<EventMap>();
     state = clone(initialGameState);
   });
 

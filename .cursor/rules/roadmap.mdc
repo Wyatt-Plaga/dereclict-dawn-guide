@@ -32,9 +32,14 @@ Update it in every PR/commit that completes, changes, or adds work so that the r
 - [x] DRY refactor of `ResourceSystem` – generic cost check/consume and tick helper (11 Jun 2025).  
 - [x] Replaced ActionSystem switch with handler map (11 Jun 2025).
 - [x] Added unit tests for ResourceSystem generation & cost logic (11 Jun 2025).
+- [x] Removed Clerk/Stripe code & deps; deleted unused provider, middleware cleaned, pruned package.json (12 Jun 2025).
+- [x] Type-safe EventBus with EventMap generic implemented (13 Jun 2025).
 
 ---
 _Last updated: 11 Jun 2025_
+
+
+
 
 
 
