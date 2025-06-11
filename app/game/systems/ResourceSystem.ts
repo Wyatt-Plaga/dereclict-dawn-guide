@@ -134,51 +134,50 @@ export class ResourceSystem {
   }
 
   /**
+   * Helper to access any resource amount generically.
+   * Returns the object holding the value and the key so that the caller can
+   * both read and mutate the value without a long switch-case.
+   */
+  private getResourceAccessor(state: GameState, type: string): { obj: any; key: string } | null {
+    switch (type) {
+      case 'energy':
+        return { obj: state.categories.reactor.resources, key: 'energy' };
+      case 'insight':
+        return { obj: state.categories.processor.resources, key: 'insight' };
+      case 'crew':
+        return { obj: state.categories.crewQuarters.resources, key: 'crew' };
+      case 'scrap':
+        return { obj: state.categories.manufacturing.resources, key: 'scrap' };
+      default:
+        return null;
+    }
+  }
+
+  /**
    * Check if the player has enough resources for a cost
    * 
    * @param state - Current game state
    * @param costs - Array of resource costs to check
    * @returns True if the player has enough resources, false otherwise
    */
-  hasResources(state: GameState, costs: { type: string, amount: number }[]): boolean {
-    for (const cost of costs) {
-      const { type, amount } = cost;
-      
-      // Skip if no cost
-      if (amount <= 0) continue;
-      
-      // Check resource type and amount
-      switch (type) {
-        case 'energy':
-          if (state.categories.reactor.resources.energy < amount) {
-            return false;
-          }
-          break;
-        case 'insight':
-          if (state.categories.processor.resources.insight < amount) {
-            return false;
-          }
-          break;
-        case 'crew':
-          if (state.categories.crewQuarters.resources.crew < amount) {
-            return false;
-          }
-          break;
-        case 'scrap':
-          if (state.categories.manufacturing.resources.scrap < amount) {
-            return false;
-          }
-          break;
-        default:
-          Logger.warn(
-            LogCategory.RESOURCES,
-            `Unknown resource type: ${type}`,
-            LogContext.COMBAT
-          );
-          return false;
+  hasResources(state: GameState, costs: { type: string; amount: number }[]): boolean {
+    for (const { type, amount } of costs) {
+      if (amount <= 0) continue; // Nothing to check
+
+      const accessor = this.getResourceAccessor(state, type);
+      if (!accessor) {
+        Logger.warn(
+          LogCategory.RESOURCES,
+          `Unknown resource type: ${type}`,
+          LogContext.COMBAT
+        );
+        return false;
+      }
+
+      if (accessor.obj[accessor.key] < amount) {
+        return false;
       }
     }
-    
     return true;
   }
   
@@ -189,63 +188,33 @@ export class ResourceSystem {
    * @param costs - Array of resource costs to consume
    * @returns True if resources were consumed, false if not enough resources
    */
-  consumeResources(state: GameState, costs: { type: string, amount: number }[]): boolean {
-    // First check if we have enough resources
+  consumeResources(state: GameState, costs: { type: string; amount: number }[]): boolean {
     if (!this.hasResources(state, costs)) {
-      return false;
+      return false; // Not enough resources
     }
-    
-    // Then consume the resources
-    for (const cost of costs) {
-      const { type, amount } = cost;
-      
-      // Skip if no cost
+
+    for (const { type, amount } of costs) {
       if (amount <= 0) continue;
-      
-      // Consume resource
-      switch (type) {
-        case 'energy':
-          state.categories.reactor.resources.energy -= amount;
-          Logger.debug(
-            LogCategory.RESOURCES,
-            `Consumed ${amount} energy`,
-            LogContext.COMBAT
-          );
-          break;
-        case 'insight':
-          state.categories.processor.resources.insight -= amount;
-          Logger.debug(
-            LogCategory.RESOURCES,
-            `Consumed ${amount} insight`,
-            LogContext.COMBAT
-          );
-          break;
-        case 'crew':
-          state.categories.crewQuarters.resources.crew -= amount;
-          Logger.debug(
-            LogCategory.RESOURCES,
-            `Consumed ${amount} crew`,
-            LogContext.COMBAT
-          );
-          break;
-        case 'scrap':
-          state.categories.manufacturing.resources.scrap -= amount;
-          Logger.debug(
-            LogCategory.RESOURCES,
-            `Consumed ${amount} scrap`,
-            LogContext.COMBAT
-          );
-          break;
-        default:
-          Logger.warn(
-            LogCategory.RESOURCES,
-            `Unknown resource type: ${type}`,
-            LogContext.COMBAT
-          );
-          return false;
+
+      const accessor = this.getResourceAccessor(state, type);
+      if (!accessor) {
+        Logger.warn(
+          LogCategory.RESOURCES,
+          `Unknown resource type: ${type}`,
+          LogContext.COMBAT
+        );
+        return false;
       }
+
+      accessor.obj[accessor.key] -= amount;
+
+      Logger.debug(
+        LogCategory.RESOURCES,
+        `Consumed ${amount} ${type}`,
+        LogContext.COMBAT
+      );
     }
-    
+
     return true;
   }
 } 
