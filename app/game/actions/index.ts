@@ -6,6 +6,8 @@ export type ActionMap = {
   "action:story_choice":     { encounterId: string; choiceId: string };
   "action:combat_move":      { moveId: string };
   "action:retreat":          {};
+  "action:start_encounter":  { encounterId: string };
+  "action:toggle_automation": { entityId: string; enabled: boolean };
   "action:adjust_automation": { entityId: string; automationType: string; direction: 'increase' | 'decrease' };
   "action:initiate_jump":    {};
   // 🚧 Add new action types above this line as features grow

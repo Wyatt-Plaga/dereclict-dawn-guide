@@ -1,13 +1,13 @@
-import { EventBus } from 'core/EventBus';
+import { EventBus } from '@/core/EventBus';
 import { GameState, initialGameState } from '../types';
 import { GameSystemManager } from '../systems';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
-import { SaveSystem } from 'core/SaveSystem';
-import { getCachedState, cacheState } from 'core/memoryCache';
+import { SaveSystem } from '@/core/SaveSystem';
+import { getCachedState, cacheState } from '@/core/memoryCache';
 import { AutomationConstants } from '../config/gameConstants';
-import { GameEventMap } from 'core/events';
+import { GameEventMap } from '@/core/events';
 import { createWorldFromGameState } from '../ecs/factory';
-import { getCategoryEntity } from 'core/ecs/selectors';
+import { getCategoryEntity } from '@/core/ecs/selectors';
 import { Generator, Upgradable, ResourceStorage } from '../components/interfaces';
 
 /**

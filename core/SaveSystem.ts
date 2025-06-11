@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
-import { LocalForageAdapter, StorageAdapter } from 'core/storage/StorageAdapter';
+import { LocalForageAdapter, StorageAdapter } from '@/core/storage/StorageAdapter';
 import { GameState } from '@/app/game/types';
 import { createWorldFromGameState } from '@/app/game/ecs/factory';
-import { World } from 'core/ecs/World';
+import { World } from '@/core/ecs/World';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 
 export interface SaveData {

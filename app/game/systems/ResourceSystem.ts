@@ -1,11 +1,11 @@
 import { GameState } from '../types';
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
-import { EventBus } from 'core/EventBus';
-import { GameEventMap } from 'core/events';
+import { EventBus } from '@/core/EventBus';
+import { GameEventMap } from '@/core/events';
 import { Generator, ResourceStorage, Upgradable, UpgradeKey } from '../components/interfaces';
 import { createWorldFromGameState } from '../ecs/factory';
-import { getCategoryEntity, getComponent } from 'core/ecs/selectors';
-import { World } from 'core/ecs/World';
+import { getCategoryEntity, getComponent } from '@/core/ecs/selectors';
+import { World } from '@/core/ecs/World';
 import { UpgradeSystem } from './UpgradeSystem';
 
 /**
@@ -65,6 +65,12 @@ export class ResourceSystem {
       const generated = Math.min(capacityLeft, amount);
       if (generated <= 0) continue;
       storage.current += generated;
+      // Emit domain event for observers (achievements, analytics, etc.)
+      this.bus?.publish?.('resource:changed' as any, {
+        entityId: entity.id,
+        delta: generated,
+        state,
+      });
       // Optionally, emit events here if needed
     }
   }

@@ -3,7 +3,7 @@
  */
 
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
-import type { GameEventMap } from 'core/events';
+import type { GameEventMap } from '@/core/events';
 
 export class EventBus<Events extends Record<string, any> = GameEventMap> {
   private listeners: { [K in keyof Events]?: Array<(data: Events[K]) => void> } = {};
@@ -24,10 +24,10 @@ export class EventBus<Events extends Record<string, any> = GameEventMap> {
   }
 
   emit<K extends keyof Events>(event: K, data: Events[K]) {
-    // Throttle stateUpdated spam
+    // Throttle high-frequency stateUpdated spam to ~1 animation frame (16 ms)
     if (event === 'stateUpdated') {
       const now = Date.now();
-      if (now - this.lastStateUpdateTime < 50) return;
+      if (now - this.lastStateUpdateTime < 16) return;
       this.lastStateUpdateTime = now;
     }
 
@@ -42,7 +42,8 @@ export class EventBus<Events extends Record<string, any> = GameEventMap> {
       Logger.warn(LogCategory.EVENT_BUS, `No listeners registered for event: "${String(event)}"`, context);
     }
 
-    const payload = event === 'stateUpdated' ? (JSON.parse(JSON.stringify(data)) as Events[K]) : data;
+    // Avoid expensive deep-clone; caller should clone if needed.
+    const payload = data;
     callbacks.forEach((cb) => cb(payload));
 
     // Dev-only orphan check after micro-task to catch cases where listener registers after publish.

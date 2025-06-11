@@ -42,6 +42,23 @@ interface CoreEventMap {
 }
 
 // ---------------------------------------------------------------------------
+// New domain events – produced by systems, consumed by any interested listener
+// ---------------------------------------------------------------------------
+
+export const GameDomainEvents = {
+  // Storage changed in any entity. Positive = gain, negative = spend.
+  'resource:changed': {} as { entityId: string; delta: number; state?: GameState },
+  // An upgrade level was purchased.
+  'upgrade:purchased': {} as { entityId: string; upgradeId: string; newLevel: number; state?: GameState },
+  // Combat finished
+  'combat:ended': {} as { victory: boolean; enemyId?: string; state?: GameState },
+} as const;
+
+export type GameDomainEventMap = {
+  [K in keyof typeof GameDomainEvents]: (typeof GameDomainEvents)[K]
+};
+
+// ---------------------------------------------------------------------------
 // Unified event map: core events PLUS the new namespaced action events.
 // ---------------------------------------------------------------------------
-export type GameEventMap = CoreEventMap & ActionMap; 
+export type GameEventMap = CoreEventMap & ActionMap & GameDomainEventMap; 

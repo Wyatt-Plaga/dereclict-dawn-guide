@@ -1,5 +1,5 @@
 import { GameState } from '../types';
-import { World } from 'core/ecs/World';
+import { World } from '@/core/ecs/World';
 import { ResourceStorage, Generator, Tag } from '../components/interfaces';
 
 /**

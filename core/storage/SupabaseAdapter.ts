@@ -1,4 +1,4 @@
-import { StorageAdapter } from 'core/storage/StorageAdapter';
+import { StorageAdapter } from '@/core/storage/StorageAdapter';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 
 export class SupabaseAdapter implements StorageAdapter {

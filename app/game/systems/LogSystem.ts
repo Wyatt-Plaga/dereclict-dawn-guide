@@ -1,8 +1,8 @@
 import { GameState, LogUnlockCondition, ResourceThresholdCondition, UpgradePurchasedCondition, LogDefinition } from '../types';
 import { LOG_DEFINITIONS } from '../content/logDefinitions';
-import { EventBus } from 'core/EventBus';
-import { GameEventMap } from 'core/events';
-import { getCategoryEntity } from 'core/ecs/selectors';
+import { EventBus } from '@/core/EventBus';
+import { GameEventMap } from '@/core/events';
+import { getCategoryEntity } from '@/core/ecs/selectors';
 import { ResourceStorage, Upgradable, UpgradeKey } from '../components/interfaces';
 
 /**
@@ -43,6 +43,7 @@ export class LogSystem {
 
             this.bus.on('combatEnded', ({ state }) => triggerRecheck(state));
             this.bus.on('encounterCompleted', ({ state }) => triggerRecheck(state));
+            this.bus.on('resource:changed' as any, ({ state }) => triggerRecheck(state));
             this.bus.on('upgradePurchased', ({ state }) => triggerRecheck(state));
         }
     }

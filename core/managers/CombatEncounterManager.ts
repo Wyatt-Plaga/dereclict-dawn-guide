@@ -1,5 +1,5 @@
-import { GameEventMap } from 'core/events';
-import { EventBus } from 'core/EventBus';
+import { GameEventMap } from '@/core/events';
+import { EventBus } from '@/core/EventBus';
 import { GameState, RegionType } from '@/app/game/types';
 import { CombatSystem } from '@/app/game/systems/CombatSystem';
 

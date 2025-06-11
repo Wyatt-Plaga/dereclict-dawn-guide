@@ -8,8 +8,8 @@ import {
   ManufacturingConstants
 } from '../config/gameConstants';
 import { ResourceCost } from '../types/combat';
-import { EventBus } from 'core/EventBus';
-import { getCategoryEntity } from 'core/ecs/selectors';
+import { EventBus } from '@/core/EventBus';
+import { getCategoryEntity } from '@/core/ecs/selectors';
 import { Upgradable, UpgradeKey, ResourceStorage, Generator } from '../components/interfaces';
 import { ResourceSystem } from './ResourceSystem';
 

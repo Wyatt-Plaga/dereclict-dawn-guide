@@ -1,8 +1,8 @@
 import { GameState } from '@/app/game/types';
-import { GameEventMap } from 'core/events';
-import { EventBus } from 'core/EventBus';
+import { GameEventMap } from '@/core/events';
+import { EventBus } from '@/core/EventBus';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
-import { getCategoryEntity } from 'core/ecs/selectors';
+import { getCategoryEntity } from '@/core/ecs/selectors';
 import { ResourceStorage } from '@/app/game/components/interfaces';
 
 export class ResourceManager {

@@ -4,10 +4,10 @@ import { ResourceSystem } from './ResourceSystem';
 import { UpgradeSystem } from './UpgradeSystem';
 import { LogSystem } from './LogSystem';
 import { CombatSystem } from './CombatSystem';
-import { EventBus } from 'core/EventBus';
+import { EventBus } from '@/core/EventBus';
 import { GameState } from '../types';
-import { ResourceManager } from 'core/managers/ResourceManager';
-import { CombatEncounterManager } from 'core/managers/CombatEncounterManager';
+import { ResourceManager } from '@/core/managers/ResourceManager';
+import { CombatEncounterManager } from '@/core/managers/CombatEncounterManager';
 
 // Minimal orchestrator: only instantiates and exposes systems, no cross-system logic or event wiring.
 export class GameSystemManager {

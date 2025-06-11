@@ -26,9 +26,9 @@ const ALL_ENEMIES_MAP: Record<string, EnemyDefinition> = ENEMIES_MAP;
 console.log('ALL_ENEMIES_MAP loaded status:', ALL_ENEMIES_MAP ? 'Defined' : 'Undefined', 
             'Keys:', ALL_ENEMIES_MAP ? Object.keys(ALL_ENEMIES_MAP).length : 'N/A');
 
-import { EventBus } from 'core/EventBus';
+import { EventBus } from '@/core/EventBus';
 import { ResourceSystem } from './ResourceSystem';
-import { getCategoryEntity } from 'core/ecs/selectors';
+import { getCategoryEntity } from '@/core/ecs/selectors';
 import { ResourceStorage } from '../components/interfaces';
 
 /**

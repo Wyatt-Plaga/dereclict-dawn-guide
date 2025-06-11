@@ -20,7 +20,7 @@ import {
 } from '../content/encounterConfig';
 import { ALL_ENEMIES_LIST, EnemyDefinition } from '../content/enemies/index';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
-import { EventBus } from 'core/EventBus';
+import { EventBus } from '@/core/EventBus';
 
 /**
  * System responsible for generating and managing encounters
