@@ -1,0 +1,94 @@
+{
+  "raise-shields": {
+    "id": "raise-shields",
+    "name": "Raise Shields",
+    "description": "Bolster your defenses against incoming attacks",
+    "category": "shield",
+    "cost": { "type": "energy", "amount": 10 },
+    "shieldRepair": 15,
+    "cooldown": 1
+  },
+  "plasma-cannon": {
+    "id": "plasma-cannon",
+    "name": "Plasma Cannon",
+    "description": "Direct energy attack on enemy systems",
+    "category": "weapon",
+    "cost": { "type": "scrap", "amount": 15 },
+    "damage": 20,
+    "cooldown": 1
+  },
+  "missile-barrage": {
+    "id": "missile-barrage",
+    "name": "Missile Barrage",
+    "description": "Launch explosive projectiles at enemy hull",
+    "category": "weapon",
+    "cost": { "type": "scrap", "amount": 25 },
+    "damage": 35,
+    "cooldown": 2
+  },
+  "hull-repair": {
+    "id": "hull-repair",
+    "name": "Hull Repair",
+    "description": "Patch damaged sections of the ship's hull",
+    "category": "repair",
+    "cost": { "type": "crew", "amount": 2 },
+    "hullRepair": 15,
+    "cooldown": 2
+  },
+  "shield-recharge": {
+    "id": "shield-recharge",
+    "name": "Shield Recharge",
+    "description": "Divert power to the ship's shield generators",
+    "category": "repair",
+    "cost": { "type": "crew", "amount": 3 },
+    "shieldRepair": 20,
+    "cooldown": 2
+  },
+  "system-bypass": {
+    "id": "system-bypass",
+    "name": "System Bypass",
+    "description": "Reroute damaged systems through backup circuits",
+    "category": "repair",
+    "cost": { "type": "crew", "amount": 4 },
+    "hullRepair": 10,
+    "shieldRepair": 10,
+    "cooldown": 3
+  },
+  "sabotage": {
+    "id": "sabotage",
+    "name": "Sabotage",
+    "description": "Disrupt enemy systems with targeted data packets",
+    "category": "sabotage",
+    "cost": { "type": "insight", "amount": 8 },
+    "damage": 10,
+    "statusEffect": { "type": "WEAKEN", "duration": 2, "magnitude": 0.2 },
+    "cooldown": 3
+  },
+  "scan": {
+    "id": "scan",
+    "name": "Scan",
+    "description": "Analyze enemy capabilities and structural weaknesses",
+    "category": "sabotage",
+    "cost": { "type": "insight", "amount": 5 },
+    "statusEffect": { "type": "EXPOSE", "duration": 2, "magnitude": 0.15 },
+    "cooldown": 1
+  },
+  "find-weakness": {
+    "id": "find-weakness",
+    "name": "Find Weakness",
+    "description": "Identify critical flaws in enemy defensive systems",
+    "category": "sabotage",
+    "cost": { "type": "insight", "amount": 12 },
+    "statusEffect": { "type": "STUN", "duration": 1, "magnitude": 1 },
+    "cooldown": 4
+  },
+  "sensor-overload": {
+    "id": "sensor-overload",
+    "name": "Sensor Overload",
+    "description": "Flood enemy sensors with false readings",
+    "category": "sabotage",
+    "cost": { "type": "insight", "amount": 10 },
+    "statusEffect": { "type": "DISABLE", "duration": 2, "magnitude": 0.5 },
+    "cooldown": 3
+  }
+} 

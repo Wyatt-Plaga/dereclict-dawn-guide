@@ -1,0 +1,68 @@
+{
+  "laser-fire": {
+    "id": "laser-fire",
+    "name": "Laser Fire",
+    "description": "Basic energy weapon attack",
+    "damage": 10,
+    "cooldown": 0,
+    "useCondition": { "type": "ALWAYS" }
+  },
+  "cannon-volley": {
+    "id": "cannon-volley",
+    "name": "Cannon Volley",
+    "description": "Multiple projectile attack",
+    "damage": 15,
+    "cooldown": 1,
+    "useCondition": { "type": "RANDOM", "probability": 0.6 }
+  },
+  "shield-disruptor": {
+    "id": "shield-disruptor",
+    "name": "Shield Disruptor",
+    "description": "Weapon specifically designed to damage shields",
+    "shieldDamage": 25,
+    "cooldown": 2,
+    "useCondition": { "type": "SHIELD_THRESHOLD", "threshold": 0.8 }
+  },
+  "railgun-blast": {
+    "id": "railgun-blast",
+    "name": "Railgun Blast",
+    "description": "Heavy kinetic weapon that can pierce shields",
+    "damage": 25,
+    "cooldown": 3,
+    "useCondition": { "type": "RANDOM", "probability": 0.4 }
+  },
+  "torpedo-salvo": {
+    "id": "torpedo-salvo",
+    "name": "Torpedo Salvo",
+    "description": "Explosive ordnance that deals high damage",
+    "damage": 30,
+    "cooldown": 3,
+    "useCondition": { "type": "HEALTH_THRESHOLD", "threshold": 0.5 }
+  },
+  "overcharge-weapon": {
+    "id": "overcharge-weapon",
+    "name": "Overcharge Weapon",
+    "description": "Dangerously overload weapons for maximum damage",
+    "damage": 40,
+    "cooldown": 4,
+    "useCondition": { "type": "HEALTH_THRESHOLD", "threshold": 0.3 }
+  },
+  "targeting-scrambler": {
+    "id": "targeting-scrambler",
+    "name": "Targeting Scrambler",
+    "description": "Electronic warfare that reduces weapon effectiveness",
+    "damage": 5,
+    "statusEffect": { "type": "WEAKEN", "duration": 2, "magnitude": 0.2 },
+    "cooldown": 3,
+    "useCondition": { "type": "RANDOM", "probability": 0.3 }
+  },
+  "system-shock": {
+    "id": "system-shock",
+    "name": "System Shock",
+    "description": "Electrical attack that temporarily disables systems",
+    "damage": 8,
+    "statusEffect": { "type": "STUN", "duration": 1, "magnitude": 0.5 },
+    "cooldown": 4,
+    "useCondition": { "type": "HEALTH_THRESHOLD", "threshold": 0.4 }
+  }
+} 
