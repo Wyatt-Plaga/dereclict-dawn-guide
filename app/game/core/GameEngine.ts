@@ -6,6 +6,7 @@ import { GameAction } from '../types/actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { SaveSystem } from './SaveSystem';
 import { getCachedState, cacheState } from './memoryCache';
+import { getLogContextForAction } from '../utils/logContextMapper';
 
 /**
  * GameEngine: The heart of the game
@@ -245,22 +246,8 @@ export class GameEngine {
      * @param action - The action to process
      */
     private processAction(action: GameAction) {
-        // Determine the context based on action type
-        let context = LogContext.NONE;
-        if (action.type === 'CLICK_RESOURCE') {
-            const category = action.payload?.category;
-            if (category === 'reactor') {
-                context = LogContext.REACTOR_LIFECYCLE;
-            } else if (category === 'processor') {
-                context = LogContext.PROCESSOR_LIFECYCLE;
-            } else if (category === 'crewQuarters') {
-                context = LogContext.CREW_LIFECYCLE;
-            } else if (category === 'manufacturing') {
-                context = LogContext.MANUFACTURING_LIFECYCLE;
-            }
-        } else if (action.type === 'PURCHASE_UPGRADE') {
-            context = LogContext.UPGRADE_PURCHASE;
-        }
+        // Determine logging context using centralised mapper
+        const context = getLogContextForAction(action);
         
         Logger.debug(LogCategory.ENGINE, `Processing action: ${action.type}`, context);
         

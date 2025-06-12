@@ -103,6 +103,14 @@ export interface MakeStoryChoiceAction extends GameAction {
 }
 
 /**
+ * Enemy Action Resolve
+ * Triggered internally by the UI after the enemy has finished charging
+ */
+export interface EnemyActionResolveAction extends GameAction {
+  type: 'ENEMY_ACTION_RESOLVE';
+}
+
+/**
  * Union type of all possible game actions
  */
 export type GameActions = 
@@ -113,4 +121,5 @@ export type GameActions =
   | InitiateJumpAction
   | CompleteEncounterAction
   | SelectRegionAction
-  | MakeStoryChoiceAction; 
+  | MakeStoryChoiceAction
+  | EnemyActionResolveAction; 

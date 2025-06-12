@@ -255,6 +255,7 @@ export interface CombatState {
   availableActions: string[];
   cooldowns: Record<string, number>;
   lastActionResult?: any;
+  lastEnemyActionId: string | null;
   rewards?: {
     energy: number;
     insight: number;
@@ -427,6 +428,7 @@ export const initialGameState: GameState = {
         availableActions: [],
         cooldowns: {},
         lastActionResult: null,
+        lastEnemyActionId: null,
         rewards: {
             energy: 0,
             insight: 0,

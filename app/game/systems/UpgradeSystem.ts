@@ -8,6 +8,9 @@ import {
   ManufacturingConstants
 } from '../config/gameConstants';
 import { EventBus } from "../core/EventBus";
+import { EventMap } from "../types/events";
+import { UPGRADE_CATALOG } from '../config/upgradeCatalog';
+import { incrementAtPath } from '../utils/objectPath';
 
 /**
  * UpgradeSystem
@@ -16,9 +19,9 @@ import { EventBus } from "../core/EventBus";
  * Think of this as the R&D department that improves your capabilities.
  */
 export class UpgradeSystem {
-  private eventBus?: EventBus;
+  private eventBus?: EventBus<EventMap>;
 
-  constructor(eventBus?: EventBus) {
+  constructor(eventBus?: EventBus<EventMap>) {
     this.eventBus = eventBus;
 
     // Listen for purchase requests if bus provided
@@ -43,416 +46,64 @@ export class UpgradeSystem {
    * @returns Whether the purchase was successful
    */
   purchaseUpgrade(state: GameState, category: GameCategory, upgradeType: string): boolean {
-    Logger.debug(
-      LogCategory.UPGRADES, 
-      `Attempting to purchase ${upgradeType} in ${category}`,
-      LogContext.UPGRADE_PURCHASE
-    );
-    
-    switch (category) {
-      case 'reactor':
-        return this.purchaseReactorUpgrade(state, upgradeType);
-      case 'processor':
-        return this.purchaseProcessorUpgrade(state, upgradeType);
-      case 'crewQuarters':
-        return this.purchaseCrewQuartersUpgrade(state, upgradeType);
-      case 'manufacturing':
-        return this.purchaseManufacturingUpgrade(state, upgradeType);
-      default:
-        Logger.warn(
-          LogCategory.UPGRADES,
-          `Unknown category: ${category}`,
-          LogContext.UPGRADE_PURCHASE
-        );
+    Logger.debug(LogCategory.UPGRADES, `Attempting to purchase ${upgradeType} in ${category}`, LogContext.UPGRADE_PURCHASE);
+
+    const catalogEntry = UPGRADE_CATALOG[category]?.[upgradeType];
+
+    // For now only reactor is catalog-driven
+    if (catalogEntry) {
+      const cost = catalogEntry.cost(state);
+      const { obj, key } = this.getResourceAccessor(state, catalogEntry.resource);
+      if (obj[key] < cost) {
+        Logger.debug(LogCategory.UPGRADES, 'Insufficient resources for upgrade', LogContext.UPGRADE_PURCHASE);
         return false;
+      }
+      obj[key] -= cost;
+
+      incrementAtPath(state, catalogEntry.incrementPath, 1);
+      catalogEntry.apply(state);
+      return true;
     }
+
+    Logger.warn(LogCategory.UPGRADES, `Unknown upgrade ${upgradeType} in category ${category}`, LogContext.UPGRADE_PURCHASE);
+    return false;
   }
   
   /**
-   * Attempt to purchase a reactor upgrade
+   * @deprecated Legacy reactor purchase logic; superseded by catalog-driven flow.
    */
-  private purchaseReactorUpgrade(state: GameState, upgradeType: string): boolean {
-    const reactor = state.categories.reactor;
-    
-    switch (upgradeType) {
-      case 'reactorExpansions':
-        // Calculate cost using the utility method
-        const expansionCost = this.calculateReactorExpansionCost(reactor.stats.energyCapacity);
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Reactor expansion cost: ${expansionCost} energy (available: ${reactor.resources.energy})`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-        );
-        
-        if (reactor.resources.energy >= expansionCost) {
-          // Deduct cost
-          reactor.resources.energy -= expansionCost;
-          
-          // Increment upgrade
-          reactor.upgrades.reactorExpansions += 1;
-          
-          // Update stats
-          this.updateReactorStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased reactor expansion (level ${reactor.upgrades.reactorExpansions})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient energy for reactor expansion`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-        );
-        
-        return false;
-        
-      case 'energyConverters':
-        // Calculate cost using the utility method
-        const converterCost = this.calculateEnergyConverterCost(reactor.upgrades.energyConverters);
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Energy converter cost: ${converterCost} energy (available: ${reactor.resources.energy})`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-        );
-        
-        if (reactor.resources.energy >= converterCost) {
-          // Deduct cost
-          reactor.resources.energy -= converterCost;
-          
-          // Increment upgrade
-          reactor.upgrades.energyConverters += 1;
-          
-          // Update stats
-          this.updateReactorStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased energy converter (level ${reactor.upgrades.energyConverters})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient energy for energy converter`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-        );
-        
-        return false;
-        
-      default:
-        Logger.warn(
-          LogCategory.UPGRADES,
-          `Unknown reactor upgrade: ${upgradeType}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.REACTOR_LIFECYCLE]
-        );
-        return false;
-    }
+  private purchaseReactorUpgrade(_state: GameState, _upgradeType: string): boolean {
+    return false;
   }
   
   /**
-   * Attempt to purchase a processor upgrade
+   * @deprecated Legacy processor purchase logic; superseded by catalog-driven flow.
    */
-  private purchaseProcessorUpgrade(state: GameState, upgradeType: string): boolean {
-    const processor = state.categories.processor;
-    
-    switch (upgradeType) {
-      case 'mainframeExpansions':
-        // Calculate cost using the utility method
-        const expansionCost = this.calculateMainframeExpansionCost(processor.stats.insightCapacity);
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Mainframe expansion cost: ${expansionCost} insight (available: ${processor.resources.insight})`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
-        );
-        
-        if (processor.resources.insight >= expansionCost) {
-          // Deduct cost
-          processor.resources.insight -= expansionCost;
-          
-          // Increment upgrade
-          processor.upgrades.mainframeExpansions += 1;
-          
-          // Update stats
-          this.updateProcessorStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased mainframe expansion (level ${processor.upgrades.mainframeExpansions})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient insight for mainframe expansion`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
-        );
-        
-        return false;
-        
-      case 'processingThreads':
-        // Calculate cost using the utility method
-        const threadCost = this.calculateProcessingThreadCost(processor.upgrades.processingThreads);
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Processing thread cost: ${threadCost} insight (available: ${processor.resources.insight})`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
-        );
-        
-        if (processor.resources.insight >= threadCost) {
-          // Deduct cost
-          processor.resources.insight -= threadCost;
-          
-          // Increment upgrade
-          processor.upgrades.processingThreads += 1;
-          
-          // Update stats
-          this.updateProcessorStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased processing thread (level ${processor.upgrades.processingThreads})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient insight for processing thread`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
-        );
-        
-        return false;
-        
-      default:
-        Logger.warn(
-          LogCategory.UPGRADES,
-          `Unknown processor upgrade: ${upgradeType}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.PROCESSOR_LIFECYCLE]
-        );
-        return false;
-    }
+  private purchaseProcessorUpgrade(_state: GameState, _upgradeType: string): boolean {
+    return false;
   }
   
   /**
-   * Attempt to purchase a crew quarters upgrade
+   * @deprecated Legacy crew-quarters purchase logic; superseded by catalog-driven flow.
    */
-  private purchaseCrewQuartersUpgrade(state: GameState, upgradeType: string): boolean {
-    const crewQuarters = state.categories.crewQuarters;
-    
-    switch (upgradeType) {
-      case 'additionalQuarters':
-        // Calculate cost using the utility method
-        const quartersCost = this.calculateQuartersCost(crewQuarters.stats.crewCapacity);
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Additional quarters cost: ${quartersCost} crew (available: ${crewQuarters.resources.crew})`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-        );
-        
-        if (crewQuarters.resources.crew >= quartersCost) {
-          // Deduct cost
-          crewQuarters.resources.crew -= quartersCost;
-          
-          // Increment upgrade
-          crewQuarters.upgrades.additionalQuarters += 1;
-          
-          // Update stats
-          this.updateCrewQuartersStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased additional quarters (level ${crewQuarters.upgrades.additionalQuarters})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient crew for additional quarters`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-        );
-        
-        return false;
-        
-      case 'workerCrews':
-        // Calculate cost using the utility method
-        const workerCost = this.calculateWorkerCrewCost(crewQuarters.upgrades.workerCrews);
-        
-        // Check if maxed out (max 5 worker crews)
-        if (crewQuarters.upgrades.workerCrews >= this.getMaxWorkerCrews()) {
-          Logger.debug(
-            LogCategory.UPGRADES,
-            `Worker crews already at maximum level (${this.getMaxWorkerCrews()})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-          );
-          return false;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Worker crew cost: ${workerCost} crew (available: ${crewQuarters.resources.crew})`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-        );
-        
-        if (crewQuarters.resources.crew >= workerCost) {
-          // Deduct cost
-          crewQuarters.resources.crew -= workerCost;
-          
-          // Increment upgrade
-          crewQuarters.upgrades.workerCrews += 1;
-          
-          // Update stats
-          this.updateCrewQuartersStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased worker crew (level ${crewQuarters.upgrades.workerCrews})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient crew for worker crew`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-        );
-        
-        return false;
-        
-      default:
-        Logger.warn(
-          LogCategory.UPGRADES,
-          `Unknown crew quarters upgrade: ${upgradeType}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.CREW_LIFECYCLE]
-        );
-        return false;
-    }
+  private purchaseCrewQuartersUpgrade(_state: GameState, _upgradeType: string): boolean {
+    return false;
   }
   
   /**
-   * Attempt to purchase a manufacturing upgrade
+   * @deprecated Legacy manufacturing purchase logic; superseded by catalog-driven flow.
    */
-  private purchaseManufacturingUpgrade(state: GameState, upgradeType: string): boolean {
-    const manufacturing = state.categories.manufacturing;
-    
-    switch (upgradeType) {
-      case 'cargoHoldExpansions':
-        // Calculate cost using the utility method
-        const expansionCost = this.calculateCargoHoldExpansionCost(manufacturing.stats.scrapCapacity);
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Cargo hold expansion cost: ${expansionCost} scrap (available: ${manufacturing.resources.scrap})`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-        );
-        
-        if (manufacturing.resources.scrap >= expansionCost) {
-          // Deduct cost
-          manufacturing.resources.scrap -= expansionCost;
-          
-          // Increment upgrade
-          manufacturing.upgrades.cargoHoldExpansions += 1;
-          
-          // Update stats
-          this.updateManufacturingStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased cargo hold expansion (level ${manufacturing.upgrades.cargoHoldExpansions})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient scrap for cargo hold expansion`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-        );
-        
-        return false;
-        
-      case 'manufacturingBays':
-        // Calculate cost using the utility method
-        const bayCost = this.calculateManufacturingBayCost(manufacturing.upgrades.manufacturingBays);
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Manufacturing bay cost: ${bayCost} scrap (available: ${manufacturing.resources.scrap})`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-        );
-        
-        if (manufacturing.resources.scrap >= bayCost) {
-          // Deduct cost
-          manufacturing.resources.scrap -= bayCost;
-          
-          // Increment upgrade
-          manufacturing.upgrades.manufacturingBays += 1;
-          
-          // Update stats
-          this.updateManufacturingStats(state);
-          
-          Logger.info(
-            LogCategory.UPGRADES,
-            `Purchased manufacturing bay (level ${manufacturing.upgrades.manufacturingBays})`,
-            [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-          );
-          
-          return true;
-        }
-        
-        Logger.debug(
-          LogCategory.UPGRADES,
-          `Insufficient scrap for manufacturing bay`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-        );
-        
-        return false;
-        
-      default:
-        Logger.warn(
-          LogCategory.UPGRADES,
-          `Unknown manufacturing upgrade: ${upgradeType}`,
-          [LogContext.UPGRADE_PURCHASE, LogContext.MANUFACTURING_LIFECYCLE]
-        );
-        return false;
-    }
+  private purchaseManufacturingUpgrade(_state: GameState, _upgradeType: string): boolean {
+    return false;
   }
   
   /**
-   * Update all stats based on current upgrade levels
-   * 
-   * @param state - Current game state
+   * Recalculate stats for all upgrades using catalog apply functions
    */
   updateAllStats(state: GameState): void {
-    Logger.debug(LogCategory.UPGRADES, "Updating all stats based on upgrade levels", LogContext.STARTUP);
-    this.updateReactorStats(state);
-    this.updateProcessorStats(state);
-    this.updateCrewQuartersStats(state);
-    this.updateManufacturingStats(state);
+    Object.values(UPGRADE_CATALOG).forEach(cat => {
+      Object.values(cat).forEach(def => def.apply(state));
+    });
   }
   
   /**
@@ -608,5 +259,20 @@ export class UpgradeSystem {
    */
   calculateManufacturingBayCost(currentBays: number): number {
     return (currentBays + 1) * ManufacturingConstants.BAY_COST_BASE;
+  }
+
+  private getResourceAccessor(state: GameState, type: string): { obj: any; key: string } {
+    switch (type) {
+      case 'energy':
+        return { obj: state.categories.reactor.resources, key: 'energy' };
+      case 'insight':
+        return { obj: state.categories.processor.resources, key: 'insight' };
+      case 'crew':
+        return { obj: state.categories.crewQuarters.resources, key: 'crew' };
+      case 'scrap':
+        return { obj: state.categories.manufacturing.resources, key: 'scrap' };
+      default:
+        throw new Error(`Unknown resource type ${type}`);
+    }
   }
 } 

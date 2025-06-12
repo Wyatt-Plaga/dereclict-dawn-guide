@@ -19,6 +19,16 @@ Update it in every PR/commit that completes, changes, or adds work so that the r
 - [ ] Action dispatch map – verify hot-reload correctness & add Jest tests.
 - [x] Event-driven communication for Log, Encounter, Combat systems (12 Jun 2025).
 
+### Combat UI & Feedback Enhancements (v0.5)
+- [x] Damage / shield animation layer – flash bars, floating numbers. (Implemented 14 Jun 2025)
+- [x] Enemy-turn telegraph overlay with brief delay. (Implemented 14 Jun 2025)
+- [ ] Split-screen battle layout & auto-scrolling log panel.
+- [ ] Reduce in-battle resource read-outs to icon + tooltip.
+- [ ] Sprite pipeline – generate & add PNGs for each enemy definition.
+- [ ] Enemy move list replaces inline battle log; highlight next attack.
+- [ ] Charge-delay cycle (player then enemy) with 700 ms telegraph.
+- [ ] Battle-log modal accessible via "Open Battle Log" button.
+
 ## Backlog
 - [x] Event-driven upgrade purchase flow via EventBus (11 Jun 2025).  
 - [ ] Break up `CombatSystem` into smaller modules (enemy AI, battle log, helpers).  
@@ -34,9 +44,13 @@ Update it in every PR/commit that completes, changes, or adds work so that the r
 - [x] Added unit tests for ResourceSystem generation & cost logic (11 Jun 2025).
 - [x] Removed Clerk/Stripe code & deps; deleted unused provider, middleware cleaned, pruned package.json (12 Jun 2025).
 - [x] Type-safe EventBus with EventMap generic implemented (13 Jun 2025).
+- [x] Data-driven catalog for reactor upgrades & generic purchase logic (14 Jun 2025).
 
 ---
 _Last updated: 11 Jun 2025_
+
+
+
 
 
 

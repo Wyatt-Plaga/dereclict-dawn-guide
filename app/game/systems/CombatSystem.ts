@@ -16,6 +16,7 @@ import { ENEMY_DEFINITIONS } from '@/app/game/content/enemies';
 import { REGION_DEFINITIONS } from '@/app/game/content/regions';
 import { ResourceSystem } from './ResourceSystem';
 import { EventBus } from "../core/EventBus";
+import { EventMap } from "../types/events";
 
 /**
  * Combat System
@@ -28,9 +29,9 @@ import { EventBus } from "../core/EventBus";
  */
 export class CombatSystem {
   private resourceSystem: ResourceSystem | null = null;
-  private eventBus?: EventBus;
+  private eventBus?: EventBus<EventMap>;
 
-  constructor(eventBus?: EventBus) {
+  constructor(eventBus?: EventBus<EventMap>) {
     this.eventBus = eventBus;
 
     if (this.eventBus) {
@@ -47,6 +48,11 @@ export class CombatSystem {
       this.eventBus.on('RETREAT_FROM_BATTLE', (data: any) => {
         const { state } = data as { state: GameState };
         this.retreat(state);
+      });
+
+      this.eventBus.on('ENEMY_ACTION_RESOLVE', (data: any) => {
+        const { state } = data as { state: GameState };
+        this.resolveEnemyAction(state);
       });
     }
   }
@@ -169,7 +175,8 @@ export class CombatSystem {
           insight: 0,
           crew: 0,
           scrap: 0
-        }
+        },
+        lastEnemyActionId: null
       };
     }
 
@@ -190,8 +197,11 @@ export class CombatSystem {
       statusEffects: []
     };
     
-    // Keep player stats as they are (they persist between encounters)
-    // But reset status effects
+    // Restore the Dawn to full strength at the start of every encounter
+    state.combat.playerStats.health = state.combat.playerStats.maxHealth;
+    state.combat.playerStats.shield = state.combat.playerStats.maxShield;
+
+    // Clear any lingering status effects from previous battles
     state.combat.playerStats.statusEffects = [];
     
     // Add all available player actions
@@ -199,6 +209,9 @@ export class CombatSystem {
     
     // Reset cooldowns
     state.combat.cooldowns = {};
+    
+    // Clear previous battle log
+    state.combat.battleLog = [];
     
     // Add initial battle log entry
     this.addBattleLog(state, {
@@ -214,6 +227,8 @@ export class CombatSystem {
       text: `${enemy.description}`,
       type: 'ANALYSIS'
     });
+
+    // Enemy will act only after the player's first move; no telegraph yet
   }
 
   /**
@@ -336,6 +351,14 @@ export class CombatSystem {
    * Process a player combat action
    */
   performCombatAction(state: GameState, actionId: string): ActionResult {
+    // If the enemy is currently charging, the player must wait. Prevent action.
+    if (state.combat.enemyIntentions) {
+      return {
+        success: false,
+        message: 'Enemy action is executing – stand by!'
+      };
+    }
+
     // Check if combat state exists
     if (!state.combat) {
       Logger.error(
@@ -393,6 +416,9 @@ export class CombatSystem {
       state.combat.cooldowns[actionId] = action.cooldown;
     }
 
+    // Clear any previous enemy charging indicator since the player is acting now
+    state.combat.lastEnemyActionId = null;
+
     // Process action effects
     const result = this.applyActionEffects(state, action);
     
@@ -413,8 +439,8 @@ export class CombatSystem {
       return result;
     }
 
-    // If not, let enemy counter-attack
-    this.performEnemyAction(state);
+    // 6. After the player's action completes, initiate the enemy turn (charge + attack after delay)
+    this.startEnemyTurn(state);
 
     // Check if player is defeated
     if (state.combat.playerStats.health <= 0) {
@@ -429,6 +455,10 @@ export class CombatSystem {
 
     // Handle status effects
     this.processStatusEffects(state);
+
+    // Notify listeners with a shallow-cloned state so React detects the change
+    const clonedState: GameState = { ...state, combat: { ...state.combat } };
+    this.eventBus?.emit('stateUpdated', clonedState);
 
     return result;
   }
@@ -451,6 +481,9 @@ export class CombatSystem {
     
     // Select action based on enemy health/shield conditions
     const action = this.selectEnemyAction(state, availableActions);
+    
+    // Expose the selected enemy action so the UI can indicate it is "charging"
+    state.combat.lastEnemyActionId = action.id;
     
     // Apply action effects
     let message = '';
@@ -986,5 +1019,131 @@ export class CombatSystem {
     }
     
     return newState;
+  }
+
+  /**
+   * Apply the actual effects of an enemy action that has finished charging
+   */
+  private applyEnemyActionEffects(state: GameState, action: EnemyActionDefinition): void {
+    const enemy = this.getEnemyDefinition(state.combat.currentEnemy!);
+
+    // (core of previous performEnemyAction implementation)
+    let message = '';
+
+    // Apply damage to player (identical to previous logic)
+    if (action.damage) {
+      if (state.combat.playerStats.shield > 0) {
+        const shieldDamage = Math.min(state.combat.playerStats.shield, action.damage);
+        state.combat.playerStats.shield -= shieldDamage;
+        const remainingDamage = action.damage - shieldDamage;
+        if (remainingDamage > 0) {
+          state.combat.playerStats.health -= remainingDamage;
+          message = `${enemy?.name ?? 'Enemy'} used ${action.name}, damaging shields for ${shieldDamage} and hull for ${remainingDamage}`;
+        } else {
+          message = `${enemy?.name ?? 'Enemy'} used ${action.name}, damaging shields for ${shieldDamage}`;
+        }
+      } else {
+        state.combat.playerStats.health -= action.damage;
+        message = `${enemy?.name ?? 'Enemy'} used ${action.name}, damaging hull for ${action.damage}`;
+      }
+    }
+
+    if (action.shieldDamage && state.combat.playerStats.shield > 0) {
+      const actualDamage = Math.min(state.combat.playerStats.shield, action.shieldDamage);
+      state.combat.playerStats.shield -= actualDamage;
+      message = `${enemy?.name ?? 'Enemy'} used ${action.name}, damaging shields for ${actualDamage}`;
+    }
+
+    if (action.statusEffect) {
+      state.combat.playerStats.statusEffects.push({
+        ...action.statusEffect,
+        remainingTurns: action.statusEffect.duration
+      });
+      message = message || `${enemy?.name ?? 'Enemy'} used ${action.name}`;
+      message += `, applying ${action.statusEffect.type} effect`;
+    }
+
+    if (!message) {
+      message = `${enemy?.name ?? 'Enemy'} used ${action.name}`;
+    }
+
+    // Log the action
+    this.addBattleLog(state, {
+      id: uuidv4(),
+      timestamp: Date.now(),
+      text: message,
+      type: 'ENEMY'
+    });
+
+    // Save last fired action ID (for potential UI flash)
+    state.combat.lastEnemyActionId = action.id;
+  }
+
+  /**
+   * Handle the complete enemy turn cycle:
+   * 1. Choose a move.
+   * 2. Telegraph it (charging) for 1 second.
+   * 3. Apply the effects, then relinquish turn to the player.
+   */
+  private startEnemyTurn(state: GameState): void {
+    Logger.debug(LogCategory.COMBAT, 'Enemy turn starting – selecting and telegraphing action', LogContext.COMBAT_ACTION);
+    if (!state.combat.currentEnemy) return;
+    const enemy = this.getEnemyDefinition(state.combat.currentEnemy);
+    if (!enemy) return;
+
+    const availableActions = enemy.actions
+      .map(id => ENEMY_ACTIONS[id])
+      .filter(a => !!a) as EnemyActionDefinition[];
+
+    if (availableActions.length === 0) return;
+
+    const action = this.selectEnemyAction(state, availableActions);
+
+    // Telegraph – enemy is now charging
+    state.combat.enemyIntentions = { actionId: action.id };
+
+    Logger.debug(LogCategory.COMBAT, `Telegraphing enemy action: ${action.id}`, LogContext.COMBAT_ACTION);
+
+    this.addBattleLog(state, {
+      id: uuidv4(),
+      timestamp: Date.now(),
+      text: `${enemy.name} begins charging ${action.name}…`,
+      type: 'ENEMY'
+    });
+
+    // Notify listeners with a shallow-cloned state so React detects the change
+    const clonedState: GameState = { ...state, combat: { ...state.combat } };
+    this.eventBus?.emit('stateUpdated', clonedState);
+  }
+
+  /**
+   * Called when UI dispatches ENEMY_ACTION_RESOLVE after delay
+   */
+  private resolveEnemyAction(state: GameState): void {
+    Logger.debug(LogCategory.COMBAT, 'Resolving enemy charged action', LogContext.COMBAT_ACTION);
+    const actionId = state.combat.enemyIntentions?.actionId;
+    if (!actionId) {
+      Logger.warn(LogCategory.COMBAT, 'No enemyIntentions to resolve', LogContext.COMBAT_ACTION);
+      return;
+    }
+
+    const action = ENEMY_ACTIONS[actionId];
+    if (!action) {
+      Logger.error(LogCategory.COMBAT, `Enemy action definition not found for id ${actionId}`, LogContext.COMBAT_ACTION);
+      // Clear just in case
+      state.combat.enemyIntentions = null;
+      return;
+    }
+
+    Logger.debug(LogCategory.COMBAT, `Applying enemy action: ${actionId}`, LogContext.COMBAT_ACTION);
+
+    this.applyEnemyActionEffects(state, action);
+
+    // Clear telegraph
+    state.combat.enemyIntentions = null;
+
+    // Emit cloned state to trigger React update
+    const cloned: GameState = { ...state, combat: { ...state.combat } };
+    this.eventBus?.emit('stateUpdated', cloned);
   }
 } 

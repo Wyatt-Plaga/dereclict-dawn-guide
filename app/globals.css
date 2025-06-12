@@ -250,3 +250,28 @@
     opacity: 0.7;
   }
 }
+
+/* Flash animations for combat bars */
+@keyframes flashShield {
+  0% { filter: brightness(1); }
+  40% { filter: brightness(2.5) hue-rotate(220deg) drop-shadow(0 0 4px hsl(var(--chart-1))); }
+  100% { filter: brightness(1); }
+}
+
+@keyframes flashDamage {
+  0% { filter: brightness(1); }
+  40% { filter: brightness(3) hue-rotate(-10deg) drop-shadow(0 0 4px #ff5555); }
+  100% { filter: brightness(1); }
+}
+
+.flash-shield {
+  animation: flashShield 0.4s ease-in-out;
+}
+
+.flash-damage {
+  animation: flashDamage 0.4s ease-in-out;
+}
+
+.enemy-sprite {
+  filter: hue-rotate(20deg) saturate(1.4) brightness(1.1);
+}

@@ -3,6 +3,7 @@ import { GameAction, GameActions, GameCategory } from '../types/actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { EventBus } from "../core/EventBus";
 import { EventMap } from "../types/events";
+import { CrewQuartersConstants } from '../config/gameConstants';
 
 /**
  * ActionSystem
@@ -31,7 +32,8 @@ export class ActionSystem {
       COMPLETE_ENCOUNTER: (s, a) => this.handleCompleteEncounter(s, a),
       STORY_CHOICE: (s, a) => this.handleStoryChoice(s, a),
       COMBAT_ACTION: (s, a) => this.handleCombatAction(s, a),
-      RETREAT_FROM_BATTLE: (s) => this.handleRetreatFromBattle(s)
+      RETREAT_FROM_BATTLE: (s) => this.handleRetreatFromBattle(s),
+      ENEMY_ACTION_RESOLVE: (s) => this.handleEnemyActionResolve(s)
     };
   }
 
@@ -84,22 +86,27 @@ export class ActionSystem {
     
     // Create a shallow copy of the state to modify
     const newState = { ...state };
-    
-    switch (category) {
-      case 'reactor':
-        return this.handleReactorClick(newState);
-      case 'processor':
-        return this.handleProcessorClick(newState);
-      case 'manufacturing':
-        return this.handleManufacturingClick(newState);
-      default:
-        Logger.warn(
-          LogCategory.ACTIONS,
-          `Unknown resource category: ${category}`,
-          LogContext.NONE
-        );
-        return state;
+
+    // Map category keys to their respective handlers
+    const categoryHandlers: Record<string, (s: GameState) => GameState> = {
+      reactor: (s) => this.handleReactorClick(s),
+      processor: (s) => this.handleProcessorClick(s),
+      manufacturing: (s) => this.handleManufacturingClick(s),
+      crewQuarters: (s) => this.handleCrewQuartersClick(s)
+    };
+
+    const handler = categoryHandlers[category];
+
+    if (!handler) {
+      Logger.warn(
+        LogCategory.ACTIONS,
+        `Unknown resource category: ${category}`,
+        LogContext.NONE
+      );
+      return state;
     }
+
+    return handler(newState);
   }
   
   /**
@@ -360,6 +367,58 @@ export class ActionSystem {
       return state;
     }
     Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for RETREAT_FROM_BATTLE', LogContext.NONE);
+    return state;
+  }
+
+  /**
+   * Resolve the enemy's charged action after UI delay
+   */
+  private handleEnemyActionResolve(state: GameState): GameState {
+    if (this.eventBus) {
+      Logger.info(LogCategory.ACTIONS, 'Dispatching ENEMY_ACTION_RESOLVE to EventBus', LogContext.COMBAT_ACTION);
+      this.eventBus.emit('ENEMY_ACTION_RESOLVE', { state });
+      return state;
+    }
+    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for ENEMY_ACTION_RESOLVE', LogContext.NONE);
+    return state;
+  }
+
+  /**
+   * Handle crew quarters click (awakening progress)
+   */
+  private handleCrewQuartersClick(state: GameState): GameState {
+    const crewQuarters = state.categories.crewQuarters;
+
+    Logger.debug(
+      LogCategory.RESOURCES,
+      `Crew quarters click - Awakening progress before: ${crewQuarters.stats.awakeningProgress}`,
+      LogContext.CREW_LIFECYCLE
+    );
+
+    // Increment awakening progress
+    crewQuarters.stats.awakeningProgress += CrewQuartersConstants.CREW_PER_CLICK;
+
+    // When threshold reached, awaken a crew member
+    if (
+      crewQuarters.stats.awakeningProgress >= CrewQuartersConstants.AWAKENING_THRESHOLD &&
+      crewQuarters.resources.crew < crewQuarters.stats.crewCapacity
+    ) {
+      crewQuarters.resources.crew += 1;
+      crewQuarters.stats.awakeningProgress -= CrewQuartersConstants.AWAKENING_THRESHOLD;
+
+      Logger.info(
+        LogCategory.RESOURCES,
+        `Crew member awakened! Current crew: ${crewQuarters.resources.crew}`,
+        LogContext.CREW_LIFECYCLE
+      );
+    }
+
+    // Cap progress at threshold value
+    crewQuarters.stats.awakeningProgress = Math.min(
+      crewQuarters.stats.awakeningProgress,
+      CrewQuartersConstants.AWAKENING_THRESHOLD
+    );
+
     return state;
   }
 } 

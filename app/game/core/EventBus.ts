@@ -6,6 +6,7 @@
  */
 
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
+import { getLogContextForEvent } from '../utils/logContextMapper';
 import { GameState } from '../types';
 import { GameAction } from '../types/actions';
 
@@ -56,24 +57,8 @@ export class EventBus<M extends Record<string, any>> {
             this.lastStateUpdateTime = now;
         }
         
-        // Determine context based on event type
-        let context = LogContext.NONE;
-        
-        // Detect specific workflows based on event and data
-        if (event === 'stateUpdated') {
-            // Keep NONE context for general state updates
-            context = LogContext.NONE;
-        } else if (event === 'DISPATCH_ACTION' && typeof data === 'object' && data !== null) {
-            const action = data as GameAction;
-            // Set context based on action type
-            if (action.type === 'CLICK_RESOURCE' && action.payload?.category === 'reactor') {
-                context = LogContext.REACTOR_LIFECYCLE;
-            } else if (action.type === 'CLICK_RESOURCE' && action.payload?.category === 'processor') {
-                context = LogContext.PROCESSOR_LIFECYCLE;
-            } else if (action.type === 'PURCHASE_UPGRADE') {
-                context = LogContext.UPGRADE_PURCHASE;
-            }
-        }
+        // Determine context using centralised mapper
+        const context = getLogContextForEvent(String(event), data);
         
         Logger.debug(LogCategory.EVENT_BUS, `Emitting event: "${String(event)}"`, context);
         
