@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { EventBus } from '../app/game/core/EventBus';
-import { EventMap } from '../app/game/types/events';
-import { initialGameState, GameState } from '../app/game/types';
-import { UpgradeSystem } from '../app/game/systems/UpgradeSystem';
-import { ActionSystem } from '../app/game/systems/ActionSystem';
+import { EventBus } from '@/game-engine/core/EventBus';
+import { EventMap } from '@/game-engine/types/events';
+import { initialGameState, GameState } from '@/game-engine/types';
+import { UpgradeSystem } from '@/game-engine/systems/UpgradeSystem';
+import { ActionSystem } from '@/game-engine/systems/ActionSystem';
 
 const clone = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 

@@ -18,14 +18,15 @@ import {
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { REGION_DEFINITIONS } from '../content/regions';
 import { EventBus } from "../core/EventBus";
+import { EventMap } from "../types/events";
 
 /**
  * System responsible for generating and managing encounters
  */
 export class EncounterSystem {
-    private eventBus?: EventBus;
+    private eventBus?: EventBus<EventMap>;
 
-    constructor(eventBus?: EventBus) {
+    constructor(eventBus?: EventBus<EventMap>) {
         this.eventBus = eventBus;
 
         if (this.eventBus) {

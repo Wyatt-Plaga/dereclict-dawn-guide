@@ -47,7 +47,7 @@ export class GameSystemManager {
   /**
    * Initialize all game systems
    */
-  constructor(eventBus?: import('../core/EventBus').EventBus) {
+  constructor(eventBus?: import('../core/EventBus').EventBus<import('../types/events').EventMap>) {
     // Share one EventBus instance across all systems
     this.resource = new ResourceSystem();
     this.upgrade = new UpgradeSystem(eventBus);

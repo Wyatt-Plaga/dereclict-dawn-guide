@@ -1,6 +1,7 @@
 import { GameState, LogUnlockCondition, ResourceThresholdCondition, UpgradePurchasedCondition, LogDefinition } from '../types';
 import { LOG_DEFINITIONS } from '../content/logDefinitions';
 import { EventBus } from "../core/EventBus";
+import { EventMap } from "../types/events";
 
 /**
  * LogSystem
@@ -13,7 +14,7 @@ import { EventBus } from "../core/EventBus";
 export class LogSystem {
     private logDefinitions: Record<string, LogDefinition>;
 
-    constructor(eventBus?: EventBus) {
+    constructor(eventBus?: EventBus<EventMap>) {
         this.logDefinitions = LOG_DEFINITIONS;
         if (eventBus) {
             eventBus.on('MARK_LOG_READ', (data: any) => {

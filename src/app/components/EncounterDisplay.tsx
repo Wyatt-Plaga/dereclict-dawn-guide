@@ -12,9 +12,9 @@ import {
   ActivityIcon,
   Sword
 } from 'lucide-react';
-import { EmptyEncounter, StoryEncounter, ResourceReward, RegionType, BaseEncounter, EncounterChoice } from '../game/types';
+import { EmptyEncounter, StoryEncounter, ResourceReward, RegionType, BaseEncounter, EncounterChoice } from '@/game-engine/types';
 import { useSystemStatus } from "@/components/providers/system-status-provider";
-import { useGame } from '../game/hooks/useGame';
+import { useGame } from '@/game-engine/hooks/useGame';
 import { useRouter } from 'next/navigation';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 

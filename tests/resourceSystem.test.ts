@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ResourceSystem } from '../app/game/systems/ResourceSystem';
-import { initialGameState, GameState } from '../app/game/types';
+import { ResourceSystem } from '@/game-engine/systems/ResourceSystem';
+import { initialGameState, GameState } from '@/game-engine/types';
 
 // Helper to get a fresh deep copy of game state for each test
 const cloneState = (): GameState => JSON.parse(JSON.stringify(initialGameState));

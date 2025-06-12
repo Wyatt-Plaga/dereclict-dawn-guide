@@ -7,7 +7,7 @@ import { useGame } from '@/game-engine/hooks/useGame';
 import EncounterDisplay from '@/app/components/EncounterDisplay';
 import GameLoader from '@/app/components/GameLoader';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
-import { EmptyEncounter } from '../game/types';
+import { EmptyEncounter } from '@/game-engine/types';
 
 export default function EncounterPage() {
   const { state, dispatch } = useGame();
