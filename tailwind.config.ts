@@ -86,12 +86,17 @@ const config: Config = {
 				grow: {
 					'0%': { width: '0%' },
 					'100%': { width: '100%' }
+				},
+				fill: {
+					'0%': { height: '0%' },
+					'100%': { height: '100%' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				grow: 'grow 2s linear forwards'
+				grow: 'grow 2s linear forwards',
+				fill: 'fill 2s linear forwards'
 			},
 		}
 	},

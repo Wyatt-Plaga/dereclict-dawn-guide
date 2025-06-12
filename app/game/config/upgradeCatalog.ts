@@ -86,8 +86,10 @@ export const UPGRADE_CATALOG: Record<GameCategory, Record<string, UpgradeDef>> =
     workerCrews: {
       resource: 'crew',
       cost: (s) =>
-        (s.categories.crewQuarters.upgrades.workerCrews + 1) *
-        CrewQuartersConstants.WORKER_CREW_COST_BASE,
+        Math.floor(
+          (s.categories.crewQuarters.upgrades.workerCrews + 1) *
+            CrewQuartersConstants.WORKER_CREW_COST_BASE
+        ),
       incrementPath: 'categories.crewQuarters.upgrades.workerCrews',
       apply: (s) => {
         const lvl = s.categories.crewQuarters.upgrades.workerCrews;

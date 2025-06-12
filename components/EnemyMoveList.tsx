@@ -17,26 +17,33 @@ const iconForAction = (id: string) => {
 };
 
 export default function EnemyMoveList({ actions, chargingActionId }: Props) {
+  // Ensure exactly 4 grid slots for a 2x2 layout
+  const slots: (EnemyActionDefinition | null)[] = [...actions];
+  while (slots.length < 4) slots.push(null);
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 font-mono">
-      {actions.map((a) => (
+    <div className="grid grid-cols-2 grid-rows-2 gap-3 h-full font-mono">
+      {slots.map((a, idx) => (
         <button
-          key={a.id}
+          key={a ? a.id : `empty-${idx}`}
           type="button"
           disabled
           className={cn(
-            'system-panel relative flex flex-col items-start justify-center p-4 h-24 text-left',
-            chargingActionId === a.id && 'bg-chart-2/20 text-chart-2 animate-pulse'
+            'system-panel relative flex flex-col items-center justify-center p-4 h-full text-center',
+            a && chargingActionId === a.id && 'bg-chart-2/20 text-chart-2 animate-pulse',
+            !a && 'opacity-0 pointer-events-none'
           )}
         >
-          <div className="flex items-center mb-1">
-            {iconForAction(a.id)}
-            <span className="text-sm font-medium truncate">{a.name}</span>
-          </div>
-
-          {/* Progress bar when charging */}
-          {chargingActionId === a.id && (
-            <span className="absolute inset-x-0 bottom-0 h-1 bg-chart-2 animate-grow" />
+          {a && (
+            <>
+              <div className="flex flex-col items-center mb-1 relative z-10">
+                {iconForAction(a.id)}
+                <span className="text-sm font-medium truncate mt-1">{a.name}</span>
+              </div>
+              {chargingActionId === a.id && (
+                <span className="absolute inset-y-0 left-0 bg-chart-2/20 animate-grow pointer-events-none" />
+              )}
+            </>
           )}
         </button>
       ))}
