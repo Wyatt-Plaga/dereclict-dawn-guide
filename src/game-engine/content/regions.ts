@@ -45,8 +45,8 @@ export const REGION_DEFINITIONS: Record<string, RegionDefinition> = {
     encounterChance: 0.6 // 60% chance of encounter when jumping
   },
   
-  'asteroid-field': {
-    id: 'asteroid-field',
+  'asteroid': {
+    id: 'asteroid',
     name: 'Shattered Belt',
     description: 'A dense field of rocky debris from a destroyed planet. Navigation is challenging, but the asteroids are rich in minerals and abandoned mining equipment.',
     type: RegionType.ASTEROID_FIELD,
@@ -65,8 +65,8 @@ export const REGION_DEFINITIONS: Record<string, RegionDefinition> = {
     encounterChance: 0.7 // 70% chance of encounter when jumping
   },
   
-  'radiation-zone': {
-    id: 'radiation-zone',
+  'deepspace': {
+    id: 'deepspace',
     name: 'Gamma Sector',
     description: 'An area of space bathed in deadly radiation from an unstable pulsar. Ship systems experience interference, but the exotic particles can be harvested for research.',
     type: RegionType.RADIATION_ZONE,
@@ -84,8 +84,8 @@ export const REGION_DEFINITIONS: Record<string, RegionDefinition> = {
     encounterChance: 0.5 // 50% chance of encounter when jumping
   },
   
-  'supernova': {
-    id: 'supernova',
+  'blackhole': {
+    id: 'blackhole',
     name: 'Stellar Graveyard',
     description: 'The remains of a massive star that went supernova centuries ago. The area is filled with exotic matter and dangerous anomalies, but also valuable resources.',
     type: RegionType.SUPERNOVA,

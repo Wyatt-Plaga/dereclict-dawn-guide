@@ -195,7 +195,7 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
               {encounter.title}
             </h1>
             <div className="flex items-center text-sm text-muted-foreground">
-              <span>Region: {encounter.region.charAt(0).toUpperCase() + encounter.region.slice(1)}</span>
+              <span>Region: {encounter.region ? encounter.region.charAt(0).toUpperCase() + encounter.region.slice(1) : 'Unknown'}</span>
               
               {/* Display combat badge for combat encounters */}
               {isCombatEncounter && (

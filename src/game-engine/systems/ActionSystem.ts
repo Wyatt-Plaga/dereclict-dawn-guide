@@ -27,7 +27,7 @@ export class ActionSystem {
         this.handleUpgradePurchase(s, a.payload.category, a.payload.upgradeType),
       MARK_LOG_READ: (s, a) => this.handleMarkLogRead(s, a.payload.logId),
       MARK_ALL_LOGS_READ: (s) => this.handleMarkAllLogsRead(s),
-      SELECT_REGION: (s, a) => this.handleSelectRegion(s, a.payload.regionId),
+      SELECT_REGION: (s, a) => this.handleSelectRegion(s, a.payload.region),
       INITIATE_JUMP: (s) => this.handleInitiateJump(s),
       COMPLETE_ENCOUNTER: (s, a) => this.handleCompleteEncounter(s, a),
       STORY_CHOICE: (s, a) => this.handleStoryChoice(s, a),

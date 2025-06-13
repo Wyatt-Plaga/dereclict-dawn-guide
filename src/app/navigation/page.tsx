@@ -1,24 +1,35 @@
 "use client"
 
 import { NavBar } from "@/components/ui/navbar"
-import { Compass, Rocket } from "lucide-react"
+import { Compass, Rocket, Lock, ArrowLeftRight } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/game-engine/hooks/useGame"
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
 import { useRouter } from "next/navigation"
+import { Progress } from "@/components/ui/progress"
+import { REGION_DEFINITIONS } from "@/game-engine/content/regions"
+import { REGION_TYPE_STYLES } from "@/game-engine/content/regionStyles"
+import { RegionType } from "@/game-engine/types/combat"
+import { useState } from "react"
 
-// Region types
-interface Region {
-  id: string;
-  name: string;
-  description: string;
-}
+// Constants
+const JUMPS_PER_REGION = 6;
+
+// Fallback names for region types that don't yet have full definitions
+const REGION_TYPE_FALLBACK_NAMES: Record<RegionType, string> = {
+  [RegionType.SUPERNOVA]: "Black Hole",
+  [RegionType.RADIATION_ZONE]: "Inhabited Zone",
+  [RegionType.ASTEROID_FIELD]: "Asteroid Belt",
+  [RegionType.VOID]: "Void",
+  [RegionType.NEBULA]: "Nebula",
+};
 
 export default function NavigationPage() {
   const { state, dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
   const router = useRouter()
+  const [showVoidView, setShowVoidView] = useState(true)
   
   // Log component render
   Logger.debug(
@@ -27,11 +38,30 @@ export default function NavigationPage() {
     LogContext.UI_RENDER
   )
   
-  // Current region is hardcoded to Void for now
-  const currentRegion: Region = {
-    id: 'void',
-    name: 'Void of Space',
-    description: 'The empty vacuum of space surrounds the Dawn. Long-range sensors detect potential areas of interest.'
+  // Derive current region from game state
+  const currentRegionId = state?.navigation?.currentRegion ?? 'void';
+  const currentRegionDef = REGION_DEFINITIONS[currentRegionId as keyof typeof REGION_DEFINITIONS];
+
+  const currentRegionName = currentRegionDef?.name ?? REGION_TYPE_FALLBACK_NAMES[currentRegionId as RegionType] ?? currentRegionId;
+  const currentRegionDescription = currentRegionDef?.description ?? '';
+
+  const currentRegionType = currentRegionDef?.type ?? (currentRegionId as RegionType);
+  const currentRegionConfig = REGION_TYPE_STYLES[currentRegionType] ?? REGION_TYPE_STYLES[RegionType.VOID];
+
+  // All regions unlocked for testing
+  const unlocked = (_regionId: string) => true;
+  
+  // Show regions based on toggle state
+  const visibleRegions = showVoidView ? [RegionType.VOID] : [RegionType.NEBULA, RegionType.SUPERNOVA, RegionType.RADIATION_ZONE, RegionType.ASTEROID_FIELD];
+  
+  // Helper to get human-readable region name
+  const getRegionName = (regionId: RegionType) => {
+    return REGION_DEFINITIONS[regionId as keyof typeof REGION_DEFINITIONS]?.name ?? REGION_TYPE_FALLBACK_NAMES[regionId] ?? regionId;
+  }
+
+  // Dev helper – jump straight to a region
+  const devSetRegion = (regionId: string) => {
+    dispatch({ type: 'SELECT_REGION', payload: { region: regionId } });
   }
   
   // Dispatch INITIATE_JUMP action and navigate to encounter page
@@ -63,12 +93,62 @@ export default function NavigationPage() {
             {/* Current region display */}
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-3">
-                <Compass className="h-5 w-5 text-chart-1" />
-                <h2 className="text-lg font-medium">Current Location: {currentRegion.name}</h2>
+                <Compass className={`h-5 w-5 ${currentRegionConfig.colorClass}`} />
+                <h2 className="text-lg font-medium">Current Location: {currentRegionName}</h2>
               </div>
               <p className="text-muted-foreground">
-                {currentRegion.description}
+                {currentRegionDescription}
               </p>
+            </div>
+            
+            {/* Region Progress / Selection */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold terminal-text">
+                  {showVoidView ? "Current Region" : "Available Regions"}
+                </h2>
+                <button
+                  onClick={() => setShowVoidView(!showVoidView)}
+                  className="flex items-center gap-2 px-3 py-1 text-sm border rounded-md hover:bg-accent/10 transition-colors"
+                >
+                  <ArrowLeftRight className="h-4 w-4" />
+                  {showVoidView ? "Show Main Regions" : "Show Void"}
+                </button>
+              </div>
+              <div className={`grid gap-4 ${showVoidView ? 'md:grid-cols-1' : 'grid-cols-2 md:grid-cols-4'}`}>
+                {visibleRegions.map((regionId) => {
+                  const jumps = state?.encounters?.history?.filter((h) => h.region === regionId).length || 0;
+                  const progressValue = Math.min((jumps / JUMPS_PER_REGION) * 100, 100);
+                  const isUnlocked = unlocked(regionId);
+                  const isActive = currentRegionId === regionId;
+                  const config = REGION_TYPE_STYLES[regionId as RegionType];
+                  const IconComponent = config.icon;
+
+                  return (
+                    <div key={regionId} className={`system-panel p-4 flex flex-col gap-3 ${config.bgClass} border-2 ${isActive ? 'border-primary' : 'border-border'}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <IconComponent className={`h-5 w-5 ${config.colorClass}`} />
+                          <span className="font-medium">{getRegionName(regionId as RegionType)}</span>
+                        </div>
+                        {isActive && <span className="text-xs text-primary">Active</span>}
+                        {!isUnlocked && <Lock className="h-4 w-4 text-muted-foreground" />}
+                      </div>
+                      <Progress value={progressValue} indicatorClassName={config.barClass} />
+                      <div className="text-xs text-muted-foreground">{jumps}/{JUMPS_PER_REGION} Jumps</div>
+
+                      {isUnlocked && !isActive && (
+                        <button
+                          onClick={() => dispatch({ type: 'SELECT_REGION', payload: { region: regionId } })}
+                          className="mt-2 px-2 py-1 text-xs border rounded-md hover:bg-accent/10"
+                        >
+                          Travel ({regionId === 'void' ? 0 : 10} Energy)
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
             
             {/* Ship status - moved above ship controls */}
@@ -90,8 +170,8 @@ export default function NavigationPage() {
                 className="system-panel w-full py-8 flex items-center justify-center hover:bg-accent/10 transition-colors"
               >
                 <div className="flex flex-col items-center">
-                  <Rocket className={`h-12 w-12 text-chart-1 mb-2 ${shouldFlicker('navigation') ? 'flickering-text' : ''}`} />
-                  <span className="terminal-text">Initiate Jump</span>
+                  <Rocket className={`h-12 w-12 ${currentRegionConfig.colorClass} ${shouldFlicker('navigation') ? 'flickering-text' : ''}`} />
+                  <span className={`font-mono tracking-wider ${currentRegionConfig.colorClass}`}>Initiate Jump</span>
                   <span className="text-xs text-muted-foreground mt-1">Engage engines and prepare for potential encounters</span>
                 </div>
               </button>
