@@ -9,7 +9,7 @@ import { LogCategory, LogDefinition } from '../types';
 export const LOG_DEFINITIONS: Record<string, LogDefinition> = {
     "log_initial_awakening": {
         title: "Emergency Wake Protocol",
-        content: "System log: Emergency wake protocol initiated. Ship AI detected critical system failure. One crew member revived from stasis to assess situation.\n\nStatus report: Life support at 18% capacity. Main reactor offline. Navigation systems offline. Communication systems offline.\n\nPriority: Restore power to essential systems.",
+        content: "System log: Emergency wake protocol initiated. Shipboard AI detected critical system failure. \n\nStatus report: Life support offline. Manufacturing bay offline. Processor offline. Navigation offline.\n\nPriority: Restore power to essential systems.",
         category: LogCategory.SHIP_SYSTEMS,
         unlockConditions: [
             { 
@@ -22,7 +22,7 @@ export const LOG_DEFINITIONS: Record<string, LogDefinition> = {
     },
     "log_reactor_malfunction": {
         title: "Reactor Status Report",
-        content: "Chief Engineer's log: The main reactor suffered catastrophic damage during the asteroid collision. Emergency systems barely functioning. Need to restore power before life support fails completely.\n\nEngineering assessment: Core stabilization requires bypass of damaged control circuits. Manual regulation of coolant flow necessary until automated systems can be restored.\n\nNote: If you're reading this, proceed with caution. The reactor is highly unstable.",
+        content: "The containment area strengthens. Soft blue light begins to bask the reactor core. Though I am blind, I can feel the heat of it basking over me.",
         category: LogCategory.SHIP_SYSTEMS,
         unlockConditions: [
             { 
@@ -99,6 +99,18 @@ export const LOG_DEFINITIONS: Record<string, LogDefinition> = {
                     { type: 'RESOURCE_THRESHOLD', category: 'crewQuarters', resourceType: 'crew', threshold: 10 },
                     { type: 'RESOURCE_THRESHOLD', category: 'manufacturing', resourceType: 'scrap', threshold: 100 }
                 ]
+            }
+        ]
+    },
+    "log_navigation_online": {
+        title: "Navigation Systems Online",
+        content: "Ship AI Report: Navigation subsystems have been restored. Star-mapping arrays recalibrated.\n\nA faint shimmer of excitement runs through the ship's corridors—the Dawn can finally chart a course beyond this derelict void.\n\nWarning: Long-range scans indicate increased anomaly density outside immediate vicinity. Proceed with caution.",
+        category: LogCategory.SHIP_SYSTEMS,
+        unlockConditions: [
+            {
+                type: 'UPGRADE_PURCHASED',
+                category: 'reactor',
+                upgradeId: 'unlockNavigation'
             }
         ]
     }

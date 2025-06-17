@@ -153,8 +153,8 @@ export class CombatSystem {
         playerStats: {
           health: 100,
           maxHealth: 100,
-          shield: 50,
-          maxShield: 50,
+          shield: 0,
+          maxShield: 0,
           statusEffects: []
         },
         enemyStats: {
@@ -295,22 +295,25 @@ export class CombatSystem {
       }
       
       // Add reward to resources
-      const resourceCategory = this.getResourceCategory(reward.type);
-      if (resourceCategory) {
-        // Handle each resource type explicitly
-        switch (reward.type) {
-          case 'energy':
-            state.categories.reactor.resources.energy += reward.amount;
-            break;
-          case 'insight':
-            state.categories.processor.resources.insight += reward.amount;
-            break;
-          case 'crew':
-            state.categories.crewQuarters.resources.crew += reward.amount;
-            break;
-          case 'scrap':
-            state.categories.manufacturing.resources.scrap += reward.amount;
-            break;
+      if (reward.type === 'relics') {
+        state.relics += reward.amount;
+      } else {
+        const resourceCategory = this.getResourceCategory(reward.type);
+        if (resourceCategory) {
+          switch (reward.type) {
+            case 'energy':
+              state.categories.reactor.resources.energy += reward.amount;
+              break;
+            case 'insight':
+              state.categories.processor.resources.insight += reward.amount;
+              break;
+            case 'crew':
+              state.categories.crewQuarters.resources.crew += reward.amount;
+              break;
+            case 'scrap':
+              state.categories.manufacturing.resources.scrap += reward.amount;
+              break;
+          }
         }
       }
       
@@ -322,6 +325,17 @@ export class CombatSystem {
         type: 'SYSTEM'
       });
     });
+
+    // NEW: Always award 1 relic for victories in the void region
+    if (state.combat.currentRegion === 'void') {
+      state.relics += 1;
+      this.addBattleLog(state, {
+        id: uuidv4(),
+        timestamp: Date.now(),
+        text: `Recovered 1 relic from the drifting wreckage.`,
+        type: 'SYSTEM'
+      });
+    }
   }
 
   /**
@@ -337,6 +351,8 @@ export class CombatSystem {
         return 'crewQuarters';
       case 'scrap':
         return 'manufacturing';
+      case 'relics':
+        return null;
       default:
         Logger.warn(
           LogCategory.COMBAT,

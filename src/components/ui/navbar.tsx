@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Zap, CpuIcon, Users, Package, BookOpen, Settings, Rocket } from "lucide-react"
+import { Zap, CpuIcon, Users, Package, BookOpen, Settings, Rocket, Wrench } from "lucide-react"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/game-engine/hooks/useGame"
+import { useDevMode } from "@/components/providers/dev-mode-provider"
 
 const navigation = [
   { name: "Reactor", href: "/reactor", icon: Zap },
@@ -19,6 +20,7 @@ export function NavBar() {
   const pathname = usePathname()
   const { status, statusText, shouldFlicker } = useSystemStatus()
   const { state } = useGame()
+  const { devMode, toggleDevMode } = useDevMode()
   
   // Check if there's an active combat - if so, don't render the navbar
   const isInCombat = state?.combat?.active === true
@@ -41,6 +43,47 @@ export function NavBar() {
     return num % 1 === 0 ? num.toString() : num.toFixed(1);
   }
 
+  /* ----------------------- NAV VISIBILITY CONDITIONS ----------------------- */
+  const hasAnyLogs = Object.keys(state?.logs?.discovered || {}).length > 0
+  const energyForNavigation = state?.categories?.reactor?.resources?.energy || 0
+  const processorUnlocked = (state?.categories?.processor?.upgrades?.unlocked || 0) > 0
+  const crewUnlocked = (state?.categories?.crewQuarters?.upgrades?.unlocked || 0) > 0
+  const manufacturingUnlocked = (state?.categories?.manufacturing?.upgrades?.unlocked || 0) > 0
+  const navigationUnlocked = ((state?.categories?.reactor?.upgrades?.navigationUnlocked || 0) > 0) || devMode
+
+  const filteredNavigation = navigation.filter((item) => {
+    switch (item.name) {
+      case 'Reactor':
+        return true
+      case 'Logs':
+        return hasAnyLogs
+      case 'Navigation':
+        return navigationUnlocked
+      case 'Processor':
+        return processorUnlocked
+      case 'Crew Quarters':
+        return crewUnlocked
+      case 'Manufacturing':
+        return manufacturingUnlocked
+      default:
+        return true
+    }
+  })
+
+  /* ------------------------ DEV RESET HANDLER ------------------------- */
+  const handleResetGame = async () => {
+    try {
+      const localforage = (await import('localforage')).default
+      await localforage.clear()
+      localStorage.clear()
+      // @ts-expect-error dev cache clear
+      if (typeof window !== 'undefined') window.__GAME_STATE_CACHE__ = null
+      window.location.reload()
+    } catch (e) {
+      console.error('Failed to reset game', e)
+    }
+  }
+
   return (
     <nav className="system-panel p-2 md:p-4 fixed bottom-0 left-0 right-0 md:left-4 md:top-4 md:bottom-4 md:w-64 flex md:flex-col gap-1 z-10">
       <div className="hidden md:flex items-center justify-center p-2 mb-6">
@@ -48,10 +91,11 @@ export function NavBar() {
       </div>
       
       <div className="flex md:flex-col w-full justify-around md:justify-start">
-        {navigation.map((item) => {
+        {filteredNavigation.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
           const isReactor = item.name === "Reactor"
           const isLogs = item.name === "Logs"
+          const isNavigation = item.name === 'Navigation'
           return (
             <Link
               key={item.name}
@@ -60,7 +104,8 @@ export function NavBar() {
                 ${isActive 
                   ? "bg-accent/30 text-primary border border-primary/40"
                   : "hover:bg-accent/10 text-muted-foreground hover:text-primary"
-                }`}
+                }
+              `}
             >
               <item.icon className={`h-5 w-5 ${isReactor && shouldFlicker('reactor') ? 'flickering-text' : ''}`} />
               <span className="hidden md:inline">{item.name}</span>
@@ -87,29 +132,58 @@ export function NavBar() {
               {state?.categories?.reactor ? formatNumber(state.categories.reactor.resources.energy) : '0'}
             </span>
           </div>
+          {(devMode || processorUnlocked) && (
           <div className="flex items-center gap-2">
             <CpuIcon className="h-5 w-5 text-chart-2" />
             <span className="text-muted-foreground">Insight:</span>
             <span className="ml-auto text-primary">
               {state?.categories?.processor ? formatNumber(state.categories.processor.resources.insight) : '0'}
             </span>
-          </div>
+          </div>)}
+          {(devMode || crewUnlocked) && (
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-chart-3" />
             <span className="text-muted-foreground">Crew:</span>
             <span className="ml-auto text-primary">
               {state?.categories?.crewQuarters ? formatNumber(state.categories.crewQuarters.resources.crew) : '0'}
             </span>
-          </div>
+          </div>)}
+          {(devMode || manufacturingUnlocked) && (
           <div className="flex items-center gap-2">
             <Package className="h-5 w-5 text-chart-4" />
             <span className="text-muted-foreground">Scrap:</span>
             <span className="ml-auto text-primary">
               {state?.categories?.manufacturing ? formatNumber(state.categories.manufacturing.resources.scrap) : '0'}
             </span>
-          </div>
+          </div>)}
+          {(devMode || (state?.relics || 0) > 0) && (
+          <div className="flex items-center gap-2">
+            <Wrench className="h-5 w-5 text-chart-5" />
+            <span className="text-muted-foreground">Relics:</span>
+            <span className="ml-auto text-primary">
+              {formatNumber(state?.relics || 0)}
+            </span>
+          </div>)}
         </div>
       </div>
+      
+      {/* Dev mode toggle */}
+      <button
+        onClick={toggleDevMode}
+        className="hidden md:flex items-center gap-2 text-xs px-2 py-1 border rounded-md hover:bg-accent/10 mb-2"
+      >
+        <Wrench className="h-4 w-4" /> {devMode ? 'Dev ON' : 'Dev OFF'}
+      </button>
+      
+      {/* Dev reset button */}
+      {devMode && (
+        <button
+          onClick={handleResetGame}
+          className="hidden md:flex items-center gap-2 text-xs px-2 py-1 border rounded-md hover:bg-accent/10 mb-2"
+        >
+          <Wrench className="h-4 w-4" /> Reset Game
+        </button>
+      )}
       
       <div className="hidden md:block pt-4 border-t border-border">
         <div className="text-xs text-muted-foreground w-full">

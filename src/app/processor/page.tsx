@@ -1,16 +1,18 @@
 "use client"
 
 import { NavBar } from "@/components/ui/navbar"
-import { CpuIcon, Brain, ArrowUpCircle, CircuitBoard } from "lucide-react"
+import { CpuIcon, Brain, ArrowUpCircle, CircuitBoard, Activity } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/game-engine/hooks/useGame"
+import { useDevMode } from "@/components/providers/dev-mode-provider"
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
 
 export default function ProcessorPage() {
   const { state, dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
+  const { devMode } = useDevMode()
   
   // Get processor data from game state
   const processor = state.categories.processor
@@ -77,6 +79,19 @@ export default function ProcessorPage() {
   // Calculate upgrade costs
   const expansionCost = Math.floor(insightCapacity * 0.7)
   const threadCost = (processor.upgrades.processingThreads + 1) * 15
+  
+  // Efficiency upgrade handling
+  const efficiencyLevel = state.categories.processor.upgrades.threadEfficiency || 0
+  const efficiencyCost = 10 * Math.pow(efficiencyLevel + 1, 2)
+
+  const purchaseEfficiency = () => {
+    dispatch({
+      type: 'PURCHASE_UPGRADE',
+      payload: { category: 'processor', upgradeType: 'threadEfficiency' }
+    })
+  }
+  
+  const relics = state.relics
   
   return (
     <GameLoader>
@@ -156,6 +171,23 @@ export default function ProcessorPage() {
                   Level: {processor.upgrades.processingThreads}
                 </div>
               </div>
+              
+              {/* Thread efficiency upgrade */}
+              {(devMode || relics > 0 || efficiencyLevel > 0) && (
+              <div className={`system-panel p-4 ${relics >= efficiencyCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+                   onClick={purchaseEfficiency}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center">
+                    <Activity className="h-5 w-5 text-chart-2 mr-2" />
+                    <span>Processing Efficiency</span>
+                  </div>
+                  <span className="font-mono text-xs">{efficiencyCost} Relics</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Each thread now generates +{(0.2 + efficiencyLevel).toFixed(1)} insight/s
+                </p>
+                <div className="mt-2 text-xs">Level: {efficiencyLevel}</div>
+              </div>)}
               
               {/* Tech tree section (placeholder for future expansion) */}
               <h2 className="text-lg font-semibold terminal-text pt-4 mt-6 border-t border-border">Tech Tree</h2>

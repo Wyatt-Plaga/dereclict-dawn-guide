@@ -12,9 +12,13 @@ import { REGION_DEFINITIONS } from "@/game-engine/content/regions"
 import { REGION_TYPE_STYLES } from "@/game-engine/content/regionStyles"
 import { RegionType } from "@/game-engine/types/combat"
 import { useState } from "react"
+import { useDevMode } from "@/components/providers/dev-mode-provider"
 
 // Constants
 const JUMPS_PER_REGION = 6;
+
+// Sub-region labels shown sequentially
+const SUB_LABELS = ['α','β','γ'];
 
 // Fallback names for region types that don't yet have full definitions
 const REGION_TYPE_FALLBACK_NAMES: Record<RegionType, string> = {
@@ -30,6 +34,7 @@ export default function NavigationPage() {
   const { shouldFlicker } = useSystemStatus()
   const router = useRouter()
   const [showVoidView, setShowVoidView] = useState(true)
+  const { devMode } = useDevMode()
   
   // Log component render
   Logger.debug(
@@ -107,13 +112,15 @@ export default function NavigationPage() {
                 <h2 className="text-lg font-semibold terminal-text">
                   {showVoidView ? "Current Region" : "Available Regions"}
                 </h2>
-                <button
-                  onClick={() => setShowVoidView(!showVoidView)}
-                  className="flex items-center gap-2 px-3 py-1 text-sm border rounded-md hover:bg-accent/10 transition-colors"
-                >
-                  <ArrowLeftRight className="h-4 w-4" />
-                  {showVoidView ? "Show Main Regions" : "Show Void"}
-                </button>
+                {devMode && (
+                  <button
+                    onClick={() => setShowVoidView(!showVoidView)}
+                    className="flex items-center gap-2 px-3 py-1 text-sm border rounded-md hover:bg-accent/10 transition-colors"
+                  >
+                    <ArrowLeftRight className="h-4 w-4" />
+                    {showVoidView ? "Show Main Regions" : "Show Void"}
+                  </button>
+                )}
               </div>
               <div className={`grid gap-4 ${showVoidView ? 'md:grid-cols-1' : 'grid-cols-2 md:grid-cols-4'}`}>
                 {visibleRegions.map((regionId) => {
@@ -134,8 +141,27 @@ export default function NavigationPage() {
                         {isActive && <span className="text-xs text-primary">Active</span>}
                         {!isUnlocked && <Lock className="h-4 w-4 text-muted-foreground" />}
                       </div>
-                      <Progress value={progressValue} indicatorClassName={config.barClass} />
-                      <div className="text-xs text-muted-foreground">{jumps}/{JUMPS_PER_REGION} Jumps</div>
+
+                      {/* Sequential sub-region progress (skip for void) */}
+                      {regionId !== 'void' && (
+                        <div className="mt-4 flex flex-col gap-2">
+                          {SUB_LABELS.map((label, idx) => {
+                            const subUnlocked = Math.floor(jumps / JUMPS_PER_REGION) > idx;
+                            const isCurrent = Math.floor(jumps / JUMPS_PER_REGION) === idx;
+                            const progressInSub = isCurrent ? (jumps % JUMPS_PER_REGION) : 0;
+                            const value = subUnlocked ? 100 : isCurrent ? (progressInSub / JUMPS_PER_REGION) * 100 : 0;
+                            return (
+                              <div key={label}>
+                                <div className="flex items-center gap-1 text-sm font-medium mb-1">
+                                  <span>{`Sub-region ${label}`}</span>
+                                  {!subUnlocked && !isCurrent && <Lock className="h-3 w-3 text-muted-foreground" />}
+                                </div>
+                                <Progress value={value} indicatorClassName={subUnlocked || isCurrent ? config.barClass : 'bg-muted-foreground'} />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
 
                       {isUnlocked && !isActive && (
                         <button
@@ -151,7 +177,7 @@ export default function NavigationPage() {
               </div>
             </div>
             
-            {/* Ship status - moved above ship controls */}
+            {/* Ship status */}
             <div className="mb-8">
               <h2 className="text-lg font-semibold mb-4 terminal-text">Ship Status</h2>
               <div className="system-panel p-4">
@@ -181,4 +207,4 @@ export default function NavigationPage() {
       </main>
     </GameLoader>
   )
-} 
+}

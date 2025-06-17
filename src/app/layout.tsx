@@ -5,6 +5,7 @@ import TanstackClientProvider from '@/components/providers/tanstack-client-provi
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { SystemStatusProvider } from '@/components/providers/system-status-provider'
 import { GameProvider } from '@/game-engine/hooks/useGame'
+import { DevModeProvider } from '@/components/providers/dev-mode-provider'
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -33,9 +34,11 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <SystemStatusProvider>
             <TanstackClientProvider>
-              <GameProvider>
-                {children}
-              </GameProvider>
+              <DevModeProvider>
+                <GameProvider>
+                  {children}
+                </GameProvider>
+              </DevModeProvider>
             </TanstackClientProvider>
           </SystemStatusProvider>
         </ThemeProvider>

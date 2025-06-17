@@ -377,6 +377,12 @@ export class EncounterSystem {
                     console.log(`Added ${amount} scrap`);
                     break;
                     
+                case 'relics':
+                    // Relics have no capacity limit for now
+                    newState.relics += amount;
+                    console.log(`Added ${amount} relics`);
+                    break;
+                    
                 default:
                     console.warn(`Unknown reward type: ${type}`);
             }

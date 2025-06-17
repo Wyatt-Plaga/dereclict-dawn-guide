@@ -1,18 +1,32 @@
 "use client"
 
 import { NavBar } from "@/components/ui/navbar"
-import { Users, User, Home, Wrench, Plus } from "lucide-react"
+import { Users, User, Home, Wrench, Plus, UserPlus } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import { useCrewQuarters } from "@/game-engine/hooks/useCrewQuarters"
+import { useGame } from "@/game-engine/hooks/useGame"
 import GameLoader from '@/app/components/GameLoader';
+import { useDevMode } from "@/components/providers/dev-mode-provider"
 
 export default function CrewQuartersPage() {
   const { shouldFlicker } = useSystemStatus()
   
-  // Use our specialized hook instead of directly using useGame
   const crewQuarters = useCrewQuarters()
+  const { state, dispatch } = useGame()
+  const { devMode } = useDevMode()
+  const relics = state.relics
+  
+  const efficiencyLevel = state.categories.crewQuarters.upgrades.crewEfficiency || 0
+  const efficiencyCost = 10 * Math.pow(efficiencyLevel + 1, 2)
+  
+  const purchaseEfficiency = () => {
+    dispatch({
+      type: 'PURCHASE_UPGRADE',
+      payload: { category: 'crewQuarters', upgradeType: 'crewEfficiency' }
+    })
+  }
   
   // Log component render
   Logger.debug(
@@ -145,6 +159,24 @@ export default function CrewQuartersPage() {
                   <div className="mt-2 text-xs">
                     Level: {crewQuarters.workerCrewLevel}
                   </div>
+                </div>
+              )}
+              
+              {/* Crew efficiency upgrade */}
+              {(devMode || relics > 0 || efficiencyLevel > 0) && (
+                <div className={`system-panel p-4 ${relics >= efficiencyCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+                     onClick={purchaseEfficiency}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      <UserPlus className="h-5 w-5 text-chart-3 mr-2" />
+                      <span>Crew Efficiency</span>
+                    </div>
+                    <span className="font-mono text-xs">{efficiencyCost} Relics</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Each worker crew awakens +{efficiencyLevel + 1} progress per sec
+                  </p>
+                  <div className="mt-2 text-xs">Level: {efficiencyLevel}</div>
                 </div>
               )}
               

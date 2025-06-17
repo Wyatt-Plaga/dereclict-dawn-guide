@@ -5,17 +5,27 @@ import { Package, Cog, Warehouse, Factory, Shield } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/game-engine/hooks/useGame"
+import { useDevMode } from "@/components/providers/dev-mode-provider"
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger"
 import GameLoader from '@/app/components/GameLoader'
 
 export default function ManufacturingPage() {
   const { state, dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
+  const { devMode } = useDevMode()
+  const relics = state.relics
   
   // Get manufacturing data from game state
   const manufacturing = state.categories.manufacturing
   const { scrap } = manufacturing.resources
   const { scrapCapacity, scrapPerSecond } = manufacturing.stats
+  
+  const efficiencyLevel = state.categories.manufacturing.upgrades.bayEfficiency || 0
+  const efficiencyCost = 10 * Math.pow(efficiencyLevel + 1, 2)
+  
+  const purchaseEfficiency = () => {
+    dispatch({ type: 'PURCHASE_UPGRADE', payload: { category: 'manufacturing', upgradeType: 'bayEfficiency' }})
+  }
   
   // Log component render
   Logger.debug(
@@ -164,6 +174,21 @@ export default function ManufacturingPage() {
                 </div>
               </div>
               
+              {/* Bay efficiency upgrade */}
+              {(devMode || relics > 0 || efficiencyLevel > 0) && (
+              <div className={`system-panel p-4 ${relics >= efficiencyCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+                  onClick={purchaseEfficiency}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center">
+                    <Cog className="h-5 w-5 text-chart-4 mr-2" />
+                    <span>Bay Efficiency</span>
+                  </div>
+                  <span className="font-mono text-xs">{efficiencyCost} Relics</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Each manufacturing bay produces +{(0.5 + efficiencyLevel).toFixed(1)} scrap/s</p>
+                <div className="mt-2 text-xs">Level: {efficiencyLevel}</div>
+              </div>)}
+              
               {/* Manufacturing projects placeholder */}
               <h2 className="text-lg font-semibold terminal-text pt-4 mt-6 border-t border-border">Projects</h2>
               <p className="text-xs text-muted-foreground mb-4">
@@ -180,19 +205,6 @@ export default function ManufacturingPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Repair ship&apos;s navigation capabilities [Coming Soon]
-                </p>
-              </div>
-              
-              <div className="opacity-60 system-panel p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <Shield className="h-5 w-5 text-chart-5 mr-2" />
-                    <span>Hull Integrity</span>
-                  </div>
-                  <span className="font-mono text-xs">500 Scrap</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Reinforce ship&apos;s hull integrity [Coming Soon]
                 </p>
               </div>
             </div>

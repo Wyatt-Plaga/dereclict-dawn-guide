@@ -77,6 +77,10 @@ export interface ReactorCategory {
     upgrades: {
         reactorExpansions: number;  // Increases energy capacity
         energyConverters: number;   // Automatic energy generation
+        converterEfficiency?: number; // Improves energy converter output (salvage cost)
+        shielding?: number;            // Enables shields (0/1)
+        shieldBoosts?: number;         // Additional +100 shields per level (salvage cost)
+        navigationUnlocked?: number;   // Unlocks navigation system (0/1)
     };
     stats: {
         energyCapacity: number;
@@ -94,6 +98,8 @@ export interface ProcessorCategory {
     upgrades: {
         mainframeExpansions: number;  // Increases insight capacity
         processingThreads: number;    // Automatic insight generation
+        threadEfficiency?: number;   // Improves insight generation efficiency (salvage)
+        unlocked?: number; // 0 = locked, 1 = unlocked
     };
     stats: {
         insightCapacity: number;
@@ -112,6 +118,8 @@ export interface CrewQuartersCategory {
     upgrades: {
         additionalQuarters: number;  // Increases crew capacity
         workerCrews: number;         // Automatic crew awakening
+        crewEfficiency?: number;    // Improves crew awakening rate (salvage)
+        unlocked?: number;
     };
     stats: {
         crewCapacity: number;
@@ -130,6 +138,8 @@ export interface ManufacturingCategory {
     upgrades: {
         cargoHoldExpansions: number;  // Increases scrap capacity
         manufacturingBays: number;    // Automatic scrap collection
+        bayEfficiency?: number;      // Improves scrap production efficiency (salvage cost)
+        unlocked?: number;
     };
     stats: {
         scrapCapacity: number;
@@ -240,8 +250,8 @@ export interface CombatState {
   playerStats: {
     health: number;
     maxHealth: number;
-    shield: number;
-    maxShield: number;
+    shield: number; // Starts at 0 until shielding installed
+    maxShield: number; // Starts at 0 until shielding installed
     statusEffects: any[];
   };
   enemyStats: {
@@ -328,6 +338,11 @@ export interface GameState {
      * Combat state
      */
     combat: CombatState;
+
+    /**
+     * Universal resources not tied to a single wing
+     */
+    relics: number; // General currency obtained from combat, no capacity limit
 }
 
 /**
@@ -342,6 +357,10 @@ export const initialGameState: GameState = {
             upgrades: {
                 reactorExpansions: 0,
                 energyConverters: 0,
+                converterEfficiency: 0,
+                shielding: 0,
+                shieldBoosts: 0,
+                navigationUnlocked: 0,
             },
             stats: {
                 energyCapacity: 100,
@@ -355,6 +374,8 @@ export const initialGameState: GameState = {
             upgrades: {
                 mainframeExpansions: 0,
                 processingThreads: 0,
+                threadEfficiency: 0,
+                unlocked: 0,
             },
             stats: {
                 insightCapacity: 50,
@@ -369,6 +390,8 @@ export const initialGameState: GameState = {
             upgrades: {
                 additionalQuarters: 0,
                 workerCrews: 0,
+                crewEfficiency: 0,
+                unlocked: 0,
             },
             stats: {
                 crewCapacity: 5,
@@ -383,6 +406,8 @@ export const initialGameState: GameState = {
             upgrades: {
                 cargoHoldExpansions: 0,
                 manufacturingBays: 0,
+                bayEfficiency: 0,
+                unlocked: 0,
             },
             stats: {
                 scrapCapacity: 100,
@@ -413,15 +438,15 @@ export const initialGameState: GameState = {
         playerStats: {
             health: 100,
             maxHealth: 100,
-            shield: 50,
-            maxShield: 50,
+            shield: 0,
+            maxShield: 0,
             statusEffects: []
         },
         enemyStats: {
             health: 100,
             maxHealth: 100,
-            shield: 50,
-            maxShield: 50,
+            shield: 0,
+            maxShield: 0,
             statusEffects: []
         },
         battleLog: [],
@@ -436,5 +461,6 @@ export const initialGameState: GameState = {
             scrap: 0
         },
         enemyIntentions: null
-    }
+    },
+    relics: 0,
 }; 

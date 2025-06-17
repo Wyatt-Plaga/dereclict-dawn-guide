@@ -124,6 +124,8 @@ export class ResourceSystem {
         return { obj: state.categories.crewQuarters.resources, key: 'crew' };
       case 'scrap':
         return { obj: state.categories.manufacturing.resources, key: 'scrap' };
+      case 'relics':
+        return { obj: state as any, key: 'relics' };
       default:
         return null;
     }
