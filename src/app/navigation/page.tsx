@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation"
 import { Progress } from "@/components/ui/progress"
 import { REGION_DEFINITIONS } from "@/game-engine/content/regions"
 import { REGION_TYPE_STYLES } from "@/game-engine/content/regionStyles"
-import { RegionType } from "@/game-engine/types/combat"
+import { RegionType } from "@/game-engine/types/regions"
 import { useState } from "react"
 import { useDevMode } from "@/components/providers/dev-mode-provider"
 
@@ -22,11 +22,11 @@ const SUB_LABELS = ['α','β','γ'];
 
 // Fallback names for region types that don't yet have full definitions
 const REGION_TYPE_FALLBACK_NAMES: Record<RegionType, string> = {
-  [RegionType.SUPERNOVA]: "Black Hole",
-  [RegionType.RADIATION_ZONE]: "Inhabited Zone",
-  [RegionType.ASTEROID_FIELD]: "Asteroid Belt",
-  [RegionType.VOID]: "Void",
-  [RegionType.NEBULA]: "Nebula",
+  'blackhole': "Black Hole",
+  'deepspace': "Inhabited Zone",
+  'asteroid': "Asteroid Belt",
+  'void': "Void",
+  'nebula': "Nebula",
 };
 
 export default function NavigationPage() {
@@ -50,7 +50,7 @@ export default function NavigationPage() {
   const currentRegionName = currentRegionDef?.name ?? REGION_TYPE_FALLBACK_NAMES[currentRegionId as RegionType] ?? currentRegionId;
   const currentRegionDescription = currentRegionDef?.description ?? '';
 
-  const currentRegionType = currentRegionDef?.type ?? (currentRegionId as RegionType);
+  const currentRegionType = (currentRegionDef?.type ?? currentRegionId) as RegionType;
   const currentRegionConfig = REGION_TYPE_STYLES[currentRegionType] ?? REGION_TYPE_STYLES[RegionType.VOID];
 
   // All regions unlocked for testing

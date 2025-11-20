@@ -7,6 +7,7 @@ import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { SaveSystem } from './SaveSystem';
 import { getCachedState, cacheState } from './memoryCache';
 import { getLogContextForAction } from '../utils/logContextMapper';
+import { produce } from 'immer';
 
 /**
  * GameEngine: The heart of the game
@@ -55,10 +56,12 @@ export class GameEngine {
                 "Using cached state from in-app navigation", 
                 LogContext.STARTUP
             );
-            this.state = JSON.parse(JSON.stringify(cachedState));
+            this.state = cachedState;
         } else {
             // Start with a fresh game state if no cached state
-            this.state = JSON.parse(JSON.stringify(initialGameState));
+            // We use produce with an empty function to get a frozen copy of initialGameState if desired,
+            // but simple assignment is fine as long as we only modify via produce later.
+            this.state = initialGameState;
         }
         
         // Create our communication system
@@ -218,21 +221,23 @@ export class GameEngine {
      * @param delta - Time in seconds since last update
      */
     private tick(delta: number) {
-        // Store the previous state for comparison
-        const prevState = JSON.stringify(this.state);
+        // Store the previous state reference for comparison
+        const prevState = this.state;
         
-        // Update the last update timestamp
-        this.state.lastUpdate = Date.now();
+        // Use immer to produce the next state immutably
+        this.state = produce(this.state, (draft) => {
+             // Update the last update timestamp
+            draft.lastUpdate = Date.now();
+            
+            // Trace level logging for game ticks
+            Logger.trace(LogCategory.ENGINE, `Tick with delta: ${delta.toFixed(5)}s`, LogContext.NONE);
+            
+            // Update all game systems
+            this.systems.update(draft as GameState, delta);
+        });
         
-        // Trace level logging for game ticks
-        Logger.trace(LogCategory.ENGINE, `Tick with delta: ${delta.toFixed(5)}s`, LogContext.NONE);
-        
-        // Update all game systems
-        this.systems.update(this.state, delta);
-        
-        // Only emit state updates if something actually changed
-        const currentState = JSON.stringify(this.state);
-        if (currentState !== prevState) {
+        // Only emit state updates if something actually changed (reference equality check)
+        if (this.state !== prevState) {
             // Cache the state whenever it changes
             cacheState(this.state);
             
@@ -259,11 +264,10 @@ export class GameEngine {
             context
         );
         
-        // Pass the action to game systems and get updated state
-        const updatedState = this.systems.processAction(this.state, action);
-        
-        // Update the internal state
-        this.state = updatedState;
+        // Pass the action to game systems and get updated state via immer
+        this.state = produce(this.state, (draft) => {
+            this.systems.processAction(draft as GameState, action);
+        });
         
         // Log state after processing
         const afterEnergy = this.state.categories.reactor.resources.energy;
@@ -295,8 +299,8 @@ export class GameEngine {
      * Returns a deep copy to prevent direct state mutation
      */
     getState(): GameState {
-        // Return a deep copy of the state to prevent accidental mutations
-        return JSON.parse(JSON.stringify(this.state));
+        // Return the state directly (immer ensures it's immutable)
+        return this.state;
     }
     
     /**

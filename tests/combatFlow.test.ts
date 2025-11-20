@@ -4,6 +4,7 @@ import { EventMap } from '@/game-engine/types/events';
 import { initialGameState, GameState } from '@/game-engine/types';
 import { CombatSystem } from '@/game-engine/systems/CombatSystem';
 import { ResourceSystem } from '@/game-engine/systems/ResourceSystem';
+import { RegionType } from '@/game-engine/types/regions';
 
 const clone = <T>(o: T): T => JSON.parse(JSON.stringify(o));
 
@@ -24,10 +25,10 @@ describe('START_COMBAT event', () => {
     bus.emit('START_COMBAT', {
       state,
       enemyId: 'scavenger',
-      regionId: 'void'
+      regionId: RegionType.VOID
     });
 
     expect(state.combat.active).toBe(true);
     expect(state.combat.currentEnemy).toBe('scavenger');
   });
-}); 
+});

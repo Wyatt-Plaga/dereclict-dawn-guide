@@ -1,14 +1,10 @@
-import { GameState, RegionType, BattleLogEntry } from '../types';
+import { GameState, RegionType, BattleLogEntry, RegionDefinition } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   ActionResult, 
   CombatActionDefinition,
-  EnemyActionCondition,
   EnemyActionDefinition,
-  EnemyDefinition,
-  RegionDefinition,
-  ResourceCost,
-  StatusEffectInstance
+  EnemyDefinition
 } from '../types/combat';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { ENEMY_ACTIONS, PLAYER_ACTIONS } from '@/game-engine/content/combatActions';
@@ -17,6 +13,11 @@ import { REGION_DEFINITIONS } from '@/game-engine/content/regions';
 import { ResourceSystem } from './ResourceSystem';
 import { EventBus } from "../core/EventBus";
 import { EventMap } from "../types/events";
+
+// Import new modules
+import { CombatCalculator } from './combat/CombatCalculator';
+import { CombatLogger } from './combat/CombatLogger';
+import { EnemyAI } from './combat/EnemyAI';
 
 /**
  * Combat System
@@ -214,19 +215,8 @@ export class CombatSystem {
     state.combat.battleLog = [];
     
     // Add initial battle log entry
-    this.addBattleLog(state, {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      text: `Encounter with ${enemy.name} initiated.`,
-      type: 'SYSTEM'
-    });
-    
-    this.addBattleLog(state, {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      text: `${enemy.description}`,
-      type: 'ANALYSIS'
-    });
+    CombatLogger.log(state, `Encounter with ${enemy.name} initiated.`, 'SYSTEM');
+    CombatLogger.log(state, `${enemy.description}`, 'ANALYSIS');
 
     // Enemy will act only after the player's first move; no telegraph yet
   }
@@ -270,12 +260,7 @@ export class CombatSystem {
         break;
     }
 
-    this.addBattleLog(state, {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      text: message,
-      type: 'SYSTEM'
-    });
+    CombatLogger.log(state, message, 'SYSTEM');
   }
 
   /**
@@ -318,23 +303,13 @@ export class CombatSystem {
       }
       
       // Add log entry
-      this.addBattleLog(state, {
-        id: uuidv4(),
-        timestamp: Date.now(),
-        text: `Recovered ${reward.amount} ${reward.type} from the encounter.`,
-        type: 'SYSTEM'
-      });
+      CombatLogger.log(state, `Recovered ${reward.amount} ${reward.type} from the encounter.`, 'SYSTEM');
     });
 
     // NEW: Always award 1 relic for victories in the void region
     if (state.combat.currentRegion === 'void') {
       state.relics += 1;
-      this.addBattleLog(state, {
-        id: uuidv4(),
-        timestamp: Date.now(),
-        text: `Recovered 1 relic from the drifting wreckage.`,
-        type: 'SYSTEM'
-      });
+      CombatLogger.log(state, `Recovered 1 relic from the drifting wreckage.`, 'SYSTEM');
     }
   }
 
@@ -439,12 +414,7 @@ export class CombatSystem {
     const result = this.applyActionEffects(state, action);
     
     // Add battle log entry
-    this.addBattleLog(state, {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      text: result.message,
-      type: 'PLAYER'
-    });
+    CombatLogger.log(state, result.message, 'PLAYER');
 
     // Store last action result
     state.combat.lastActionResult = result;
@@ -480,139 +450,6 @@ export class CombatSystem {
   }
 
   /**
-   * Let enemy perform an action
-   */
-  private performEnemyAction(state: GameState): void {
-    if (!state.combat.currentEnemy) return;
-    
-    const enemy = this.getEnemyDefinition(state.combat.currentEnemy);
-    if (!enemy) return;
-    
-    // Get enemy action definitions
-    const availableActions = enemy.actions
-      .map(actionId => ENEMY_ACTIONS[actionId])
-      .filter(action => !!action);
-    
-    if (availableActions.length === 0) return;
-    
-    // Select action based on enemy health/shield conditions
-    const action = this.selectEnemyAction(state, availableActions);
-    
-    // Expose the selected enemy action so the UI can indicate it is "charging"
-    state.combat.lastEnemyActionId = action.id;
-    
-    // Apply action effects
-    let message = '';
-    
-    // Apply damage to player
-    if (action.damage) {
-      if (state.combat.playerStats.shield > 0) {
-        // Damage goes to shield first
-        const shieldDamage = Math.min(state.combat.playerStats.shield, action.damage);
-        state.combat.playerStats.shield -= shieldDamage;
-        
-        // Remaining damage goes to health
-        const remainingDamage = action.damage - shieldDamage;
-        if (remainingDamage > 0) {
-          state.combat.playerStats.health -= remainingDamage;
-          message = `${enemy.name} used ${action.name}, damaging shields for ${shieldDamage} and hull for ${remainingDamage}`;
-        } else {
-          message = `${enemy.name} used ${action.name}, damaging shields for ${shieldDamage}`;
-        }
-      } else {
-        // All damage goes to health
-        state.combat.playerStats.health -= action.damage;
-        message = `${enemy.name} used ${action.name}, damaging hull for ${action.damage}`;
-      }
-    }
-    
-    // Apply shield damage specifically
-    if (action.shieldDamage && state.combat.playerStats.shield > 0) {
-      const actualDamage = Math.min(state.combat.playerStats.shield, action.shieldDamage);
-      state.combat.playerStats.shield -= actualDamage;
-      message = `${enemy.name} used ${action.name}, damaging shields for ${actualDamage}`;
-    }
-    
-    // Apply status effects
-    if (action.statusEffect) {
-      state.combat.playerStats.statusEffects.push({
-        ...action.statusEffect,
-        remainingTurns: action.statusEffect.duration
-      });
-      
-      message = message || `${enemy.name} used ${action.name}`;
-      message += `, applying ${action.statusEffect.type} effect`;
-    }
-    
-    // If no specific effects, provide generic message
-    if (!message) {
-      message = `${enemy.name} used ${action.name}`;
-    }
-    
-    // Add to battle log
-    this.addBattleLog(state, {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      text: message,
-      type: 'ENEMY'
-    });
-  }
-
-  /**
-   * Select an enemy action based on current combat state
-   */
-  private selectEnemyAction(state: GameState, availableActions: EnemyActionDefinition[]): EnemyActionDefinition {
-    // Filter actions by condition
-    const validActions = availableActions.filter(action => {
-      return this.checkEnemyActionCondition(state, action.useCondition);
-    });
-    
-    // If no valid actions, pick randomly from all
-    if (validActions.length === 0) {
-      const randomIndex = Math.floor(Math.random() * availableActions.length);
-      return availableActions[randomIndex];
-    }
-    
-    // Pick randomly from valid actions
-    const randomIndex = Math.floor(Math.random() * validActions.length);
-    return validActions[randomIndex];
-  }
-
-  /**
-   * Check if enemy action condition is met
-   */
-  private checkEnemyActionCondition(state: GameState, condition: EnemyActionCondition): boolean {
-    const enemyStats = state.combat.enemyStats;
-    
-    switch (condition.type) {
-      case 'HEALTH_THRESHOLD':
-        // Use action if health is below threshold (percentage)
-        if (!condition.threshold) return false;
-        const healthPercentage = enemyStats.health / enemyStats.maxHealth;
-        return healthPercentage <= condition.threshold;
-        
-      case 'SHIELD_THRESHOLD':
-        // Use action if shield is below threshold (percentage)
-        if (!condition.threshold) return false;
-        if (enemyStats.maxShield === 0) return false;
-        const shieldPercentage = enemyStats.shield / enemyStats.maxShield;
-        return shieldPercentage <= condition.threshold;
-        
-      case 'ALWAYS':
-        // Always use this action if available
-        return true;
-        
-      case 'RANDOM':
-        // Use action based on random probability
-        if (!condition.probability) return false;
-        return Math.random() <= condition.probability;
-        
-      default:
-        return false;
-    }
-  }
-
-  /**
    * Apply effects of a combat action
    */
   private applyActionEffects(state: GameState, action: CombatActionDefinition): ActionResult {
@@ -636,52 +473,50 @@ export class CombatSystem {
         actualDamage = Math.floor(actualDamage * (1 + weakenEffect.magnitude));
       }
       
-      if (state.combat.enemyStats.shield > 0) {
-        // Damage goes to shield first
-        const shieldDamage = Math.min(state.combat.enemyStats.shield, actualDamage);
-        state.combat.enemyStats.shield -= shieldDamage;
-        
-        // Remaining damage goes to health
-        const remainingDamage = actualDamage - shieldDamage;
-        if (remainingDamage > 0) {
-          state.combat.enemyStats.health -= remainingDamage;
-          result.message = `${action.name} damaged enemy shields for ${shieldDamage} and hull for ${remainingDamage}`;
-        } else {
-          result.message = `${action.name} damaged enemy shields for ${shieldDamage}`;
-        }
-        
-        result.shieldDamage = shieldDamage;
-        result.damageDealt = remainingDamage > 0 ? remainingDamage : 0;
+      const damageResult = CombatCalculator.calculateDamage(
+        state.combat.enemyStats.health,
+        state.combat.enemyStats.shield,
+        actualDamage
+      );
+
+      state.combat.enemyStats.health = damageResult.newHealth;
+      state.combat.enemyStats.shield = damageResult.newShield;
+      result.shieldDamage = damageResult.shieldDamage;
+      result.damageDealt = damageResult.hullDamage;
+
+      if (damageResult.shieldDamage > 0 && damageResult.hullDamage > 0) {
+        result.message = `${action.name} damaged enemy shields for ${damageResult.shieldDamage} and hull for ${damageResult.hullDamage}`;
+      } else if (damageResult.shieldDamage > 0) {
+        result.message = `${action.name} damaged enemy shields for ${damageResult.shieldDamage}`;
       } else {
-        // All damage goes to health
-        state.combat.enemyStats.health -= actualDamage;
-        result.message = `${action.name} damaged enemy hull for ${actualDamage}`;
-        result.damageDealt = actualDamage;
+        result.message = `${action.name} damaged enemy hull for ${damageResult.hullDamage}`;
       }
     }
     
     // Apply shields
     if (action.shieldRepair) {
-      const repairAmount = Math.min(
-        action.shieldRepair,
-        state.combat.playerStats.maxShield - state.combat.playerStats.shield
+      const repairResult = CombatCalculator.calculateShieldRepair(
+        state.combat.playerStats.shield,
+        state.combat.playerStats.maxShield,
+        action.shieldRepair
       );
       
-      state.combat.playerStats.shield += repairAmount;
-      result.message = `${action.name} restored ${repairAmount} shields`;
-      result.shieldRepaired = repairAmount;
+      state.combat.playerStats.shield = repairResult.newShield;
+      result.message = `${action.name} restored ${repairResult.repairedAmount} shields`;
+      result.shieldRepaired = repairResult.repairedAmount;
     }
     
     // Apply hull repair
     if (action.hullRepair) {
-      const repairAmount = Math.min(
-        action.hullRepair,
-        state.combat.playerStats.maxHealth - state.combat.playerStats.health
+      const repairResult = CombatCalculator.calculateHullRepair(
+        state.combat.playerStats.health,
+        state.combat.playerStats.maxHealth,
+        action.hullRepair
       );
       
-      state.combat.playerStats.health += repairAmount;
-      result.message = `${action.name} repaired ${repairAmount} hull integrity`;
-      result.healthRepaired = repairAmount;
+      state.combat.playerStats.health = repairResult.newHealth;
+      result.message = `${action.name} repaired ${repairResult.repairedAmount} hull integrity`;
+      result.healthRepaired = repairResult.repairedAmount;
     }
     
     // Apply status effects
@@ -720,37 +555,8 @@ export class CombatSystem {
    * Process status effects at end of turn
    */
   private processStatusEffects(state: GameState): void {
-    // Process player status effects
-    state.combat.playerStats.statusEffects = state.combat.playerStats.statusEffects
-      .map(effect => {
-        return {
-          ...effect,
-          remainingTurns: effect.remainingTurns - 1
-        };
-      })
-      .filter(effect => effect.remainingTurns > 0);
-    
-    // Process enemy status effects
-    state.combat.enemyStats.statusEffects = state.combat.enemyStats.statusEffects
-      .map(effect => {
-        return {
-          ...effect,
-          remainingTurns: effect.remainingTurns - 1
-        };
-      })
-      .filter(effect => effect.remainingTurns > 0);
-  }
-
-  /**
-   * Add entry to battle log
-   */
-  private addBattleLog(state: GameState, entry: BattleLogEntry): void {
-    state.combat.battleLog.push(entry);
-    
-    // Keep log size manageable (max 50 entries)
-    if (state.combat.battleLog.length > 50) {
-      state.combat.battleLog = state.combat.battleLog.slice(-50);
-    }
+    state.combat.playerStats.statusEffects = CombatCalculator.processStatusEffects(state.combat.playerStats.statusEffects);
+    state.combat.enemyStats.statusEffects = CombatCalculator.processStatusEffects(state.combat.enemyStats.statusEffects);
   }
 
   /**
@@ -771,13 +577,7 @@ export class CombatSystem {
    * Process retreat action
    */
   retreat(state: GameState): void {
-    this.addBattleLog(state, {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      text: `Retreat initiated. Preparing emergency jump.`,
-      type: 'PLAYER'
-    });
-    
+    CombatLogger.log(state, `Retreat initiated. Preparing emergency jump.`, 'PLAYER');
     this.endCombatEncounter(state, 'retreat');
   }
 
@@ -1048,23 +848,31 @@ export class CombatSystem {
 
     // Apply damage to player (identical to previous logic)
     if (action.damage) {
-      if (state.combat.playerStats.shield > 0) {
-        const shieldDamage = Math.min(state.combat.playerStats.shield, action.damage);
-        state.combat.playerStats.shield -= shieldDamage;
-        const remainingDamage = action.damage - shieldDamage;
-        if (remainingDamage > 0) {
-          state.combat.playerStats.health -= remainingDamage;
-          message = `${enemy?.name ?? 'Enemy'} used ${action.name}, damaging shields for ${shieldDamage} and hull for ${remainingDamage}`;
-        } else {
-          message = `${enemy?.name ?? 'Enemy'} used ${action.name}, damaging shields for ${shieldDamage}`;
-        }
+      const damageResult = CombatCalculator.calculateDamage(
+        state.combat.playerStats.health,
+        state.combat.playerStats.shield,
+        action.damage
+      );
+
+      state.combat.playerStats.health = damageResult.newHealth;
+      state.combat.playerStats.shield = damageResult.newShield;
+
+      if (damageResult.shieldDamage > 0 && damageResult.hullDamage > 0) {
+        message = `${enemy?.name ?? 'Enemy'} used ${action.name}, damaging shields for ${damageResult.shieldDamage} and hull for ${damageResult.hullDamage}`;
+      } else if (damageResult.shieldDamage > 0) {
+        message = `${enemy?.name ?? 'Enemy'} used ${action.name}, damaging shields for ${damageResult.shieldDamage}`;
       } else {
-        state.combat.playerStats.health -= action.damage;
-        message = `${enemy?.name ?? 'Enemy'} used ${action.name}, damaging hull for ${action.damage}`;
+        message = `${enemy?.name ?? 'Enemy'} used ${action.name}, damaging hull for ${damageResult.hullDamage}`;
       }
     }
 
-    if (action.shieldDamage && state.combat.playerStats.shield > 0) {
+    if (action.shieldDamage) {
+      // Shield specific damage
+      // We can reuse calculateDamage but with specific parameters if needed, 
+      // but calculateDamage assumes general damage. 
+      // Let's just do direct calculation for this specific case to handle shield-only logic cleanly,
+      // or expand CombatCalculator to support shield-only damage.
+      // For now, manual calculation here is fine, or simple:
       const actualDamage = Math.min(state.combat.playerStats.shield, action.shieldDamage);
       state.combat.playerStats.shield -= actualDamage;
       message = `${enemy?.name ?? 'Enemy'} used ${action.name}, damaging shields for ${actualDamage}`;
@@ -1084,12 +892,7 @@ export class CombatSystem {
     }
 
     // Log the action
-    this.addBattleLog(state, {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      text: message,
-      type: 'ENEMY'
-    });
+    CombatLogger.log(state, message, 'ENEMY');
 
     // Save last fired action ID (for potential UI flash)
     state.combat.lastEnemyActionId = action.id;
@@ -1107,25 +910,17 @@ export class CombatSystem {
     const enemy = this.getEnemyDefinition(state.combat.currentEnemy);
     if (!enemy) return;
 
-    const availableActions = enemy.actions
-      .map(id => ENEMY_ACTIONS[id])
-      .filter(a => !!a) as EnemyActionDefinition[];
+    // Use EnemyAI to select action
+    const action = EnemyAI.selectAction(state, enemy);
 
-    if (availableActions.length === 0) return;
-
-    const action = this.selectEnemyAction(state, availableActions);
+    if (!action) return;
 
     // Telegraph – enemy is now charging
     state.combat.enemyIntentions = { actionId: action.id };
 
     Logger.debug(LogCategory.COMBAT, `Telegraphing enemy action: ${action.id}`, LogContext.COMBAT_ACTION);
 
-    this.addBattleLog(state, {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      text: `${enemy.name} begins charging ${action.name}…`,
-      type: 'ENEMY'
-    });
+    CombatLogger.log(state, `${enemy.name} begins charging ${action.name}…`, 'ENEMY');
 
     // Notify listeners with a shallow-cloned state so React detects the change
     const clonedState: GameState = { ...state, combat: { ...state.combat } };

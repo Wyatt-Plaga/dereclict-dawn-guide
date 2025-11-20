@@ -1,4 +1,4 @@
-import { RegionDefinition, RegionType } from '../types/combat';
+import { RegionDefinition, RegionType } from '../types/regions';
 
 /**
  * Region Definitions

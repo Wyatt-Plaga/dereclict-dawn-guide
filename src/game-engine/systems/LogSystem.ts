@@ -182,12 +182,13 @@ export class LogSystem {
         
         try {
             // Safety check: Make sure category exists
-            if (!state.categories[category]) {
+            const typedCategory = category as keyof typeof state.categories;
+            if (!state.categories[typedCategory]) {
                 return false;
             }
             
             // Get category resources with proper typing
-            const categoryResources = state.categories[category].resources;
+            const categoryResources = state.categories[typedCategory].resources;
             
             // Safety check: Make sure resources object exists
             if (!categoryResources) {
@@ -227,12 +228,13 @@ export class LogSystem {
         
         try {
             // Safety check: Make sure category exists
-            if (!state.categories[category]) {
+            const typedCategory = category as keyof typeof state.categories;
+            if (!state.categories[typedCategory]) {
                 return false;
             }
             
             // Get category upgrades with proper typing
-            const categoryUpgrades = state.categories[category].upgrades;
+            const categoryUpgrades = state.categories[typedCategory].upgrades;
             
             // Safety check: Make sure upgrades object exists
             if (!categoryUpgrades) {

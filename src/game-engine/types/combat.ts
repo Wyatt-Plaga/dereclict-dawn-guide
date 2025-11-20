@@ -1,27 +1,8 @@
-/**
- * Combat Types
- * 
- * This file contains all the type definitions for the combat system.
- */
+import { RegionType } from './regions';
+import { BaseEncounter } from './encounters';
+import { ResourceCost, ResourceReward } from './resources';
 
-import { RegionType as GameRegionType } from './index';
-
-/**
- * Region Types
- * 
- * These match the string values in index.ts RegionType
- */
-export enum RegionType {
-  VOID = 'void',
-  NEBULA = 'nebula',
-  ASTEROID_FIELD = 'asteroid',
-  RADIATION_ZONE = 'deepspace',
-  SUPERNOVA = 'blackhole'
-}
-
-// Type compatibility check to ensure our enum values match the string union type
-// This will cause a compile error if they don't match
-type EnsureRegionTypeCompatibility = GameRegionType extends typeof RegionType[keyof typeof RegionType] ? true : false;
+export { RegionType }; // Re-export RegionType
 
 /**
  * Combat Action Categories
@@ -31,14 +12,6 @@ export enum CombatActionCategory {
   WEAPON = 'weapon',
   REPAIR = 'repair',
   SABOTAGE = 'sabotage'
-}
-
-/**
- * Resource Cost for combat actions
- */
-export interface ResourceCost {
-  type: string;
-  amount: number;
 }
 
 /**
@@ -149,21 +122,35 @@ export interface EnemyDefinition {
   difficultyTier?: number;
 }
 
-/**
- * Region Definition
- */
-export interface RegionDefinition {
+// Simple Enemy Interface (used in GameState?)
+// The index.ts had a simpler Enemy interface.
+// Let's consolidate. Use EnemyDefinition where static data, Enemy where instance data.
+// Actually, index.ts Enemy had 'attackDelay', 'lastAttackTime'.
+// These seem like instance properties.
+// But EnemyDefinition (static data) doesn't have them.
+// Let's define Enemy (Instance) here too.
+
+export interface EnemyAction {
+  name: string;
+  description: string;
+  damage: number;
+  target: 'health' | 'shield';
+  probability: number;
+}
+
+export interface Enemy {
   id: string;
   name: string;
   description: string;
-  type?: RegionType;
-  difficulty?: number;
-  encounterChance: number;
-  enemyProbabilities: {
-    enemyId: string;
-    weight: number;
-  }[];
-  resourceModifiers?: Record<string, number>;
+  health: number;
+  maxHealth: number;
+  shield: number;
+  maxShield: number;
+  image: string;
+  attackDelay: number; // Time in ms between enemy attacks
+  lastAttackTime: number; // Last time the enemy attacked
+  actions: EnemyAction[];
+  region: RegionType;
 }
 
 /**
@@ -188,4 +175,52 @@ export interface BattleLogEntry {
   text: string;
   type: 'SYSTEM' | 'PLAYER' | 'ENEMY' | 'ANALYSIS';
   timestamp: number;
-} 
+}
+
+/**
+ * Combat State interface
+ */
+export interface CombatState {
+  active: boolean;
+  currentEnemy: string | null;
+  currentRegion: string | null; // RegionType? index.ts said string | null. Let's use RegionType | null
+  turn: number;
+  encounterCompleted: boolean;
+  outcome?: 'victory' | 'defeat' | 'retreat';
+  playerStats: {
+    health: number;
+    maxHealth: number;
+    shield: number;
+    maxShield: number;
+    statusEffects: StatusEffectInstance[];
+  };
+  enemyStats: {
+    health: number;
+    maxHealth: number;
+    shield: number;
+    maxShield: number;
+    statusEffects: StatusEffectInstance[];
+  };
+  battleLog: BattleLogEntry[];
+  availableActions: string[];
+  cooldowns: Record<string, number>;
+  lastActionResult?: ActionResult;
+  lastEnemyActionId: string | null;
+  rewards?: {
+    energy: number;
+    insight: number;
+    crew: number;
+    scrap: number;
+  };
+  enemyIntentions: any | null; // Define better type if possible
+}
+
+/**
+ * Combat Encounter interface
+ */
+export interface CombatEncounter extends BaseEncounter {
+  type: 'combat';
+  enemy: Enemy;
+  rewards?: ResourceReward[];
+  escapePenalty?: ResourceReward[];
+}

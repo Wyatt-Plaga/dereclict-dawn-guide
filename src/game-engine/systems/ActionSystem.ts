@@ -58,9 +58,8 @@ export class ActionSystem {
       return state;
     }
 
-    // Work on a shallow copy of state for safety
-    const newState = { ...state };
-    return handler(newState, action);
+    // Work on the state directly (immer will handle immutability in the GameEngine)
+    return handler(state, action);
   }
   
   /**
@@ -84,9 +83,6 @@ export class ActionSystem {
       LogContext.NONE
     );
     
-    // Create a shallow copy of the state to modify
-    const newState = { ...state };
-
     // Map category keys to their respective handlers
     const categoryHandlers: Record<string, (s: GameState) => GameState> = {
       reactor: (s) => this.handleReactorClick(s),
@@ -106,7 +102,7 @@ export class ActionSystem {
       return state;
     }
 
-    return handler(newState);
+    return handler(state);
   }
   
   /**
@@ -304,13 +300,8 @@ export class ActionSystem {
       LogContext.NONE
     );
     
-    return {
-      ...state,
-      navigation: {
-        ...state.navigation,
-        currentRegion: region
-      }
-    };
+    state.navigation.currentRegion = region;
+    return state;
   }
 
   /**

@@ -123,8 +123,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       lastUpdateTime = now;
       
       setState((prevState: GameState) => {
-        // Return a deep copy of the state to ensure React detects changes
-        return JSON.parse(JSON.stringify(newState));
+        // State is managed by immer in the engine, so we receive a new immutable reference
+        return newState;
       });
     };
     
