@@ -37,7 +37,7 @@ export default function CrewQuartersPage() {
   
   return (
     <GameLoader>
-      <main className="flex min-h-screen flex-col">
+      <main className="min-h-screen">
         <NavBar />
         
         <div className="flex flex-col p-4 md:p-8 md:ml-64">
@@ -121,45 +121,63 @@ export default function CrewQuartersPage() {
               <h2 className="text-lg font-semibold terminal-text">{crewQuarters.texts.upgradesTitle}</h2>
               
               {/* Quarters upgrade */}
-              <div 
-                className={`system-panel p-4 ${crewQuarters.canUpgradeQuarters ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+              <button
+                className={`w-full system-panel p-4 text-left transition-all relative overflow-hidden group ${
+                  crewQuarters.canUpgradeQuarters 
+                    ? 'hover:bg-chart-3/10 hover:border-chart-3/50 shadow-[0_0_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_20px_rgba(var(--chart-3),0.2)]' 
+                    : 'opacity-50 cursor-not-allowed grayscale'
+                }`}
+                disabled={!crewQuarters.canUpgradeQuarters}
                 onClick={crewQuarters.upgradeQuarters}
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className={`absolute inset-0 bg-gradient-to-r from-chart-3/5 to-transparent opacity-0 transition-opacity duration-300 ${crewQuarters.canUpgradeQuarters ? 'group-hover:opacity-100' : ''}`} />
+                
+                <div className="flex items-center justify-between mb-2 relative z-10">
                   <div className="flex items-center">
-                    <Home className="h-5 w-5 text-chart-3 mr-2" />
-                    <span>Additional Quarters</span>
+                    <Home className={`h-5 w-5 mr-3 ${crewQuarters.canUpgradeQuarters ? 'text-chart-3' : 'text-muted-foreground'}`} />
+                    <span className={`font-semibold ${crewQuarters.canUpgradeQuarters ? 'text-foreground' : 'text-muted-foreground'}`}>Additional Quarters</span>
                   </div>
-                  <span className="font-mono text-xs">{crewQuarters.quartersCost} Crew</span>
+                  <span className={`font-mono text-xs px-2 py-1 rounded ${crewQuarters.canUpgradeQuarters ? 'bg-chart-3/20 text-chart-3' : 'bg-muted/20 text-muted-foreground'}`}>
+                    {crewQuarters.quartersCost} Crew
+                  </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground relative z-10">
                   {crewQuarters.additionalQuartersDescription}
                 </p>
-                <div className="mt-2 text-xs">
+                <div className="mt-2 text-xs font-mono text-primary/60 relative z-10">
                   Level: {crewQuarters.quartersLevel}
                 </div>
-              </div>
+              </button>
               
               {/* Worker crews upgrade */}
               {crewQuarters.workerCrewLevel < crewQuarters.maxWorkerCrews && (
-                <div 
-                  className={`system-panel p-4 ${crewQuarters.canUpgradeWorkerCrews ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+                <button
+                  className={`w-full system-panel p-4 text-left transition-all relative overflow-hidden group ${
+                    crewQuarters.canUpgradeWorkerCrews 
+                      ? 'hover:bg-chart-3/10 hover:border-chart-3/50 shadow-[0_0_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_20px_rgba(var(--chart-3),0.2)]' 
+                      : 'opacity-50 cursor-not-allowed grayscale'
+                  }`}
+                  disabled={!crewQuarters.canUpgradeWorkerCrews}
                   onClick={crewQuarters.upgradeWorkerCrews}
                 >
-                  <div className="flex items-center justify-between mb-2">
+                  <div className={`absolute inset-0 bg-gradient-to-r from-chart-3/5 to-transparent opacity-0 transition-opacity duration-300 ${crewQuarters.canUpgradeWorkerCrews ? 'group-hover:opacity-100' : ''}`} />
+                  
+                  <div className="flex items-center justify-between mb-2 relative z-10">
                     <div className="flex items-center">
-                      <Wrench className="h-5 w-5 text-chart-3 mr-2" />
-                      <span>Worker Crew</span>
+                      <Wrench className={`h-5 w-5 mr-3 ${crewQuarters.canUpgradeWorkerCrews ? 'text-chart-3' : 'text-muted-foreground'}`} />
+                      <span className={`font-semibold ${crewQuarters.canUpgradeWorkerCrews ? 'text-foreground' : 'text-muted-foreground'}`}>Worker Crew</span>
                     </div>
-                    <span className="font-mono text-xs">{crewQuarters.workerCrewCost} Crew</span>
+                    <span className={`font-mono text-xs px-2 py-1 rounded ${crewQuarters.canUpgradeWorkerCrews ? 'bg-chart-3/20 text-chart-3' : 'bg-muted/20 text-muted-foreground'}`}>
+                      {crewQuarters.workerCrewCost} Crew
+                    </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground relative z-10">
                     {crewQuarters.workerCrewsDescription}
                   </p>
-                  <div className="mt-2 text-xs">
+                  <div className="mt-2 text-xs font-mono text-primary/60 relative z-10">
                     Level: {crewQuarters.workerCrewLevel}
                   </div>
-                </div>
+                </button>
               )}
               
               {/* Crew efficiency upgrade */}

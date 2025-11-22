@@ -59,7 +59,7 @@ export default function LogsPage() {
   
   return (
     <GameLoader>
-      <main className="flex min-h-screen flex-col">
+      <main className="min-h-screen">
         <NavBar />
         
         {logEntries.length === 0 ? (

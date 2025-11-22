@@ -91,7 +91,7 @@ export default function EncounterPage() {
   
   return (
     <GameLoader>
-      <main className="flex min-h-screen flex-col">
+      <main className="min-h-screen">
         <NavBar />
         <div className="flex flex-col p-4 md:p-8 md:ml-64">
           <EncounterDisplay 

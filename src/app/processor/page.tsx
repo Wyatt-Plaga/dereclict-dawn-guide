@@ -95,7 +95,7 @@ export default function ProcessorPage() {
   
   return (
     <GameLoader>
-      <main className="flex min-h-screen flex-col">
+      <main className="min-h-screen">
         <NavBar />
         
         <div className="flex flex-col p-4 md:p-8 md:ml-64">
@@ -137,40 +137,62 @@ export default function ProcessorPage() {
               <h2 className="text-lg font-semibold terminal-text">Upgrades</h2>
               
               {/* Mainframe capacity upgrade */}
-              <div className={`system-panel p-4 ${insight >= expansionCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
-                   onClick={upgradeMainframeCapacity}>
-                <div className="flex items-center justify-between mb-2">
+              <button
+                className={`w-full system-panel p-4 text-left transition-all relative overflow-hidden group ${
+                  insight >= expansionCost 
+                    ? 'hover:bg-chart-2/10 hover:border-chart-2/50 shadow-[0_0_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_20px_rgba(var(--chart-2),0.2)]' 
+                    : 'opacity-50 cursor-not-allowed grayscale'
+                }`}
+                disabled={insight < expansionCost}
+                onClick={upgradeMainframeCapacity}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-r from-chart-2/5 to-transparent opacity-0 transition-opacity duration-300 ${insight >= expansionCost ? 'group-hover:opacity-100' : ''}`} />
+                
+                <div className="flex items-center justify-between mb-2 relative z-10">
                   <div className="flex items-center">
-                    <ArrowUpCircle className="h-5 w-5 text-chart-2 mr-2" />
-                    <span>Mainframe Expansion</span>
+                    <ArrowUpCircle className={`h-5 w-5 mr-3 ${insight >= expansionCost ? 'text-chart-2' : 'text-muted-foreground'}`} />
+                    <span className={`font-semibold ${insight >= expansionCost ? 'text-foreground' : 'text-muted-foreground'}`}>Mainframe Expansion</span>
                   </div>
-                  <span className="font-mono text-xs">{expansionCost} Insight</span>
+                  <span className={`font-mono text-xs px-2 py-1 rounded ${insight >= expansionCost ? 'bg-chart-2/20 text-chart-2' : 'bg-muted/20 text-muted-foreground'}`}>
+                    {expansionCost} Insight
+                  </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground relative z-10">
                   Expand insight storage capacity to {Math.floor(insightCapacity * 1.5)}
                 </p>
-                <div className="mt-2 text-xs">
+                <div className="mt-2 text-xs font-mono text-primary/60 relative z-10">
                   Level: {processor.upgrades.mainframeExpansions}
                 </div>
-              </div>
+              </button>
               
               {/* Processing threads upgrade */}
-              <div className={`system-panel p-4 ${insight >= threadCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
-                   onClick={upgradeProcessingThreads}>
-                <div className="flex items-center justify-between mb-2">
+              <button
+                className={`w-full system-panel p-4 text-left transition-all relative overflow-hidden group ${
+                  insight >= threadCost 
+                    ? 'hover:bg-chart-2/10 hover:border-chart-2/50 shadow-[0_0_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_20px_rgba(var(--chart-2),0.2)]' 
+                    : 'opacity-50 cursor-not-allowed grayscale'
+                }`}
+                disabled={insight < threadCost}
+                onClick={upgradeProcessingThreads}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-r from-chart-2/5 to-transparent opacity-0 transition-opacity duration-300 ${insight >= threadCost ? 'group-hover:opacity-100' : ''}`} />
+                
+                <div className="flex items-center justify-between mb-2 relative z-10">
                   <div className="flex items-center">
-                    <CircuitBoard className="h-5 w-5 text-chart-2 mr-2" />
-                    <span>Processing Thread</span>
+                    <CircuitBoard className={`h-5 w-5 mr-3 ${insight >= threadCost ? 'text-chart-2' : 'text-muted-foreground'}`} />
+                    <span className={`font-semibold ${insight >= threadCost ? 'text-foreground' : 'text-muted-foreground'}`}>Processing Thread</span>
                   </div>
-                  <span className="font-mono text-xs">{threadCost} Insight</span>
+                  <span className={`font-mono text-xs px-2 py-1 rounded ${insight >= threadCost ? 'bg-chart-2/20 text-chart-2' : 'bg-muted/20 text-muted-foreground'}`}>
+                    {threadCost} Insight
+                  </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground relative z-10">
                   Add +0.2 automatic insight generation per second
                 </p>
-                <div className="mt-2 text-xs">
+                <div className="mt-2 text-xs font-mono text-primary/60 relative z-10">
                   Level: {processor.upgrades.processingThreads}
                 </div>
-              </div>
+              </button>
               
               {/* Thread efficiency upgrade */}
               {(devMode || relics > 0 || efficiencyLevel > 0) && (

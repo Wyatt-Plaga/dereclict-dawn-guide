@@ -90,7 +90,7 @@ export default function ManufacturingPage() {
   
   return (
     <GameLoader>
-      <main className="flex min-h-screen flex-col">
+      <main className="min-h-screen">
         <NavBar />
         
         <div className="flex flex-col p-4 md:p-8 md:ml-64">
@@ -135,44 +135,62 @@ export default function ManufacturingPage() {
               <h2 className="text-lg font-semibold terminal-text">Upgrades</h2>
               
               {/* Cargo hold upgrade */}
-              <div 
-                className={`system-panel p-4 ${scrap >= expansionCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+              <button
+                className={`w-full system-panel p-4 text-left transition-all relative overflow-hidden group ${
+                  scrap >= expansionCost 
+                    ? 'hover:bg-chart-4/10 hover:border-chart-4/50 shadow-[0_0_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_20px_rgba(var(--chart-4),0.2)]' 
+                    : 'opacity-50 cursor-not-allowed grayscale'
+                }`}
+                disabled={scrap < expansionCost}
                 onClick={upgradeCargoHold}
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className={`absolute inset-0 bg-gradient-to-r from-chart-4/5 to-transparent opacity-0 transition-opacity duration-300 ${scrap >= expansionCost ? 'group-hover:opacity-100' : ''}`} />
+                
+                <div className="flex items-center justify-between mb-2 relative z-10">
                   <div className="flex items-center">
-                    <Warehouse className="h-5 w-5 text-chart-4 mr-2" />
-                    <span>Cargo Hold Expansion</span>
+                    <Warehouse className={`h-5 w-5 mr-3 ${scrap >= expansionCost ? 'text-chart-4' : 'text-muted-foreground'}`} />
+                    <span className={`font-semibold ${scrap >= expansionCost ? 'text-foreground' : 'text-muted-foreground'}`}>Cargo Hold Expansion</span>
                   </div>
-                  <span className="font-mono text-xs">{expansionCost} Scrap</span>
+                  <span className={`font-mono text-xs px-2 py-1 rounded ${scrap >= expansionCost ? 'bg-chart-4/20 text-chart-4' : 'bg-muted/20 text-muted-foreground'}`}>
+                    {expansionCost} Scrap
+                  </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground relative z-10">
                   Expand cargo storage capacity to {Math.floor(scrapCapacity * 1.5)}
                 </p>
-                <div className="mt-2 text-xs">
+                <div className="mt-2 text-xs font-mono text-primary/60 relative z-10">
                   Level: {manufacturing.upgrades.cargoHoldExpansions}
                 </div>
-              </div>
+              </button>
               
               {/* Manufacturing bay upgrade */}
-              <div 
-                className={`system-panel p-4 ${scrap >= bayCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
+              <button
+                className={`w-full system-panel p-4 text-left transition-all relative overflow-hidden group ${
+                  scrap >= bayCost 
+                    ? 'hover:bg-chart-4/10 hover:border-chart-4/50 shadow-[0_0_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_20px_rgba(var(--chart-4),0.2)]' 
+                    : 'opacity-50 cursor-not-allowed grayscale'
+                }`}
+                disabled={scrap < bayCost}
                 onClick={upgradeManufacturingBay}
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className={`absolute inset-0 bg-gradient-to-r from-chart-4/5 to-transparent opacity-0 transition-opacity duration-300 ${scrap >= bayCost ? 'group-hover:opacity-100' : ''}`} />
+                
+                <div className="flex items-center justify-between mb-2 relative z-10">
                   <div className="flex items-center">
-                    <Factory className="h-5 w-5 text-chart-4 mr-2" />
-                    <span>Manufacturing Bay</span>
+                    <Factory className={`h-5 w-5 mr-3 ${scrap >= bayCost ? 'text-chart-4' : 'text-muted-foreground'}`} />
+                    <span className={`font-semibold ${scrap >= bayCost ? 'text-foreground' : 'text-muted-foreground'}`}>Manufacturing Bay</span>
                   </div>
-                  <span className="font-mono text-xs">{bayCost} Scrap</span>
+                  <span className={`font-mono text-xs px-2 py-1 rounded ${scrap >= bayCost ? 'bg-chart-4/20 text-chart-4' : 'bg-muted/20 text-muted-foreground'}`}>
+                    {bayCost} Scrap
+                  </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground relative z-10">
                   Automated scrap collection (+0.5 per second)
                 </p>
-                <div className="mt-2 text-xs">
+                <div className="mt-2 text-xs font-mono text-primary/60 relative z-10">
                   Level: {manufacturing.upgrades.manufacturingBays}
                 </div>
-              </div>
+              </button>
               
               {/* Bay efficiency upgrade */}
               {(devMode || relics > 0 || efficiencyLevel > 0) && (

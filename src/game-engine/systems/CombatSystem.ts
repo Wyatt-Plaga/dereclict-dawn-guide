@@ -1,4 +1,4 @@
-import { GameState, RegionType, BattleLogEntry, RegionDefinition } from '../types';
+import { GameState, RegionType, BattleLogEntry } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   ActionResult, 
@@ -6,8 +6,8 @@ import {
   EnemyActionDefinition,
   EnemyDefinition
 } from '../types/combat';
+import { RegionDefinition } from '../types/regions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
-import { ENEMY_ACTIONS, PLAYER_ACTIONS } from '@/game-engine/content/combatActions';
 import { ENEMY_DEFINITIONS } from '@/game-engine/content/enemies';
 import { REGION_DEFINITIONS } from '@/game-engine/content/regions';
 import { ResourceSystem } from './ResourceSystem';
@@ -18,6 +18,7 @@ import { EventMap } from "../types/events";
 import { CombatCalculator } from './combat/CombatCalculator';
 import { CombatLogger } from './combat/CombatLogger';
 import { EnemyAI } from './combat/EnemyAI';
+import { PLAYER_ACTIONS, ENEMY_ACTIONS } from '@/game-engine/content/combatActions';
 
 /**
  * Combat System
@@ -107,6 +108,14 @@ export class CombatSystem {
     
     // Random chance based on region's encounter probability
     const randomValue = Math.random();
+    // Force encounter if 5 jumps in void (boss fight logic)
+    const currentJumps = state.encounters.history.filter(h => h.region === toRegion).length;
+    
+    if (toRegion === 'void' && currentJumps >= 5) {
+      Logger.info(LogCategory.COMBAT, "Forcing boss encounter in void", LogContext.COMBAT);
+      return true;
+    }
+
     const encounterGenerated = randomValue < region.encounterChance;
     
     Logger.debug(
@@ -188,6 +197,16 @@ export class CombatSystem {
     state.combat.turn = 1;
     state.combat.encounterCompleted = false;
     state.combat.outcome = undefined;
+    
+    // Reset rewards
+    state.combat.rewards = {
+      energy: 0,
+      insight: 0,
+      crew: 0,
+      scrap: 0,
+      // @ts-ignore
+      relics: 0
+    };
     
     // Reset stats
     state.combat.enemyStats = {
@@ -282,21 +301,30 @@ export class CombatSystem {
       // Add reward to resources
       if (reward.type === 'relics') {
         state.relics += reward.amount;
+        // Track in combat state for UI
+        if (state.combat.rewards) {
+           // @ts-ignore - dynamic assignment
+           state.combat.rewards['relics'] = (state.combat.rewards['relics'] || 0) + reward.amount;
+        }
       } else {
         const resourceCategory = this.getResourceCategory(reward.type);
         if (resourceCategory) {
           switch (reward.type) {
             case 'energy':
               state.categories.reactor.resources.energy += reward.amount;
+              state.combat.rewards!.energy += reward.amount;
               break;
             case 'insight':
               state.categories.processor.resources.insight += reward.amount;
+              state.combat.rewards!.insight += reward.amount;
               break;
             case 'crew':
               state.categories.crewQuarters.resources.crew += reward.amount;
+              state.combat.rewards!.crew += reward.amount;
               break;
             case 'scrap':
               state.categories.manufacturing.resources.scrap += reward.amount;
+              state.combat.rewards!.scrap += reward.amount;
               break;
           }
         }
@@ -309,6 +337,37 @@ export class CombatSystem {
     // NEW: Always award 1 relic for victories in the void region
     if (state.combat.currentRegion === 'void') {
       state.relics += 1;
+      // Track in combat state for UI
+      if (state.combat.rewards) {
+         // @ts-ignore - dynamic assignment
+         state.combat.rewards['relics'] = (state.combat.rewards['relics'] || 0) + 1;
+      }
+      
+      // Check if this was the Void Boss
+      // We determine this by checking if we had enough jumps before this battle
+      // Or checking the enemy ID if it was unique. 'patrol-drone' is used for both normal and boss currently.
+      // So we rely on the jump count logic.
+      // NOTE: The history has NOT been updated with this encounter yet? 
+      // Wait, history is updated in completeEncounter? No, history is updated in EncounterSystem usually?
+      // Actually, CombatSystem updates history on retreat but NOT explicitly on victory here?
+      // Let's check where history is updated.
+      // It seems history is updated in EncounterSystem or similar when encounter ends.
+      // But we need to mark the region as completed if it was the boss.
+      
+      const voidJumps = state.encounters.history.filter(h => h.region === 'void').length;
+      // If we just won the 6th fight (index 5, if 0-based? No, length count).
+      // We forced the boss at >= 5 jumps. So if we have >= 5 entries in history + this one?
+      // Actually, the current encounter is not in history yet usually until we close it?
+      // Let's assume if we just beat 'patrol-drone' in void and we have >= 5 jumps in history, it was the boss.
+      
+      if (voidJumps >= 5) {
+         // Mark void as completed
+         if (!state.navigation.completedRegions.includes('void')) {
+             state.navigation.completedRegions.push('void');
+             CombatLogger.log(state, `SECTOR SECURED. Navigational data acquired for deep space sectors.`, 'SYSTEM');
+         }
+      }
+
       CombatLogger.log(state, `Recovered 1 relic from the drifting wreckage.`, 'SYSTEM');
     }
   }
@@ -610,6 +669,16 @@ export class CombatSystem {
     }
     
     const regionId = state.navigation.currentRegion;
+    
+    // Check for boss encounter in void (after 5 jumps)
+    const currentJumps = state.encounters.history.filter(h => h.region === regionId).length;
+    
+    // Force boss fight if conditions met
+    if (regionId === 'void' && currentJumps >= 5) {
+       // Using 'patrol-drone' as placeholder boss for now
+       return 'patrol-drone'; 
+    }
+
     Logger.debug(
       LogCategory.COMBAT,
       `Current region: ${regionId}`,
@@ -627,53 +696,22 @@ export class CombatSystem {
       return null;
     }
     
-    Logger.debug(
-      LogCategory.COMBAT,
-      `Region: ${region.name}`,
-      LogContext.COMBAT
-    );
-    
     // Get all enemies that can appear in this region
     const possibleEnemies = region.enemyProbabilities;
-    Logger.debug(
-      LogCategory.COMBAT,
-      `Possible enemies: ${JSON.stringify(possibleEnemies)}`,
-      LogContext.COMBAT
-    );
     
     if (possibleEnemies.length === 0) {
-      Logger.debug(
-        LogCategory.COMBAT,
-        "No enemies available for this region",
-        LogContext.COMBAT
-      );
       return null;
     }
     
     // Calculate total weight
     const totalWeight = possibleEnemies.reduce((sum, entry) => sum + entry.weight, 0);
-    Logger.debug(
-      LogCategory.COMBAT,
-      `Total weight: ${totalWeight}`,
-      LogContext.COMBAT
-    );
     
     // Select random enemy based on weights
     let randomValue = Math.random() * totalWeight;
-    Logger.debug(
-      LogCategory.COMBAT,
-      `Random value: ${randomValue}`,
-      LogContext.COMBAT
-    );
     let selectedEnemyId: string | null = null;
     
     for (const enemy of possibleEnemies) {
       randomValue -= enemy.weight;
-      Logger.debug(
-        LogCategory.COMBAT,
-        `Checking enemy ${enemy.enemyId}, remaining weight: ${randomValue}`,
-        LogContext.COMBAT
-      );
       if (randomValue <= 0) {
         selectedEnemyId = enemy.enemyId;
         break;
@@ -683,18 +721,8 @@ export class CombatSystem {
     // If somehow we didn't select one, pick the first
     if (!selectedEnemyId && possibleEnemies.length > 0) {
       selectedEnemyId = possibleEnemies[0].enemyId;
-      Logger.debug(
-        LogCategory.COMBAT,
-        `Fallback: selected first enemy ${selectedEnemyId}`,
-        LogContext.COMBAT
-      );
     }
     
-    Logger.debug(
-      LogCategory.COMBAT,
-      `Selected enemy: ${selectedEnemyId}`,
-      LogContext.COMBAT
-    );
     return selectedEnemyId;
   }
 

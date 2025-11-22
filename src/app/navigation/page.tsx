@@ -17,9 +17,6 @@ import { useDevMode } from "@/components/providers/dev-mode-provider"
 // Constants
 const JUMPS_PER_REGION = 6;
 
-// Sub-region labels shown sequentially
-const SUB_LABELS = ['α','β','γ'];
-
 // Fallback names for region types that don't yet have full definitions
 const REGION_TYPE_FALLBACK_NAMES: Record<RegionType, string> = {
   'blackhole': "Black Hole",
@@ -29,11 +26,20 @@ const REGION_TYPE_FALLBACK_NAMES: Record<RegionType, string> = {
   'nebula': "Nebula",
 };
 
+// Unique subregion names for each region
+const REGION_SUBREGIONS: Record<RegionType, string[]> = {
+  'void': ['Drifting Debris', 'Silent Expanse', 'Echoing Vacuum', 'Null Point', 'Deep Dark', 'Abyssal Plane'],
+  'nebula': ['Ionized Mists', 'Stellar Nursery', 'Chromatic Veil', 'Plasma Storm', 'Electric Haze', 'Core Cloud'],
+  'asteroid': ['Shattered Belt', 'Mining Sector', 'Debris Field', 'Rock Garden', 'Iron Cluster', 'Planetoid Remnant'],
+  'deepspace': ['Radiation Belt', 'Pulsar Proximity', 'Gamma Sector', 'Decay Zone', 'Unstable Orbit', 'Critical Mass'],
+  'blackhole': ['Event Horizon', 'Accretion Disk', 'Time Dilation', 'Gravity Well', 'Singularity Edge', 'Point of No Return'],
+};
+
 export default function NavigationPage() {
   const { state, dispatch } = useGame()
   const { shouldFlicker } = useSystemStatus()
   const router = useRouter()
-  const [showVoidView, setShowVoidView] = useState(true)
+  const [showVoidView, setShowVoidView] = useState(!state?.navigation?.completedRegions?.includes('void'));
   const { devMode } = useDevMode()
   
   // Log component render
@@ -57,6 +63,30 @@ export default function NavigationPage() {
   const unlocked = (_regionId: string) => true;
   
   // Show regions based on toggle state
+  // Logic: If void is completed, default to main regions view? 
+  // Or just allow toggling. The user asked "automatically switch to the main regions screen".
+  // So we should check state on mount/render.
+  
+  const voidCompleted = state?.navigation?.completedRegions?.includes('void');
+  
+  // If void is completed and we haven't manually toggled back to void (we can use state for this?),
+  // actually, let's just make the default depend on completion status, but allow toggle.
+  // We need a useEffect to switch it once when completion is detected, or just derive initial state?
+  // Derive initial state might flicker on client hydration if state changes.
+  // Let's use a useEffect to auto-switch if void is completed and we are currently viewing void.
+  
+  // Actually, simpler: "Show Void View" defaults to !voidCompleted.
+  // But we need to allow the user to go back.
+  // Let's stick to the user's request: "once the boss is defeated, it should automatically switch".
+  // This implies an event or a state change.
+  
+  // We can use a simple effect:
+  // If voidCompleted is true and we are in "void view", switch to main view?
+  // But we don't want to annoy the user if they WANT to see void.
+  // Maybe just "Default to Main Regions if Void is Complete".
+  
+  // Let's update the initial state logic or effect.
+
   const visibleRegions = showVoidView ? [RegionType.VOID] : [RegionType.NEBULA, RegionType.SUPERNOVA, RegionType.RADIATION_ZONE, RegionType.ASTEROID_FIELD];
   
   // Helper to get human-readable region name
@@ -88,7 +118,7 @@ export default function NavigationPage() {
   
   return (
     <GameLoader>
-      <main className="flex min-h-screen flex-col">
+      <main className="min-h-screen">
         <NavBar />
         
         <div className="flex flex-col p-4 md:p-8 md:ml-64">
@@ -145,7 +175,7 @@ export default function NavigationPage() {
                       {/* Sequential sub-region progress (skip for void) */}
                       {regionId !== 'void' && (
                         <div className="mt-4 flex flex-col gap-2">
-                          {SUB_LABELS.map((label, idx) => {
+                          {REGION_SUBREGIONS[regionId as RegionType]?.slice(0, 3).map((label, idx) => {
                             const subUnlocked = Math.floor(jumps / JUMPS_PER_REGION) > idx;
                             const isCurrent = Math.floor(jumps / JUMPS_PER_REGION) === idx;
                             const progressInSub = isCurrent ? (jumps % JUMPS_PER_REGION) : 0;
@@ -153,13 +183,42 @@ export default function NavigationPage() {
                             return (
                               <div key={label}>
                                 <div className="flex items-center gap-1 text-sm font-medium mb-1">
-                                  <span>{`Sub-region ${label}`}</span>
+                                  <span>{label}</span>
                                   {!subUnlocked && !isCurrent && <Lock className="h-3 w-3 text-muted-foreground" />}
                                 </div>
                                 <Progress value={value} indicatorClassName={subUnlocked || isCurrent ? config.barClass : 'bg-muted-foreground'} />
                               </div>
                             );
                           })}
+                        </div>
+                      )}
+
+                      {/* Special visual indicator for Void Boss Progress */}
+                      {regionId === 'void' && (
+                        <div className="mt-4">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span>Sector Progress</span>
+                            <span className={jumps >= 5 ? "text-red-500 animate-pulse font-bold" : "text-muted-foreground"}>
+                              {jumps}/6
+                            </span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden flex">
+                            {[...Array(6)].map((_, i) => (
+                              <div 
+                                key={i} 
+                                className={`flex-1 border-r border-background last:border-none ${
+                                  i < jumps 
+                                    ? (i === 5 ? 'bg-red-600' : config.barClass) 
+                                    : 'bg-transparent'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          {jumps >= 5 && (
+                            <p className="text-xs text-red-500 mt-2 font-mono animate-pulse">
+                              ⚠️ MASSIVE SIGNAL DETECTED
+                            </p>
+                          )}
                         </div>
                       )}
 

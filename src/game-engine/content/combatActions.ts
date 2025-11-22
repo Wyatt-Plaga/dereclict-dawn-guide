@@ -10,6 +10,15 @@ export const PLAYER_ACTIONS: Record<string, CombatActionDefinition> = {
     shieldRepair: 15,
     cooldown: 1
   },
+  "energy-pulse": {
+    id: "energy-pulse",
+    name: "Energy Pulse",
+    description: "Basic reactor-powered energy discharge",
+    category: CombatActionCategory.WEAPON,
+    cost: { type: "energy", amount: 15 },
+    damage: 15,
+    cooldown: 1
+  },
   "plasma-cannon": {
     id: "plasma-cannon",
     name: "Plasma Cannon",

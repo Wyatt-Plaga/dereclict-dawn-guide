@@ -1,5 +1,5 @@
 import { RegionType } from "../types/regions";
-import { LucideIcon, Circle, Zap, Cpu, Users, Package } from "lucide-react";
+import { LucideIcon, Circle, Zap, Cpu, Users, Package, Sparkles } from "lucide-react";
 
 export interface RegionStyle {
   icon: LucideIcon;
@@ -10,7 +10,7 @@ export interface RegionStyle {
 
 export const REGION_TYPE_STYLES: Record<RegionType, RegionStyle> = {
   'void': {
-    icon: Circle,
+    icon: Sparkles,
     colorClass: "text-black dark:text-white",
     bgClass: "bg-black/20 dark:bg-gray-700/20",
     barClass: "bg-black dark:bg-gray-300",

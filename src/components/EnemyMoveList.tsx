@@ -16,34 +16,45 @@ const iconForAction = (id: string) => {
   return <Zap className="h-5 w-5 mr-2" />;
 };
 
-export default function EnemyMoveList({ actions, chargingActionId }: Props) {
-  // Ensure exactly 4 grid slots for a 2x2 layout
-  const slots: (EnemyActionDefinition | null)[] = [...actions];
-  while (slots.length < 4) slots.push(null);
+const getActionSummary = (action: EnemyActionDefinition) => {
+  if (action.damage && action.shieldDamage) return `Dmg: ${action.damage} | Shld: ${action.shieldDamage}`;
+  if (action.damage) return `Damage: ${action.damage}`;
+  if (action.shieldDamage) return `Shield Dmg: ${action.shieldDamage}`;
+  if (action.statusEffect) return `${action.statusEffect.type} (${action.statusEffect.duration}t)`;
+  return "";
+};
 
+export default function EnemyMoveList({ actions, chargingActionId }: Props) {
   return (
-    <div className="grid grid-cols-2 grid-rows-2 gap-3 h-full font-mono">
-      {slots.map((a, idx) => (
+    <div className={`grid gap-3 h-full font-mono ${
+      actions.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+    }`}>
+      {actions.map((a) => (
         <button
-          key={a ? a.id : `empty-${idx}`}
+          key={a.id}
           type="button"
           disabled
           className={cn(
-            'system-panel relative flex flex-col items-center justify-center p-4 h-full text-center',
-            a && chargingActionId === a.id && 'bg-chart-2/20 text-chart-2 animate-pulse',
-            !a && 'opacity-0 pointer-events-none'
+            'system-panel relative flex flex-col items-center justify-center p-4 h-full text-center min-h-[100px]',
+            chargingActionId === a.id && 'bg-chart-2/20 text-chart-2 animate-pulse border-chart-2/50'
           )}
         >
-          {a && (
-            <>
-              <div className="flex flex-col items-center mb-1 relative z-10">
-                {iconForAction(a.id)}
-                <span className="text-sm font-medium truncate mt-1">{a.name}</span>
-              </div>
-              {chargingActionId === a.id && (
-                <span className="absolute inset-y-0 left-0 bg-chart-2/20 animate-grow pointer-events-none" />
-              )}
-            </>
+          <div className="flex flex-col items-center mb-2 relative z-10 w-full">
+            <div className="flex items-center mb-1">
+              {iconForAction(a.id)}
+              <span className="text-sm font-medium truncate">{a.name}</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight px-2">
+              {a.description}
+            </p>
+          </div>
+          
+          <div className="mt-auto relative z-10 bg-background/50 px-2 py-1 rounded text-xs font-semibold">
+            {getActionSummary(a)}
+          </div>
+
+          {chargingActionId === a.id && (
+            <span className="absolute inset-y-0 left-0 bg-chart-2/10 animate-grow pointer-events-none w-full" />
           )}
         </button>
       ))}

@@ -31,6 +31,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <div className="scanlines" />
+        <div className="hex-background" />
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <SystemStatusProvider>
             <TanstackClientProvider>

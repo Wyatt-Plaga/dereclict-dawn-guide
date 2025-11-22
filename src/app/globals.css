@@ -1,11 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Parkinsans:wght@300..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 .logo-text {
-  font-family: Parkinsans, sans-serif;
+  font-family: 'Parkinsans', sans-serif;
 }
 
 @layer utilities {
@@ -16,76 +17,43 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 10% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-  .dark {
-    /* Dark sci-fi theme with broken-down aesthetic */
-    --background: 220 14% 8%; /* Dark blue-gray background */
-    --foreground: 195 30% 90%; /* Slightly blue-tinted text */
-    --card: 220 20% 10%; /* Slightly lighter than background */
+    --background: 220 14% 8%;
+    --foreground: 195 30% 90%;
+    --card: 220 20% 10%;
     --card-foreground: 195 30% 90%;
     --popover: 220 16% 12%;
     --popover-foreground: 195 30% 90%;
-    --primary: 195 80% 50%; /* Bright teal for primary actions */
+    --primary: 195 80% 50%; /* Bright teal/cyan */
     --primary-foreground: 220 14% 8%;
-    --secondary: 220 30% 16%; /* Darker blue-gray */
+    --secondary: 220 30% 16%;
     --secondary-foreground: 195 30% 90%;
     --muted: 215 28% 17%;
     --muted-foreground: 195 20% 65%;
-    --accent: 195 80% 30%; /* Darker teal for accents */
+    --accent: 180 100% 25%;
     --accent-foreground: 195 30% 90%;
-    --destructive: 350 90% 40%; /* Red-ish for warnings */
-    --destructive-foreground: 195 30% 90%;
-    --border: 215 25% 18%; /* Slightly visible borders */
+    --destructive: 0 90% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 195 30% 20%;
     --input: 215 25% 18%;
-    --ring: 195 80% 40%;
-    /* Ship system colors */
-    --chart-1: 195 80% 50%; /* Energy - Teal */
-    --chart-2: 260 70% 55%; /* Insight - Purple */
-    --chart-3: 340 60% 55%; /* Crew - Pink/Red */
-    --chart-4: 40 80% 60%; /* Scrap - Gold/Amber */
-    --chart-5: 150 60% 45%; /* Ship Status - Green */
-    --radius: 0.3rem; /* Sharper edges for a more tech look */
-    --sidebar-background: 220 20% 12%;
+    --ring: 195 80% 50%;
+    
+    /* Ship system colors - Neon / Sci-Fi Palette */
+    --chart-1: 180 100% 50%; /* Energy - Cyan */
+    --chart-2: 280 80% 65%; /* Insight - Neon Purple */
+    --chart-3: 340 90% 65%; /* Crew - Pink/Red */
+    --chart-4: 230 10% 60%; /* Scrap - Silver */
+    --chart-5: 45 100% 50%; /* Relics - Gold */
+    
+    --radius: 2px; /* Tech look typically has sharp or small rounded corners */
+    
+    --sidebar-background: 220 20% 10%;
     --sidebar-foreground: 195 30% 90%;
     --sidebar-primary: 195 80% 50%;
     --sidebar-primary-foreground: 220 14% 8%;
     --sidebar-accent: 220 30% 16%;
     --sidebar-accent-foreground: 195 30% 90%;
-    --sidebar-border: 215 25% 18%;
-    --sidebar-ring: 195 80% 40%;
+    --sidebar-border: 195 30% 20%;
+    --sidebar-ring: 195 80% 50%;
   }
 }
 
@@ -94,184 +62,170 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden;
+    font-family: 'Share Tech Mono', monospace; /* Default to tech font */
   }
 }
 
-/* Add some sci-fi themed utility classes */
+/* Sci-fi Interface Styles */
+
+/* Scanlines Overlay */
+.scanlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0) 50%,
+    rgba(0, 0, 0, 0.2) 50%,
+    rgba(0, 0, 0, 0.2)
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.3;
+}
+
+/* Hex Grid Background */
+.hex-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-image: 
+    radial-gradient(circle at center, transparent 0%, #0a0f1c 100%),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231a253a' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Tech Panel Look */
+@layer components {
+  .system-panel {
+    @apply border border-border/50 bg-card/80 backdrop-blur-md relative overflow-hidden;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  }
+}
+
+.system-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary)), transparent);
+  opacity: 0.5;
+}
+
+.system-panel::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-bottom: 2px solid hsl(var(--primary));
+  border-right: 2px solid hsl(var(--primary));
+}
+
+/* Typography */
 .terminal-text {
-  font-family: var(--font-geist-mono);
-  @apply text-primary tracking-wider;
+  font-family: 'Share Tech Mono', monospace;
+  @apply text-primary tracking-widest uppercase;
+  text-shadow: 0 0 5px hsl(var(--primary) / 0.5);
 }
 
-.system-panel {
-  @apply border border-border rounded-md bg-card/80 backdrop-blur-sm;
-}
-
-/* System status based effects */
-
-/* Improved unreliable flickering for critical systems */
+/* Animations */
 .flickering-text {
-  animation: erratic-flicker 5s steps(1) infinite;
-  text-shadow: 0 0 5px hsl(var(--primary)), 0 0 10px hsl(var(--primary) / 0.5);
+  animation: text-flicker 3s infinite alternate;
 }
 
-/* More subtle glows for other elements */
-.glow-container {
-  box-shadow: 0 0 10px 1px hsl(var(--primary) / 0.15);
-}
-
-/* Animation keyframes */
-@keyframes erratic-flicker {
-  0%, 100% { opacity: 1; }
-  5% { opacity: 0.8; }
+@keyframes text-flicker {
+  0% { opacity: 1; text-shadow: 0 0 5px hsl(var(--primary)); }
+  2% { opacity: 0.8; }
+  4% { opacity: 1; }
   10% { opacity: 1; }
-  25% { opacity: 0.9; }
-  30% { opacity: 1; }
-  40% { opacity: 0.7; }
-  50% { opacity: 1; }
-  70% { opacity: 0.8; }
-  80%, 95% { opacity: 1; }
+  12% { opacity: 0.6; }
+  14% { opacity: 1; }
+  100% { opacity: 1; }
 }
 
-/* Region-specific effects for encounters */
+.glitch-text {
+  position: relative;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.8;
+}
+
+.glitch-text::before {
+  color: cyan;
+  z-index: -1;
+  animation: glitch-anim-1 2s infinite linear alternate-reverse;
+}
+
+.glitch-text::after {
+  color: red;
+  z-index: -2;
+  animation: glitch-anim-2 3s infinite linear alternate-reverse;
+}
+
+@keyframes glitch-anim-1 {
+  0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px, 0); }
+  20% { clip-path: inset(60% 0 10% 0); transform: translate(2px, 0); }
+  40% { clip-path: inset(40% 0 50% 0); transform: translate(-2px, 0); }
+  60% { clip-path: inset(80% 0 5% 0); transform: translate(2px, 0); }
+  80% { clip-path: inset(10% 0 70% 0); transform: translate(-1px, 0); }
+  100% { clip-path: inset(30% 0 50% 0); transform: translate(1px, 0); }
+}
+
+@keyframes glitch-anim-2 {
+  0% { clip-path: inset(10% 0 60% 0); transform: translate(2px, 0); }
+  20% { clip-path: inset(80% 0 5% 0); transform: translate(-2px, 0); }
+  40% { clip-path: inset(30% 0 20% 0); transform: translate(2px, 0); }
+  60% { clip-path: inset(10% 0 80% 0); transform: translate(-2px, 0); }
+  80% { clip-path: inset(50% 0 30% 0); transform: translate(1px, 0); }
+  100% { clip-path: inset(20% 0 60% 0); transform: translate(-1px, 0); }
+}
+
+/* Region Effects (Existing but refined) */
 .void-effect {
-  background: radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.3), rgba(15, 23, 42, 0.1));
-  filter: blur(40px);
-  width: 150%;
-  height: 150%;
-  position: absolute;
-  top: -25%;
-  left: -25%;
-  animation: drift 20s infinite alternate;
+  background: radial-gradient(circle at 50% 50%, rgba(10, 15, 30, 0.5), transparent 80%);
 }
-
 .nebula-effect {
-  background: 
-    radial-gradient(circle at 30% 70%, rgba(129, 140, 248, 0.3), transparent 70%),
-    radial-gradient(circle at 70% 30%, rgba(168, 85, 247, 0.3), transparent 70%);
-  filter: blur(30px);
-  width: 150%;
-  height: 150%;
-  position: absolute;
-  top: -25%;
-  left: -25%;
-  animation: nebulaPulse 15s infinite alternate;
+  background: radial-gradient(circle at 50% 50%, rgba(100, 0, 255, 0.1), transparent 70%);
+}
+/* ... keep other specialized effects simple for now */
+
+/* Button Hover Glow */
+button.system-panel:hover {
+  box-shadow: 0 0 15px hsl(var(--primary) / 0.3);
+  border-color: hsl(var(--primary));
 }
 
-.asteroid-effect {
-  background: 
-    radial-gradient(circle at 20% 80%, rgba(251, 191, 36, 0.2), transparent 40%),
-    radial-gradient(circle at 80% 20%, rgba(180, 83, 9, 0.2), transparent 40%);
-  filter: blur(20px);
-  width: 150%;
-  height: 150%;
-  position: absolute;
-  top: -25%;
-  left: -25%;
-  animation: asteroidDrift 25s infinite alternate;
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
 }
-
-.deepspace-effect {
-  background: 
-    radial-gradient(circle at 10% 10%, rgba(30, 58, 138, 0.2), transparent 50%),
-    radial-gradient(circle at 90% 90%, rgba(15, 23, 42, 0.2), transparent 50%);
-  filter: blur(50px);
-  width: 150%;
-  height: 150%;
-  position: absolute;
-  top: -25%;
-  left: -25%;
-  animation: deepspacePulse 30s infinite alternate;
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
 }
-
-.blackhole-effect {
-  background: radial-gradient(circle at 50% 50%, rgba(24, 24, 27, 0.8), transparent 70%);
-  filter: blur(40px);
-  width: 150%;
-  height: 150%;
-  position: absolute;
-  top: -25%;
-  left: -25%;
-  animation: blackholePulse 20s infinite;
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
 }
-
-@keyframes drift {
-  0% { transform: translate(-5%, -5%); }
-  100% { transform: translate(5%, 5%); }
-}
-
-@keyframes nebulaPulse {
-  0% { 
-    transform: scale(1);
-    opacity: 0.6;
-  }
-  50% { 
-    transform: scale(1.1);
-    opacity: 0.8;
-  }
-  100% { 
-    transform: scale(1);
-    opacity: 0.6;
-  }
-}
-
-@keyframes asteroidDrift {
-  0% { transform: rotate(0deg) translate(-3%, -3%); }
-  100% { transform: rotate(5deg) translate(3%, 3%); }
-}
-
-@keyframes deepspacePulse {
-  0% { 
-    transform: scale(1);
-    filter: blur(50px);
-  }
-  50% { 
-    transform: scale(1.1);
-    filter: blur(40px);
-  }
-  100% { 
-    transform: scale(1);
-    filter: blur(50px);
-  }
-}
-
-@keyframes blackholePulse {
-  0% { 
-    transform: scale(1) rotate(0deg);
-    opacity: 0.7;
-  }
-  50% { 
-    transform: scale(0.9) rotate(180deg);
-    opacity: 0.9;
-  }
-  100% { 
-    transform: scale(1) rotate(360deg);
-    opacity: 0.7;
-  }
-}
-
-/* Flash animations for combat bars */
-@keyframes flashShield {
-  0% { filter: brightness(1); }
-  40% { filter: brightness(2.5) hue-rotate(220deg) drop-shadow(0 0 4px hsl(var(--chart-1))); }
-  100% { filter: brightness(1); }
-}
-
-@keyframes flashDamage {
-  0% { filter: brightness(1); }
-  40% { filter: brightness(3) hue-rotate(-10deg) drop-shadow(0 0 4px #ff5555); }
-  100% { filter: brightness(1); }
-}
-
-.flash-shield {
-  animation: flashShield 0.4s ease-in-out;
-}
-
-.flash-damage {
-  animation: flashDamage 0.4s ease-in-out;
-}
-
-.enemy-sprite {
-  filter: hue-rotate(20deg) saturate(1.4) brightness(1.1);
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
 }

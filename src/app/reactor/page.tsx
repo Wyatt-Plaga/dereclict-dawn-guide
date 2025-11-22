@@ -122,7 +122,7 @@ export default function ReactorPage() {
   
   return (
     <GameLoader>
-      <main className="flex min-h-screen flex-col">
+      <main className="min-h-screen">
         <NavBar />
         
         <div className="flex flex-col p-4 md:p-8 md:ml-64">
@@ -164,40 +164,62 @@ export default function ReactorPage() {
               <h2 className="text-lg font-semibold terminal-text">Upgrades</h2>
               
               {/* Capacity upgrade */}
-              <div className={`system-panel p-4 ${energy >= expansionCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
-                   onClick={upgradeCapacity}>
-                <div className="flex items-center justify-between mb-2">
+              <button
+                className={`w-full system-panel p-4 text-left transition-all relative overflow-hidden group ${
+                  energy >= expansionCost 
+                    ? 'hover:bg-chart-1/10 hover:border-chart-1/50 shadow-[0_0_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_20px_rgba(var(--chart-1),0.2)]' 
+                    : 'opacity-50 cursor-not-allowed grayscale'
+                }`}
+                disabled={energy < expansionCost}
+                onClick={upgradeCapacity}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-r from-chart-1/5 to-transparent opacity-0 transition-opacity duration-300 ${energy >= expansionCost ? 'group-hover:opacity-100' : ''}`} />
+                
+                <div className="flex items-center justify-between mb-2 relative z-10">
                   <div className="flex items-center">
-                    <ArrowUpCircle className="h-5 w-5 text-chart-1 mr-2" />
-                    <span>Reactor Expansion</span>
+                    <ArrowUpCircle className={`h-5 w-5 mr-3 ${energy >= expansionCost ? 'text-chart-1' : 'text-muted-foreground'}`} />
+                    <span className={`font-semibold ${energy >= expansionCost ? 'text-foreground' : 'text-muted-foreground'}`}>Reactor Expansion</span>
                   </div>
-                  <span className="font-mono text-xs">{expansionCost} Energy</span>
+                  <span className={`font-mono text-xs px-2 py-1 rounded ${energy >= expansionCost ? 'bg-chart-1/20 text-chart-1' : 'bg-muted/20 text-muted-foreground'}`}>
+                    {expansionCost} Energy
+                  </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground relative z-10">
                   Expand energy storage capacity to {Math.floor(energyCapacity * 1.5)}
                 </p>
-                <div className="mt-2 text-xs">
+                <div className="mt-2 text-xs font-mono text-primary/60 relative z-10">
                   Level: {reactor.upgrades.reactorExpansions}
                 </div>
-              </div>
+              </button>
               
               {/* Auto generation upgrade */}
-              <div className={`system-panel p-4 ${energy >= converterCost ? 'cursor-pointer hover:bg-accent/10' : 'opacity-60'}`}
-                   onClick={upgradeAutoGeneration}>
-                <div className="flex items-center justify-between mb-2">
+              <button
+                className={`w-full system-panel p-4 text-left transition-all relative overflow-hidden group ${
+                  energy >= converterCost 
+                    ? 'hover:bg-chart-1/10 hover:border-chart-1/50 shadow-[0_0_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_20px_rgba(var(--chart-1),0.2)]' 
+                    : 'opacity-50 cursor-not-allowed grayscale'
+                }`}
+                disabled={energy < converterCost}
+                onClick={upgradeAutoGeneration}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-r from-chart-1/5 to-transparent opacity-0 transition-opacity duration-300 ${energy >= converterCost ? 'group-hover:opacity-100' : ''}`} />
+
+                <div className="flex items-center justify-between mb-2 relative z-10">
                   <div className="flex items-center">
-                    <Zap className="h-5 w-5 text-chart-1 mr-2" />
-                    <span>Energy Converter</span>
+                    <Zap className={`h-5 w-5 mr-3 ${energy >= converterCost ? 'text-chart-1' : 'text-muted-foreground'}`} />
+                    <span className={`font-semibold ${energy >= converterCost ? 'text-foreground' : 'text-muted-foreground'}`}>Energy Converter</span>
                   </div>
-                  <span className="font-mono text-xs">{converterCost} Energy</span>
+                  <span className={`font-mono text-xs px-2 py-1 rounded ${energy >= converterCost ? 'bg-chart-1/20 text-chart-1' : 'bg-muted/20 text-muted-foreground'}`}>
+                    {converterCost} Energy
+                  </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground relative z-10">
                   Add +1 automatic energy generation per second
                 </p>
-                <div className="mt-2 text-xs">
+                <div className="mt-2 text-xs font-mono text-primary/60 relative z-10">
                   Level: {reactor.upgrades.energyConverters}
                 </div>
-              </div>
+              </button>
               
               {/* Converter efficiency (relics) */}
               {(devMode || relics > 0 || efficiencyLevel > 0) && (
