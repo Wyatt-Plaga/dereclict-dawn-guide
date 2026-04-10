@@ -6,6 +6,8 @@ import { ThemeProvider } from '@/components/providers/theme-provider'
 import { SystemStatusProvider } from '@/components/providers/system-status-provider'
 import { GameProvider } from '@/game-engine/hooks/useGame'
 import { DevModeProvider } from '@/components/providers/dev-mode-provider'
+import { AdvisorProvider } from '@/components/providers/advisor-provider'
+import AdvisorBubble from '@/components/AdvisorBubble'
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -38,7 +40,10 @@ export default function RootLayout({
             <TanstackClientProvider>
               <DevModeProvider>
                 <GameProvider>
-                  {children}
+                  <AdvisorProvider>
+                    {children}
+                    <AdvisorBubble />
+                  </AdvisorProvider>
                 </GameProvider>
               </DevModeProvider>
             </TanstackClientProvider>

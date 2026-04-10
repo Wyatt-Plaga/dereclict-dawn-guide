@@ -7,6 +7,8 @@ import { DEV_PRESETS } from "@/game-engine/devPresets"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/game-engine/hooks/useGame"
 import { useDevMode } from "@/components/providers/dev-mode-provider"
+import { useAdvisor } from "@/components/providers/advisor-provider"
+import { ADVISOR_MESSAGES } from "@/game-engine/content/advisorMessages"
 import { ResourceSystem } from "@/game-engine/systems/ResourceSystem"
 import { clearCachedState } from "@/game-engine/core/memoryCache"
 
@@ -25,6 +27,14 @@ export function NavBar() {
   const { status, statusText, shouldFlicker } = useSystemStatus()
   const { state, engine } = useGame()
   const { devMode, toggleDevMode } = useDevMode()
+  const { showAdvisor } = useAdvisor()
+
+  const triggerTestAdvisor = () => {
+    const pools = Object.values(ADVISOR_MESSAGES)
+    const pool = pools[Math.floor(Math.random() * pools.length)]
+    const line = pool[Math.floor(Math.random() * pool.length)]
+    showAdvisor(line.text)
+  }
 
   // If on battle page or encounter page, don't show navbar
   if (pathname === '/battle' || pathname === '/encounter') {
@@ -230,6 +240,16 @@ export function NavBar() {
           className="hidden md:flex items-center gap-2 text-xs px-2 py-1 border rounded-md hover:bg-accent/10 mb-2"
         >
           <Wrench className="h-4 w-4" /> Reset Game
+        </button>
+      )}
+
+      {/* Dev: trigger test advisor message */}
+      {devMode && (
+        <button
+          onClick={triggerTestAdvisor}
+          className="hidden md:flex items-center gap-2 text-xs px-2 py-1 border border-cyan-500/40 text-cyan-400 rounded-md hover:bg-cyan-500/10 mb-2"
+        >
+          <Wrench className="h-4 w-4" /> Test Advisor
         </button>
       )}
 

@@ -19,6 +19,9 @@ import CombatActionGrid from "./components/CombatActionGrid";
 import BattleLogDialog from "./components/BattleLogDialog";
 import EnemyMoveList from "@/components/EnemyMoveList";
 import ItemSprite from "@/components/ui/ItemSprite";
+import { useBattleAdvisor } from "@/components/hooks/useBattleAdvisor";
+import { ADVISOR_MESSAGES } from "@/game-engine/content/advisorMessages";
+import { useAdvisor } from "@/components/providers/advisor-provider";
 
 /* -------------------------------------------------------------------------- */
 /* Hooks                                                                      */
@@ -174,6 +177,17 @@ export default function BattlePage() {
   const battleLog = state.combat?.battleLog ?? [];
   const [showLog, setShowLog] = useState(false);
 
+  /* ----------------------------- ADVISOR ---------------------------------- */
+  useBattleAdvisor(state);
+  const { showAdvisor } = useAdvisor();
+
+  const triggerTestAdvisor = () => {
+    const pools = Object.values(ADVISOR_MESSAGES);
+    const pool = pools[Math.floor(Math.random() * pools.length)];
+    const line = pool[Math.floor(Math.random() * pool.length)];
+    showAdvisor(line.text);
+  };
+
   /* ------------------------------ LOADING --------------------------------- */
   if (isInitializing) {
     return (
@@ -248,6 +262,14 @@ export default function BattlePage() {
               >
                 Battle Log
               </button>
+              {devMode && (
+                <button
+                  onClick={triggerTestAdvisor}
+                  className="text-xs font-mono text-cyan-400 border border-cyan-500/40 px-2 py-0.5 rounded hover:bg-cyan-500/10 transition-colors"
+                >
+                  Test Advisor
+                </button>
+              )}
             </div>
           </div>
 

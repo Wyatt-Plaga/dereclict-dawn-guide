@@ -11,7 +11,7 @@ import ResourceClickButton from "@/app/components/ResourceClickButton";
 import { WING_DEFS, SLOT_ORDER, WingId, ResourceSlot, capacityUpgradeCost, efficiencyUpgradeCost } from "@/game-engine/content/wingResources";
 import { ResourceSystem } from "@/game-engine/systems/ResourceSystem";
 import { WingCategory, capKey, effKey } from "@/game-engine/types/resources";
-import { LucideIcon, ChevronUp, Wrench, Cpu, Package, Bot } from "lucide-react";
+import { LucideIcon, ChevronUp, Wrench, Cpu, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 
@@ -53,19 +53,16 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
   }, [wing.secondaryUnlocked, wing.tertiaryUnlocked, wing.automated.primary, wing.automated.secondary, wing.automated.tertiary]);
 
   // Workers are drawn from a single global pool now
-  const wingAssigned = wing.workers.primary + wing.workers.secondary + wing.workers.tertiary;
   const globalAssigned = (['reactor', 'processor', 'crewQuarters', 'manufacturing'] as WingId[])
     .reduce((sum, id) => {
       const w = state.categories[id] as WingCategory;
       return sum + w.workers.primary + w.workers.secondary + w.workers.tertiary;
     }, 0);
   const totalWorkers = state.workers?.total ?? 0;
-  const maxWorkers = state.workers?.max ?? 0;
   const freeWorkers = totalWorkers - globalAssigned;
   const hasAvailable = freeWorkers > 0 && wing.unlocked;
 
   const anyAutomated = wing.automated.primary || wing.automated.secondary || wing.automated.tertiary;
-  const workerPanelNew = anyAutomated && (animating.has('auto-primary') || animating.has('auto-secondary') || animating.has('auto-tertiary'));
 
   // Which slots are visible (tier unlocked)
   const visibleSlots: ResourceSlot[] = ['primary'];
@@ -112,26 +109,6 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
 
           {/* Energy balance — show when any slot is automated */}
           {anyAutomated && <WorkerAllocationBar />}
-
-          {/* Shared worker pool indicator — show when any slot is automated */}
-          {anyAutomated && (
-            <div className={cn("system-panel p-3 mb-4", workerPanelNew && "animate-slot-reveal")}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Bot className={`h-4 w-4 text-${def.color}`} />
-                  <span className="text-xs font-semibold terminal-text uppercase tracking-wider">Drones on this wing</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-mono text-muted-foreground">
-                    {wingAssigned} here · {freeWorkers} idle · {totalWorkers}/{maxWorkers} total
-                  </span>
-                </div>
-              </div>
-              <p className="text-[10px] text-muted-foreground/60 font-mono mt-1">
-                Build and upgrade drones in the Bridge.
-              </p>
-            </div>
-          )}
 
           {/* Resource chain label — show when at least secondary is visible */}
           {wing.secondaryUnlocked && (

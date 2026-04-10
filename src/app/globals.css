@@ -263,6 +263,29 @@ button.system-panel:hover {
   100% { opacity: 0; transform: translate(-50%, -50%) translateY(-40px); }
 }
 
+/* AI advisor sprite — gentle floating bob */
+.advisor-bob {
+  animation: advisor-bob-anim 3s ease-in-out infinite;
+}
+
+@keyframes advisor-bob-anim {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+
+/* AI advisor glitch text jitter (early game) */
+.advisor-glitch-jitter {
+  display: inline-block;
+  animation: advisor-glitch-jitter-anim 0.18s steps(2, end) infinite;
+}
+
+@keyframes advisor-glitch-jitter-anim {
+  0%, 100% { transform: translate(0, 0); }
+  25%      { transform: translate(-0.5px, 0.5px); }
+  50%      { transform: translate(0.5px, -0.5px); }
+  75%      { transform: translate(-0.5px, -0.5px); }
+}
+
 /* Glitch text effect for corrupted/unknown logs */
 .glitch-text {
   animation: glitch-anim 2s infinite;

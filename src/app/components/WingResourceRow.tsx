@@ -94,6 +94,18 @@ export default function WingResourceRow({
         <span className="text-xs text-muted-foreground">Workers:</span>
         <div className="flex items-center gap-1">
           <button
+            onClick={onAssign}
+            disabled={!canAssign}
+            className={cn(
+              "h-6 w-6 flex items-center justify-center rounded transition-colors",
+              canAssign
+                ? `bg-${color}/10 text-${color} hover:bg-${color}/20`
+                : "bg-muted/10 text-muted-foreground/30 cursor-not-allowed"
+            )}
+          >
+            <Plus className="h-3 w-3" />
+          </button>
+          <button
             onClick={onUnassign}
             disabled={workers <= 0}
             className={cn(
@@ -106,18 +118,6 @@ export default function WingResourceRow({
             <Minus className="h-3 w-3" />
           </button>
           <span className="text-sm font-mono w-6 text-center font-semibold">{workers}</span>
-          <button
-            onClick={onAssign}
-            disabled={!canAssign}
-            className={cn(
-              "h-6 w-6 flex items-center justify-center rounded transition-colors",
-              canAssign
-                ? `bg-${color}/10 text-${color} hover:bg-${color}/20`
-                : "bg-muted/10 text-muted-foreground/30 cursor-not-allowed"
-            )}
-          >
-            <Plus className="h-3 w-3" />
-          </button>
         </div>
       </div>
 
