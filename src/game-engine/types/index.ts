@@ -174,12 +174,15 @@ export const initialGameState: GameState = {
         },
         battleLog: [],
         availableActions: [],
+        turn: 1,
+        turnPhase: 'PLAYER',
+        playerAP: 1,
+        maxPlayerAP: 1,
+        playerStunTurns: 0,
         cooldowns: {},
+        enemyCooldowns: {},
         lastActionResult: undefined,
         lastEnemyActionId: null,
-        enemyCooldowns: {},
-        enemyActionFlash: {},
-        playerStunTimer: 0,
         rewards: {
             energy: 0,
             insight: 0,
@@ -187,9 +190,8 @@ export const initialGameState: GameState = {
             scrap: 0
         },
         radiationStacks: 0,
-        radiationTickTimer: 4,
         enemyCloaked: false,
-        enemyCloakTimer: 0
+        enemyCloakTurns: 0
     },
     relics: 0,
     inventory: ['basic-phaser'],

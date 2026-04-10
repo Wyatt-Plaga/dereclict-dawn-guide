@@ -135,6 +135,10 @@ export interface RetreatFromBattleAction {
   type: 'RETREAT_FROM_BATTLE';
 }
 
+export interface EndTurnAction {
+  type: 'END_TURN';
+}
+
 export interface EquipAbilityAction {
   type: 'EQUIP_ABILITY';
   payload: {
@@ -178,6 +182,7 @@ export type GameAction =
   | StoryChoiceAction
   | CombatActionAction
   | RetreatFromBattleAction
+  | EndTurnAction
   | EquipAbilityAction
   | UnequipAbilityAction
   | CraftAmmoAction

@@ -109,15 +109,15 @@ export class CombatCalculator {
   }
 
   /**
-   * Decrement status effect timers (real-time, in seconds)
+   * Decrement status effect timers by one turn and drop expired effects.
    */
-  static processStatusEffects(effects: StatusEffectInstance[], delta: number): StatusEffectInstance[] {
+  static processStatusEffects(effects: StatusEffectInstance[]): StatusEffectInstance[] {
     return effects
       .map(effect => ({
         ...effect,
-        remainingTime: effect.remainingTime - delta
+        remainingTurns: effect.remainingTurns - 1
       }))
-      .filter(effect => effect.remainingTime > 0);
+      .filter(effect => effect.remainingTurns > 0);
   }
 }
 

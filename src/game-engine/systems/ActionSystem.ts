@@ -64,6 +64,8 @@ export class ActionSystem {
         return this.handleCombatAction(state, action);
       case 'RETREAT_FROM_BATTLE':
         return this.handleRetreatFromBattle(state);
+      case 'END_TURN':
+        return this.handleEndTurn(state);
       case 'EQUIP_ABILITY':
         return this.handleEquipAbility(state, action);
       case 'UNEQUIP_ABILITY':
@@ -335,6 +337,15 @@ export class ActionSystem {
       return state;
     }
     Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for RETREAT_FROM_BATTLE', LogContext.NONE);
+    return state;
+  }
+
+  private handleEndTurn(state: GameState): GameState {
+    if (this.eventBus) {
+      this.eventBus.emit('END_TURN', { state });
+      return state;
+    }
+    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for END_TURN', LogContext.COMBAT_ACTION);
     return state;
   }
 

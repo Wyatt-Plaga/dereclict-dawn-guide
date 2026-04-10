@@ -20,9 +20,6 @@ import { ALL_PLAYER_ABILITIES } from '@/game-engine/content/playerAbilities';
 import { getResourceAccessor } from '../utils/resourceAccessor';
 import { getRegionKey } from './EncounterSystem';
 
-const RADIATION_TICK_INTERVAL = 4;        // seconds between radiation damage ticks
-const ENEMY_FIRE_FLASH_DURATION = 0.4;    // seconds the "FIRED" flash stays on screen
-
 export class CombatSystem {
   private resourceSystem: ResourceSystem | null = null;
   private eventBus?: EventBus<EventMap>;
@@ -42,6 +39,10 @@ export class CombatSystem {
       this.eventBus.on('RETREAT_FROM_BATTLE', (data) => {
         this.retreat(data.state);
       });
+
+      this.eventBus.on('END_TURN', (data) => {
+        this.endPlayerTurn(data.state);
+      });
     }
   }
 
@@ -49,189 +50,12 @@ export class CombatSystem {
     this.resourceSystem = resourceSystem;
   }
 
-  // ─── REAL-TIME UPDATE ───────────────────────────────────────────────
-
   /**
-   * Real-time combat tick. Called every game-loop frame while combat is active.
-   * `delta` is in seconds (fractional).
+   * Per-tick update — turn-based combat does not need any real-time work.
+   * Kept as a no-op so the GameSystemManager loop can call it harmlessly.
    */
-  update(state: GameState, delta: number): void {
-    if (!state.combat?.active) return;
-
-    // ── Player stun timer ──
-    if (state.combat.playerStunTimer > 0) {
-      state.combat.playerStunTimer = Math.max(0, state.combat.playerStunTimer - delta);
-    }
-
-    // ── Player ability cooldowns ──
-    for (const id of Object.keys(state.combat.cooldowns)) {
-      if (state.combat.cooldowns[id] > 0) {
-        state.combat.cooldowns[id] = Math.max(0, state.combat.cooldowns[id] - delta);
-      }
-    }
-
-    // ── Enemy ability cooldowns ──
-    for (const id of Object.keys(state.combat.enemyCooldowns)) {
-      if (state.combat.enemyCooldowns[id] > 0) {
-        state.combat.enemyCooldowns[id] = Math.max(0, state.combat.enemyCooldowns[id] - delta);
-      }
-    }
-
-    // ── Enemy fire-flash decay ──
-    for (const id of Object.keys(state.combat.enemyActionFlash)) {
-      const next = state.combat.enemyActionFlash[id] - delta;
-      if (next <= 0) delete state.combat.enemyActionFlash[id];
-      else state.combat.enemyActionFlash[id] = next;
-    }
-
-    // ── Status effect decay (player + enemy) ──
-    state.combat.playerStats.statusEffects = CombatCalculator.processStatusEffects(
-      state.combat.playerStats.statusEffects,
-      delta
-    );
-    state.combat.enemyStats.statusEffects = CombatCalculator.processStatusEffects(
-      state.combat.enemyStats.statusEffects,
-      delta
-    );
-
-    // ── Enemy cloak timer ──
-    if (state.combat.enemyCloaked && state.combat.enemyCloakTimer > 0) {
-      state.combat.enemyCloakTimer = Math.max(0, state.combat.enemyCloakTimer - delta);
-      if (state.combat.enemyCloakTimer <= 0) {
-        state.combat.enemyCloaked = false;
-        CombatLogger.log(state, 'Enemy cloak has dissipated.', 'SYSTEM');
-      }
-    }
-
-    // ── Radiation tick (every RADIATION_TICK_INTERVAL seconds) ──
-    if (state.combat.radiationStacks > 0) {
-      state.combat.radiationTickTimer -= delta;
-      if (state.combat.radiationTickTimer <= 0) {
-        const radDmg = state.combat.radiationStacks * 3;
-        state.combat.playerStats.health = Math.max(0, state.combat.playerStats.health - radDmg);
-        CombatLogger.log(state, `Radiation dealt ${radDmg} hull damage (${state.combat.radiationStacks} stacks).`, 'SYSTEM');
-        state.combat.radiationStacks = Math.max(0, state.combat.radiationStacks - 1);
-        state.combat.radiationTickTimer = RADIATION_TICK_INTERVAL;
-        if (state.combat.radiationStacks > 0) {
-          CombatLogger.log(state, `Radiation decayed to ${state.combat.radiationStacks} stacks.`, 'SYSTEM');
-        }
-        if (state.combat.playerStats.health <= 0) {
-          CombatLogger.log(state, 'Radiation exposure proved fatal.', 'SYSTEM');
-          this.endCombatEncounter(state, 'defeat');
-          return;
-        }
-      }
-    }
-
-    // ── Enemy AI: fire all abilities whose cooldown has expired and whose
-    //    use-condition is met. Iterates in priority order (definition order). ──
-    const enemy = this.getEnemyDefinition(state.combat.currentEnemy!);
-    if (!enemy) return;
-
-    for (const actionId of enemy.actions) {
-      const action = ENEMY_ACTIONS[actionId];
-      if (!action) continue;
-      if ((state.combat.enemyCooldowns[actionId] ?? 0) > 0) continue;
-      if (!this.checkEnemyCondition(state, action)) continue;
-
-      this.fireEnemyAction(state, enemy, action);
-      state.combat.enemyCooldowns[actionId] = action.cooldown;
-      state.combat.enemyActionFlash[actionId] = ENEMY_FIRE_FLASH_DURATION;
-
-      if (state.combat.playerStats.health <= 0) {
-        this.endCombatEncounter(state, 'defeat');
-        return;
-      }
-    }
-  }
-
-  // ─── ENEMY CONDITION CHECK ──────────────────────────────────────────
-
-  private checkEnemyCondition(state: GameState, action: EnemyActionDefinition): boolean {
-    const cond = action.useCondition;
-    switch (cond.type) {
-      case 'ALWAYS':
-        return true;
-      case 'PLAYER_HEALTH_BELOW':
-        return (state.combat.playerStats.health / state.combat.playerStats.maxHealth) < (cond.threshold ?? 0.3);
-      case 'PLAYER_HAS_SHIELDS':
-        return state.combat.playerStats.shield > 0;
-      case 'PLAYER_NO_SHIELDS':
-        return state.combat.playerStats.shield <= 0;
-      case 'PLAYER_RADIATION_ABOVE':
-        return state.combat.radiationStacks >= (cond.threshold ?? 5);
-      default:
-        return true;
-    }
-  }
-
-  // ─── FIRE ENEMY ACTION ─────────────────────────────────────────────
-
-  private fireEnemyAction(state: GameState, enemy: EnemyDefinition, action: EnemyActionDefinition): void {
-    const parts: string[] = [];
-
-    // Apply shield damage
-    if (action.shieldDamage && action.shieldDamage > 0) {
-      const actual = Math.min(state.combat.playerStats.shield, action.shieldDamage);
-      state.combat.playerStats.shield -= actual;
-      if (actual > 0) parts.push(`${actual} shield damage`);
-    }
-
-    // Apply hull damage
-    if (action.hullDamage && action.hullDamage > 0) {
-      state.combat.playerStats.health = Math.max(0, state.combat.playerStats.health - action.hullDamage);
-      parts.push(`${action.hullDamage} hull damage`);
-    }
-
-    // Apply stun (in seconds)
-    if (action.stunDuration && action.stunDuration > 0) {
-      state.combat.playerStunTimer = Math.max(state.combat.playerStunTimer, action.stunDuration);
-      parts.push(`stunned for ${action.stunDuration}s`);
-    }
-
-    // Self-damage
-    if (action.selfDamage && action.selfDamage > 0) {
-      state.combat.enemyStats.health = Math.max(0, state.combat.enemyStats.health - action.selfDamage);
-    }
-
-    // Self-shield heal
-    if (action.selfShieldHeal && action.selfShieldHeal > 0) {
-      state.combat.enemyStats.shield = Math.min(
-        state.combat.enemyStats.maxShield,
-        state.combat.enemyStats.shield + action.selfShieldHeal
-      );
-    }
-
-    // Self-hull heal
-    if (action.selfHullHeal && action.selfHullHeal > 0) {
-      const oldHealth = state.combat.enemyStats.health;
-      state.combat.enemyStats.health = Math.min(
-        state.combat.enemyStats.maxHealth,
-        state.combat.enemyStats.health + action.selfHullHeal
-      );
-      const healed = state.combat.enemyStats.health - oldHealth;
-      if (healed > 0) parts.push(`repaired ${healed} hull`);
-    }
-
-    // Radiation stacks
-    if (action.radiationStacks && action.radiationStacks > 0) {
-      state.combat.radiationStacks = Math.min(20, state.combat.radiationStacks + action.radiationStacks);
-      if (state.combat.radiationTickTimer <= 0) state.combat.radiationTickTimer = RADIATION_TICK_INTERVAL;
-      parts.push(`+${action.radiationStacks} radiation`);
-    }
-
-    // Cloak (in seconds)
-    if (action.cloakDuration && action.cloakDuration > 0) {
-      state.combat.enemyCloaked = true;
-      state.combat.enemyCloakTimer = action.cloakDuration;
-      parts.push(`cloaked for ${action.cloakDuration}s`);
-    }
-
-    // Build log message
-    const effectStr = parts.length > 0 ? ` — ${parts.join(', ')}` : '';
-    CombatLogger.log(state, `${enemy.name} used ${action.name}${effectStr}`, 'ENEMY');
-
-    state.combat.lastEnemyActionId = action.id;
+  update(_state: GameState, _delta: number): void {
+    /* turn-based: nothing to do per tick */
   }
 
   // ─── PLAYER ACTION ─────────────────────────────────────────────────
@@ -241,8 +65,11 @@ export class CombatSystem {
       return { success: false, message: 'No active combat.' };
     }
 
-    // Stun blocks all player input
-    if (state.combat.playerStunTimer > 0) {
+    if (state.combat.turnPhase !== 'PLAYER') {
+      return { success: false, message: 'Not your turn.' };
+    }
+
+    if (state.combat.playerStunTurns > 0) {
       return { success: false, message: 'Stunned.' };
     }
 
@@ -256,7 +83,7 @@ export class CombatSystem {
       }
       if (isScanAbility) {
         state.combat.enemyCloaked = false;
-        state.combat.enemyCloakTimer = 0;
+        state.combat.enemyCloakTurns = 0;
         CombatLogger.log(state, 'Scan penetrated enemy cloak!', 'SYSTEM');
       }
     }
@@ -264,7 +91,7 @@ export class CombatSystem {
     // Look up from equipment system first, fall back to legacy
     const ability = ALL_PLAYER_ABILITIES[actionId];
     const legacyAction = PLAYER_ACTIONS[actionId];
-    const action = ability ? {
+    const action: (CombatActionDefinition & { shieldDamage?: number }) | undefined = ability ? {
       id: ability.id,
       name: ability.name,
       description: ability.description,
@@ -274,6 +101,7 @@ export class CombatSystem {
       shieldRepair: ability.shieldRepair,
       hullRepair: ability.hullRepair,
       statusEffect: ability.statusEffect,
+      apCost: ability.apCost,
       cooldown: ability.cooldown,
       shieldDamage: ability.shieldDamage,
     } : legacyAction;
@@ -282,9 +110,15 @@ export class CombatSystem {
       return { success: false, message: `Unknown action: ${actionId}` };
     }
 
+    // AP check
+    const apCost = action.apCost ?? 1;
+    if (state.combat.playerAP < apCost) {
+      return { success: false, message: `Need ${apCost} AP` };
+    }
+
     // Cooldown check
     if ((state.combat.cooldowns[actionId] ?? 0) > 0) {
-      return { success: false, message: `On cooldown` };
+      return { success: false, message: 'On cooldown' };
     }
 
     // Ammo check (preferred) or legacy resource check
@@ -301,8 +135,11 @@ export class CombatSystem {
       this.resourceSystem?.consumeResources(state, [action.cost]);
     }
 
-    // Set cooldown (seconds)
-    state.combat.cooldowns[actionId] = action.cooldown;
+    // Spend AP and set cooldown
+    state.combat.playerAP -= apCost;
+    if (action.cooldown > 0) {
+      state.combat.cooldowns[actionId] = action.cooldown;
+    }
 
     // Look up enemy definition for armor
     const enemy = state.combat.currentEnemy ? this.getEnemyDefinition(state.combat.currentEnemy) : undefined;
@@ -316,6 +153,12 @@ export class CombatSystem {
     // Check victory
     if (state.combat.enemyStats.health <= 0) {
       this.endCombatEncounter(state, 'victory');
+      return result;
+    }
+
+    // Auto-end the player turn once AP is exhausted
+    if (state.combat.playerAP <= 0) {
+      this.endPlayerTurn(state);
     }
 
     return result;
@@ -370,17 +213,233 @@ export class CombatSystem {
       result.message = `${action.name} repaired ${rep.repairedAmount} hull`;
     }
 
-    // Status effect (EXPOSE, WEAKEN, etc.) — duration is in seconds
+    // Status effect (EXPOSE, WEAKEN, etc.) — duration is in turns
     if (action.statusEffect) {
       state.combat.enemyStats.statusEffects.push({
         ...action.statusEffect,
-        remainingTime: action.statusEffect.duration
+        remainingTurns: action.statusEffect.duration
       });
       result.message += ` — applied ${action.statusEffect.type}`;
       result.statusEffectApplied = action.statusEffect;
     }
 
     return result;
+  }
+
+  // ─── TURN FLOW ──────────────────────────────────────────────────────
+
+  /**
+   * End the player's turn → run the enemy turn → start the next player turn.
+   */
+  endPlayerTurn(state: GameState): void {
+    if (!state.combat?.active) return;
+    if (state.combat.turnPhase !== 'PLAYER') return;
+
+    state.combat.turnPhase = 'ENEMY';
+
+    // Decay player status effects at the close of the player's turn
+    state.combat.playerStats.statusEffects = CombatCalculator.processStatusEffects(
+      state.combat.playerStats.statusEffects
+    );
+
+    this.executeEnemyTurn(state);
+    if (!state.combat.active) return; // executeEnemyTurn may have ended combat
+
+    this.startPlayerTurn(state);
+  }
+
+  /**
+   * Run a single enemy turn: enemy fires the highest-priority ready ability whose
+   * use-condition is met, then all enemy cooldowns tick down by 1.
+   */
+  private executeEnemyTurn(state: GameState): void {
+    const enemy = state.combat.currentEnemy ? this.getEnemyDefinition(state.combat.currentEnemy) : undefined;
+    if (!enemy) return;
+
+    // Decay enemy status effects at the start of the enemy's turn
+    state.combat.enemyStats.statusEffects = CombatCalculator.processStatusEffects(
+      state.combat.enemyStats.statusEffects
+    );
+
+    // Cloak countdown (in turns)
+    if (state.combat.enemyCloaked && state.combat.enemyCloakTurns > 0) {
+      state.combat.enemyCloakTurns -= 1;
+      if (state.combat.enemyCloakTurns <= 0) {
+        state.combat.enemyCloaked = false;
+        CombatLogger.log(state, 'Enemy cloak has dissipated.', 'SYSTEM');
+      }
+    }
+
+    // Pick the first ready ability whose condition is met
+    let chosen: EnemyActionDefinition | null = null;
+    for (const actionId of enemy.actions) {
+      const def = ENEMY_ACTIONS[actionId];
+      if (!def) continue;
+      if ((state.combat.enemyCooldowns[actionId] ?? 0) > 0) continue;
+      if (!this.checkEnemyCondition(state, def)) continue;
+      chosen = def;
+      break;
+    }
+
+    if (chosen) {
+      this.fireEnemyAction(state, enemy, chosen);
+      state.combat.enemyCooldowns[chosen.id] = chosen.cooldown;
+    } else {
+      CombatLogger.log(state, `${enemy.name} hesitates.`, 'ENEMY');
+    }
+
+    // Tick down all enemy cooldowns by 1 turn
+    for (const aid of Object.keys(state.combat.enemyCooldowns)) {
+      if (state.combat.enemyCooldowns[aid] > 0) {
+        state.combat.enemyCooldowns[aid] -= 1;
+      }
+    }
+
+    if (state.combat.playerStats.health <= 0) {
+      this.endCombatEncounter(state, 'defeat');
+    }
+  }
+
+  /**
+   * Begin a new player turn: refill AP, decrement player cooldowns and stun,
+   * apply per-turn passives (radiation, regenerative shielding, etc.).
+   */
+  private startPlayerTurn(state: GameState): void {
+    state.combat.turn += 1;
+    state.combat.turnPhase = 'PLAYER';
+
+    // Refill AP
+    state.combat.playerAP = state.combat.maxPlayerAP;
+
+    // Decrement player ability cooldowns
+    for (const aid of Object.keys(state.combat.cooldowns)) {
+      if (state.combat.cooldowns[aid] > 0) {
+        state.combat.cooldowns[aid] -= 1;
+      }
+    }
+
+    // Decrement stun
+    if (state.combat.playerStunTurns > 0) {
+      state.combat.playerStunTurns -= 1;
+    }
+
+    // Radiation: deal stacks*3 hull damage and lose 1 stack
+    if (state.combat.radiationStacks > 0) {
+      const radDmg = state.combat.radiationStacks * 3;
+      state.combat.playerStats.health = Math.max(0, state.combat.playerStats.health - radDmg);
+      CombatLogger.log(state, `Radiation dealt ${radDmg} hull damage (${state.combat.radiationStacks} stacks).`, 'SYSTEM');
+      state.combat.radiationStacks -= 1;
+      if (state.combat.radiationStacks > 0) {
+        CombatLogger.log(state, `Radiation decayed to ${state.combat.radiationStacks} stacks.`, 'SYSTEM');
+      }
+      if (state.combat.playerStats.health <= 0) {
+        CombatLogger.log(state, 'Radiation exposure proved fatal.', 'SYSTEM');
+        this.endCombatEncounter(state, 'defeat');
+        return;
+      }
+    }
+
+    // Passive shield regen from equipped shield ability
+    const shieldId = state.loadout?.shield;
+    if (shieldId) {
+      const shieldAbility = ALL_PLAYER_ABILITIES[shieldId];
+      if (shieldAbility?.passive && shieldAbility.shieldRepair) {
+        const rep = CombatCalculator.calculateShieldRepair(
+          state.combat.playerStats.shield,
+          state.combat.playerStats.maxShield,
+          shieldAbility.shieldRepair
+        );
+        state.combat.playerStats.shield = rep.newShield;
+      }
+    }
+  }
+
+  // ─── ENEMY CONDITION CHECK ──────────────────────────────────────────
+
+  private checkEnemyCondition(state: GameState, action: EnemyActionDefinition): boolean {
+    const cond = action.useCondition;
+    switch (cond.type) {
+      case 'ALWAYS':
+        return true;
+      case 'PLAYER_HEALTH_BELOW':
+        return (state.combat.playerStats.health / state.combat.playerStats.maxHealth) < (cond.threshold ?? 0.3);
+      case 'PLAYER_HAS_SHIELDS':
+        return state.combat.playerStats.shield > 0;
+      case 'PLAYER_NO_SHIELDS':
+        return state.combat.playerStats.shield <= 0;
+      case 'PLAYER_RADIATION_ABOVE':
+        return state.combat.radiationStacks >= (cond.threshold ?? 5);
+      default:
+        return true;
+    }
+  }
+
+  // ─── FIRE ENEMY ACTION ─────────────────────────────────────────────
+
+  private fireEnemyAction(state: GameState, enemy: EnemyDefinition, action: EnemyActionDefinition): void {
+    const parts: string[] = [];
+
+    // Apply shield damage
+    if (action.shieldDamage && action.shieldDamage > 0) {
+      const actual = Math.min(state.combat.playerStats.shield, action.shieldDamage);
+      state.combat.playerStats.shield -= actual;
+      if (actual > 0) parts.push(`${actual} shield damage`);
+    }
+
+    // Apply hull damage
+    if (action.hullDamage && action.hullDamage > 0) {
+      state.combat.playerStats.health = Math.max(0, state.combat.playerStats.health - action.hullDamage);
+      parts.push(`${action.hullDamage} hull damage`);
+    }
+
+    // Apply stun (in turns)
+    if (action.stunDuration && action.stunDuration > 0) {
+      state.combat.playerStunTurns = Math.max(state.combat.playerStunTurns, action.stunDuration);
+      parts.push(`stunned for ${action.stunDuration} turns`);
+    }
+
+    // Self-damage
+    if (action.selfDamage && action.selfDamage > 0) {
+      state.combat.enemyStats.health = Math.max(0, state.combat.enemyStats.health - action.selfDamage);
+    }
+
+    // Self-shield heal
+    if (action.selfShieldHeal && action.selfShieldHeal > 0) {
+      state.combat.enemyStats.shield = Math.min(
+        state.combat.enemyStats.maxShield,
+        state.combat.enemyStats.shield + action.selfShieldHeal
+      );
+    }
+
+    // Self-hull heal
+    if (action.selfHullHeal && action.selfHullHeal > 0) {
+      const oldHealth = state.combat.enemyStats.health;
+      state.combat.enemyStats.health = Math.min(
+        state.combat.enemyStats.maxHealth,
+        state.combat.enemyStats.health + action.selfHullHeal
+      );
+      const healed = state.combat.enemyStats.health - oldHealth;
+      if (healed > 0) parts.push(`repaired ${healed} hull`);
+    }
+
+    // Radiation stacks
+    if (action.radiationStacks && action.radiationStacks > 0) {
+      state.combat.radiationStacks = Math.min(20, state.combat.radiationStacks + action.radiationStacks);
+      parts.push(`+${action.radiationStacks} radiation`);
+    }
+
+    // Cloak (in turns)
+    if (action.cloakDuration && action.cloakDuration > 0) {
+      state.combat.enemyCloaked = true;
+      state.combat.enemyCloakTurns = action.cloakDuration;
+      parts.push(`cloaked for ${action.cloakDuration} turns`);
+    }
+
+    // Build log message
+    const effectStr = parts.length > 0 ? ` — ${parts.join(', ')}` : '';
+    CombatLogger.log(state, `${enemy.name} used ${action.name}${effectStr}`, 'ENEMY');
+
+    state.combat.lastEnemyActionId = action.id;
   }
 
   // ─── START / END COMBAT ─────────────────────────────────────────────
@@ -396,19 +455,21 @@ export class CombatSystem {
         playerStats: { health: 100, maxHealth: 100, shield: 0, maxShield: 0, statusEffects: [] },
         enemyStats: { health: 0, maxHealth: 0, shield: 0, maxShield: 0, statusEffects: [] },
         availableActions: [],
+        turn: 1,
+        turnPhase: 'PLAYER',
+        playerAP: 1,
+        maxPlayerAP: 1,
+        playerStunTurns: 0,
         cooldowns: {},
         enemyCooldowns: {},
-        enemyActionFlash: {},
-        playerStunTimer: 0,
         encounterCompleted: false,
         currentEnemy: null,
         currentRegion: null,
         rewards: { energy: 0, insight: 0, crew: 0, scrap: 0 },
         lastEnemyActionId: null,
         radiationStacks: 0,
-        radiationTickTimer: RADIATION_TICK_INTERVAL,
         enemyCloaked: false,
-        enemyCloakTimer: 0,
+        enemyCloakTurns: 0,
       };
     }
 
@@ -420,11 +481,15 @@ export class CombatSystem {
     state.combat.rewards = { energy: 0, insight: 0, crew: 0, scrap: 0, relics: 0 };
     state.combat.lastEnemyActionId = null;
     state.combat.radiationStacks = 0;
-    state.combat.radiationTickTimer = RADIATION_TICK_INTERVAL;
     state.combat.enemyCloaked = false;
-    state.combat.enemyCloakTimer = 0;
-    state.combat.playerStunTimer = 0;
-    state.combat.enemyActionFlash = {};
+    state.combat.enemyCloakTurns = 0;
+
+    // Reset turn state
+    state.combat.turn = 1;
+    state.combat.turnPhase = 'PLAYER';
+    state.combat.maxPlayerAP = state.combat.maxPlayerAP || 1;
+    state.combat.playerAP = state.combat.maxPlayerAP;
+    state.combat.playerStunTurns = 0;
 
     state.combat.enemyStats = {
       health: enemy.health,
@@ -452,13 +517,9 @@ export class CombatSystem {
       ? loadoutActions.filter(id => ALL_PLAYER_ABILITIES[id] && !ALL_PLAYER_ABILITIES[id].passive)
       : Object.keys(PLAYER_ACTIONS);
     state.combat.cooldowns = {};
-
-    // Initialize enemy cooldowns to each action's full cooldown so the player
-    // gets one breath before the first attack lands.
     state.combat.enemyCooldowns = {};
     for (const aid of enemy.actions) {
-      const def = ENEMY_ACTIONS[aid];
-      if (def) state.combat.enemyCooldowns[aid] = def.cooldown;
+      state.combat.enemyCooldowns[aid] = 0;
     }
 
     state.combat.battleLog = [];

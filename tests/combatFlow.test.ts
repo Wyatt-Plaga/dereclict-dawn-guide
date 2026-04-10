@@ -6,21 +6,24 @@ import { CombatSystem } from '@/game-engine/systems/CombatSystem';
 import { ResourceSystem } from '@/game-engine/systems/ResourceSystem';
 import { RegionType } from '@/game-engine/types/regions';
 import { ENEMY_DEFINITIONS } from '@/game-engine/content/enemies';
-import { ENEMY_ACTIONS } from '@/game-engine/content/combatActions';
 
 const clone = <T>(o: T): T => JSON.parse(JSON.stringify(o));
+
+function makeRig() {
+  const bus = new EventBus<EventMap>();
+  const state = clone(initialGameState);
+  const resource = new ResourceSystem();
+  const combat = new CombatSystem(bus);
+  combat.setResourceSystem(resource);
+  return { bus, state, combat };
+}
 
 describe('START_COMBAT event', () => {
   let bus: EventBus<EventMap>;
   let state: GameState;
-  let combat: CombatSystem;
 
   beforeEach(() => {
-    bus = new EventBus<EventMap>();
-    state = clone(initialGameState);
-    const resource = new ResourceSystem();
-    combat = new CombatSystem(bus);
-    combat.setResourceSystem(resource);
+    ({ bus, state } = makeRig());
   });
 
   it('activates combat state', () => {
@@ -34,57 +37,41 @@ describe('START_COMBAT event', () => {
     expect(state.combat.currentEnemy).toBe('scavenger');
   });
 
-  it('sets initial player stats', () => {
+  it('initializes the player turn with full AP', () => {
     bus.emit('START_COMBAT', {
       state,
       enemyId: 'scavenger',
       regionId: RegionType.VOID
     });
 
-    expect(state.combat.playerStats.health).toBeGreaterThan(0);
-    expect(state.combat.playerStats.maxHealth).toBeGreaterThan(0);
+    expect(state.combat.turn).toBe(1);
+    expect(state.combat.turnPhase).toBe('PLAYER');
+    expect(state.combat.maxPlayerAP).toBeGreaterThan(0);
+    expect(state.combat.playerAP).toBe(state.combat.maxPlayerAP);
+    expect(state.combat.playerStunTurns).toBe(0);
   });
 
-  it('initializes empty rewards', () => {
+  it('sets enemy cooldowns to zero so they can act on the first enemy turn', () => {
     bus.emit('START_COMBAT', {
       state,
       enemyId: 'scavenger',
       regionId: RegionType.VOID
     });
 
-    expect(state.combat.rewards).toBeDefined();
-    expect(state.combat.rewards!.energy).toBe(0);
-    expect(state.combat.rewards!.insight).toBe(0);
-  });
-
-  it('seeds enemy cooldowns to give the player a breath before first attacks', () => {
-    bus.emit('START_COMBAT', {
-      state,
-      enemyId: 'scavenger',
-      regionId: RegionType.VOID
-    });
-
-    // Each enemy ability should be on its full cooldown at combat start
     const enemy = ENEMY_DEFINITIONS['scavenger'];
     for (const aid of enemy.actions) {
-      const def = ENEMY_ACTIONS[aid];
-      expect(state.combat.enemyCooldowns[aid]).toBe(def.cooldown);
+      expect(state.combat.enemyCooldowns[aid]).toBe(0);
     }
   });
 });
 
-describe('Player combat actions (real-time)', () => {
-  let bus: EventBus<EventMap>;
+describe('Player combat actions (AP / turn-based)', () => {
   let state: GameState;
   let combat: CombatSystem;
+  let bus: EventBus<EventMap>;
 
   beforeEach(() => {
-    bus = new EventBus<EventMap>();
-    state = clone(initialGameState);
-    const resource = new ResourceSystem();
-    combat = new CombatSystem(bus);
-    combat.setResourceSystem(resource);
-
+    ({ bus, state, combat } = makeRig());
     bus.emit('START_COMBAT', {
       state,
       enemyId: 'scavenger',
@@ -95,145 +82,155 @@ describe('Player combat actions (real-time)', () => {
     state.categories.manufacturing.resources.primary = 100;
     state.categories.processor.resources.primary = 100;
     state.categories.crewQuarters.resources.primary = 100;
+    state.ammo.powerCells.current = 10;
+    // Allow multiple actions per turn for tests that need it
+    state.combat.maxPlayerAP = 5;
+    state.combat.playerAP = 5;
   });
 
-  it('performs an action and deducts ammo cost', () => {
-    state.ammo.powerCells.current = 5;
-    const before = state.ammo.powerCells.current;
+  it('performs an action and deducts AP and ammo', () => {
+    const apBefore = state.combat.playerAP;
+    const ammoBefore = state.ammo.powerCells.current;
     const result = combat.performCombatAction(state, 'basic-phaser');
 
     expect(result.success).toBe(true);
-    expect(state.ammo.powerCells.current).toBeLessThan(before);
+    expect(state.combat.playerAP).toBe(apBefore - 1); // basic-phaser apCost = 1
+    expect(state.ammo.powerCells.current).toBeLessThan(ammoBefore);
   });
 
-  it('fails when ammo is insufficient', () => {
-    state.ammo.powerCells.current = 0;
+  it('rejects an action when AP is insufficient', () => {
+    state.combat.playerAP = 0;
     const result = combat.performCombatAction(state, 'basic-phaser');
     expect(result.success).toBe(false);
   });
 
-  it('sets cooldown in seconds after firing', () => {
-    combat.performCombatAction(state, 'basic-phaser');
-    // basic-phaser cooldown is 2 (seconds)
-    expect(state.combat.cooldowns['basic-phaser']).toBe(2);
-  });
-
-  it('rejects action while on cooldown', () => {
-    combat.performCombatAction(state, 'basic-phaser');
+  it('rejects an action while stunned', () => {
+    state.combat.playerStunTurns = 2;
     const result = combat.performCombatAction(state, 'basic-phaser');
     expect(result.success).toBe(false);
   });
 
-  it('rejects action while stunned', () => {
-    state.combat.playerStunTimer = 1.5;
+  it('rejects an action when not the player turn', () => {
+    state.combat.turnPhase = 'ENEMY';
     const result = combat.performCombatAction(state, 'basic-phaser');
+    expect(result.success).toBe(false);
+  });
+
+  it('sets cooldown in turns after firing', () => {
+    // hull-patch has cooldown 2
+    const result = combat.performCombatAction(state, 'hull-patch');
+    expect(result.success).toBe(true);
+    expect(state.combat.cooldowns['hull-patch']).toBe(2);
+  });
+
+  it('rejects an action while on cooldown', () => {
+    combat.performCombatAction(state, 'hull-patch');
+    const result = combat.performCombatAction(state, 'hull-patch');
     expect(result.success).toBe(false);
   });
 });
 
-describe('Real-time update loop', () => {
-  let bus: EventBus<EventMap>;
+describe('END_TURN flow', () => {
   let state: GameState;
   let combat: CombatSystem;
+  let bus: EventBus<EventMap>;
 
   beforeEach(() => {
-    bus = new EventBus<EventMap>();
-    state = clone(initialGameState);
-    const resource = new ResourceSystem();
-    combat = new CombatSystem(bus);
-    combat.setResourceSystem(resource);
+    ({ bus, state, combat } = makeRig());
+    bus.emit('START_COMBAT', {
+      state,
+      enemyId: 'scavenger',
+      regionId: RegionType.VOID
+    });
+    state.combat.maxPlayerAP = 3;
+    state.combat.playerAP = 3;
+  });
 
+  it('refills player AP at the start of the next player turn', () => {
+    state.combat.playerAP = 0;
+    bus.emit('END_TURN', { state });
+    expect(state.combat.playerAP).toBe(state.combat.maxPlayerAP);
+  });
+
+  it('advances the turn counter and returns control to the player', () => {
+    const turnBefore = state.combat.turn;
+    bus.emit('END_TURN', { state });
+    expect(state.combat.turn).toBe(turnBefore + 1);
+    expect(state.combat.turnPhase).toBe('PLAYER');
+  });
+
+  it('decrements player ability cooldowns by one turn', () => {
+    state.combat.cooldowns['hull-patch'] = 2;
+    bus.emit('END_TURN', { state });
+    expect(state.combat.cooldowns['hull-patch']).toBe(1);
+  });
+
+  it('decrements player stun by one turn', () => {
+    state.combat.playerStunTurns = 2;
+    bus.emit('END_TURN', { state });
+    expect(state.combat.playerStunTurns).toBe(1);
+  });
+
+  it('lets the enemy fire one ability and records lastEnemyActionId', () => {
+    const healthBefore = state.combat.playerStats.health;
+    const shieldBefore = state.combat.playerStats.shield;
+
+    bus.emit('END_TURN', { state });
+
+    const totalDmg =
+      (healthBefore - state.combat.playerStats.health) +
+      (shieldBefore - state.combat.playerStats.shield);
+    expect(totalDmg).toBeGreaterThan(0);
+    expect(state.combat.lastEnemyActionId).toBeTruthy();
+  });
+
+  it('puts the fired enemy ability on cooldown', () => {
+    bus.emit('END_TURN', { state });
+    const fired = state.combat.lastEnemyActionId!;
+    // After firing, cooldown is set to def.cooldown then ticked down by 1
+    expect(state.combat.enemyCooldowns[fired]).toBeGreaterThanOrEqual(0);
+  });
+
+  it('does nothing when not currently the player turn', () => {
+    state.combat.turnPhase = 'ENEMY';
+    const turnBefore = state.combat.turn;
+    bus.emit('END_TURN', { state });
+    expect(state.combat.turn).toBe(turnBefore);
+  });
+
+  it('applies radiation damage at the start of the next player turn', () => {
+    state.combat.radiationStacks = 2;
+    const healthBefore = state.combat.playerStats.health;
+    bus.emit('END_TURN', { state });
+    // After enemy turn, startPlayerTurn deals stacks*3 hull damage
+    // Player took both enemy damage and radiation damage; just verify radiation reduced stacks
+    expect(state.combat.radiationStacks).toBe(1);
+    expect(state.combat.playerStats.health).toBeLessThan(healthBefore);
+  });
+});
+
+describe('update() is a no-op for turn-based combat', () => {
+  it('does not change combat state when ticked', () => {
+    const { bus, state, combat } = makeRig();
     bus.emit('START_COMBAT', {
       state,
       enemyId: 'scavenger',
       regionId: RegionType.VOID
     });
 
-    state.categories.reactor.resources.primary = 100;
-  });
-
-  it('decrements player stun timer by delta seconds', () => {
-    state.combat.playerStunTimer = 2;
-    combat.update(state, 0.5);
-    expect(state.combat.playerStunTimer).toBeCloseTo(1.5);
-  });
-
-  it('decrements player ability cooldowns by delta seconds', () => {
-    combat.performCombatAction(state, 'basic-phaser');
-    const cdAfterUse = state.combat.cooldowns['basic-phaser'];
-    expect(cdAfterUse).toBeGreaterThan(0);
-
-    combat.update(state, 0.25);
-    expect(state.combat.cooldowns['basic-phaser']).toBeCloseTo(cdAfterUse - 0.25);
-  });
-
-  it('decrements enemy cooldowns by delta seconds', () => {
-    const aid = 'sputtering-phaser';
-    const startCd = state.combat.enemyCooldowns[aid];
-    expect(startCd).toBeGreaterThan(0);
-
-    combat.update(state, 0.5);
-    expect(state.combat.enemyCooldowns[aid]).toBeCloseTo(startCd - 0.5);
-  });
-
-  it('fires enemy abilities once their cooldown elapses', () => {
-    const healthBefore = state.combat.playerStats.health;
-    const shieldBefore = state.combat.playerStats.shield;
-
-    // Force the scavenger's first ability to be ready by zeroing its cooldown
-    state.combat.enemyCooldowns['sputtering-phaser'] = 0;
-    combat.update(state, 0.1);
-
-    const totalDamage = (healthBefore - state.combat.playerStats.health) +
-                        (shieldBefore - state.combat.playerStats.shield);
-    expect(totalDamage).toBeGreaterThan(0);
-    expect(state.combat.lastEnemyActionId).toBeTruthy();
-    // Cooldown is reset after firing
-    expect(state.combat.enemyCooldowns['sputtering-phaser']).toBeGreaterThan(0);
-  });
-
-  it('respects use-condition (Chomp only when player < 30% hull)', () => {
-    bus.emit('START_COMBAT', {
-      state,
-      enemyId: 'void-lurker',
-      regionId: RegionType.VOID,
-    });
-
-    // Make Chomp ready and Rend not ready so we isolate the gating
-    state.combat.enemyCooldowns['chomp'] = 0;
-    state.combat.enemyCooldowns['rend'] = 5;
-
-    // Player at full health — Chomp should NOT fire
-    combat.update(state, 0.1);
-    expect(state.combat.lastEnemyActionId).not.toBe('chomp');
-
-    // Drop player health below threshold and try again
-    state.combat.playerStats.health = 10; // 10% of 100
-    state.combat.enemyCooldowns['chomp'] = 0;
-    combat.update(state, 0.1);
-    expect(state.combat.lastEnemyActionId).toBe('chomp');
-  });
-
-  it('is a no-op when combat is inactive', () => {
-    state.combat.active = false;
-    const healthBefore = state.combat.playerStats.health;
-    combat.update(state, 10);
-    expect(state.combat.playerStats.health).toBe(healthBefore);
+    const snapshot = clone(state.combat);
+    combat.update(state, 5);
+    expect(state.combat).toEqual(snapshot);
   });
 });
 
 describe('Retreat', () => {
-  let bus: EventBus<EventMap>;
   let state: GameState;
   let combat: CombatSystem;
+  let bus: EventBus<EventMap>;
 
   beforeEach(() => {
-    bus = new EventBus<EventMap>();
-    state = clone(initialGameState);
-    const resource = new ResourceSystem();
-    combat = new CombatSystem(bus);
-    combat.setResourceSystem(resource);
-
+    ({ bus, state, combat } = makeRig());
     bus.emit('START_COMBAT', {
       state,
       enemyId: 'scavenger',

@@ -4,22 +4,17 @@ import { cn } from '@/lib/utils';
 interface Props {
   actions: EnemyActionDefinition[];
   enemyCooldowns: Record<string, number>;
-  enemyActionFlash?: Record<string, number>;
+  /** ID of the most recently fired enemy action — highlighted briefly. */
+  lastEnemyActionId?: string | null;
   /** When true, ability descriptions/stats are visible without using Scan. */
   alwaysReveal?: boolean;
   isExposed?: boolean;
 }
 
-function formatSeconds(s: number): string {
-  if (s <= 0) return "0s";
-  if (s >= 10) return `${Math.ceil(s)}s`;
-  return `${s.toFixed(1)}s`;
-}
-
 export default function EnemyMoveList({
   actions,
   enemyCooldowns,
-  enemyActionFlash = {},
+  lastEnemyActionId = null,
   alwaysReveal = false,
   isExposed = false,
 }: Props) {
@@ -29,18 +24,17 @@ export default function EnemyMoveList({
     <div className="flex flex-col gap-1.5">
       {actions.map((a) => {
         const cooldown = enemyCooldowns[a.id] ?? 0;
-        const cdPct = cooldown > 0 ? Math.min(1, cooldown / a.cooldown) : 0;
-        const justUsed = (enemyActionFlash[a.id] ?? 0) > 0;
+        const justUsed = lastEnemyActionId === a.id;
         const isReady = cooldown <= 0;
 
         // Stats summary
         const stats: string[] = [];
         if (a.hullDamage) stats.push(`${a.hullDamage} hull`);
         if (a.shieldDamage) stats.push(`${a.shieldDamage} shield`);
-        if (a.stunDuration) stats.push(`stun ${a.stunDuration}s`);
+        if (a.stunDuration) stats.push(`stun ${a.stunDuration}t`);
         if (a.selfShieldHeal) stats.push(`heals ${a.selfShieldHeal}`);
         if (a.radiationStacks) stats.push(`+${a.radiationStacks} rad`);
-        if (a.cloakDuration) stats.push(`cloak ${a.cloakDuration}s`);
+        if (a.cloakDuration) stats.push(`cloak ${a.cloakDuration}t`);
 
         return (
           <div
@@ -51,14 +45,6 @@ export default function EnemyMoveList({
               isReady && !justUsed && 'border-yellow-500/20',
             )}
           >
-            {/* Cooldown fill */}
-            {cdPct > 0 && (
-              <span
-                className="absolute inset-y-0 left-0 bg-red-500/8 pointer-events-none transition-all duration-100"
-                style={{ width: `${cdPct * 100}%` }}
-              />
-            )}
-
             {/* Row 1: Name + status */}
             <div className="flex items-center justify-between relative z-10 mb-0.5">
               <span className={cn("text-sm font-medium font-mono", justUsed && "text-red-400")}>
@@ -69,7 +55,7 @@ export default function EnemyMoveList({
                   <span className="text-[10px] text-red-400 font-mono font-bold">FIRED</span>
                 )}
                 {cooldown > 0 && reveal && (
-                  <span className="text-[10px] text-muted-foreground font-mono">{formatSeconds(cooldown)}</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">{cooldown}t</span>
                 )}
                 {isReady && !justUsed && (
                   <span className="text-[10px] text-yellow-400/80 font-mono animate-pulse">READY</span>

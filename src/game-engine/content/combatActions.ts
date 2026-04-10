@@ -12,6 +12,7 @@ export const PLAYER_ACTIONS: Record<string, CombatActionDefinition> = {
     category: CombatActionCategory.SHIELD,
     cost: { type: "energy", amount: 10 },
     shieldRepair: 15,
+    apCost: 1,
     cooldown: 3
   },
   "energy-pulse": {
@@ -21,6 +22,7 @@ export const PLAYER_ACTIONS: Record<string, CombatActionDefinition> = {
     category: CombatActionCategory.WEAPON,
     cost: { type: "energy", amount: 15 },
     damage: 15,
+    apCost: 1,
     cooldown: 2
   },
   "plasma-cannon": {
@@ -30,6 +32,7 @@ export const PLAYER_ACTIONS: Record<string, CombatActionDefinition> = {
     category: CombatActionCategory.WEAPON,
     cost: { type: "scrap", amount: 15 },
     damage: 20,
+    apCost: 2,
     cooldown: 3
   },
   "missile-barrage": {
@@ -39,6 +42,7 @@ export const PLAYER_ACTIONS: Record<string, CombatActionDefinition> = {
     category: CombatActionCategory.WEAPON,
     cost: { type: "scrap", amount: 25 },
     damage: 35,
+    apCost: 3,
     cooldown: 5
   },
   "hull-repair": {
@@ -48,6 +52,7 @@ export const PLAYER_ACTIONS: Record<string, CombatActionDefinition> = {
     category: CombatActionCategory.REPAIR,
     cost: { type: "crew", amount: 2 },
     hullRepair: 15,
+    apCost: 1,
     cooldown: 4
   },
   "shield-recharge": {
@@ -57,6 +62,7 @@ export const PLAYER_ACTIONS: Record<string, CombatActionDefinition> = {
     category: CombatActionCategory.REPAIR,
     cost: { type: "crew", amount: 3 },
     shieldRepair: 20,
+    apCost: 1,
     cooldown: 4
   },
   "scan": {
@@ -65,7 +71,8 @@ export const PLAYER_ACTIONS: Record<string, CombatActionDefinition> = {
     description: "Hack enemy systems to reveal ability details",
     category: CombatActionCategory.SABOTAGE,
     cost: { type: "insight", amount: 5 },
-    statusEffect: { type: "EXPOSE", duration: 15, magnitude: 1 },
+    statusEffect: { type: "EXPOSE", duration: 4, magnitude: 1 },
+    apCost: 1,
     cooldown: 3
   },
   "sabotage": {
@@ -75,7 +82,8 @@ export const PLAYER_ACTIONS: Record<string, CombatActionDefinition> = {
     category: CombatActionCategory.SABOTAGE,
     cost: { type: "insight", amount: 8 },
     damage: 10,
-    statusEffect: { type: "WEAKEN", duration: 5, magnitude: 0.2 },
+    statusEffect: { type: "WEAKEN", duration: 3, magnitude: 0.2 },
+    apCost: 2,
     cooldown: 8
   },
 };

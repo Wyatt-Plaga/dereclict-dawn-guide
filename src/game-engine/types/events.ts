@@ -10,6 +10,7 @@ export interface EventMap {
   'START_COMBAT': { state: GameState; enemyId: string; regionId: RegionType };
   'COMBAT_ACTION': { state: GameState; actionId: string };
   'RETREAT_FROM_BATTLE': { state: GameState };
+  'END_TURN': { state: GameState };
   'DISPATCH_ACTION': import('./actions').GameAction;
   'stateUpdated': GameState;
 }

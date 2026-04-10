@@ -29,15 +29,17 @@ export interface StatusEffect {
 }
 
 /**
- * Status Effect Instance (applied to an entity)
- * remainingTime is in seconds for real-time combat.
+ * Status Effect Instance (applied to an entity).
+ * remainingTurns counts down at end of player turn.
  */
 export interface StatusEffectInstance extends StatusEffect {
-  remainingTime: number;
+  remainingTurns: number;
 }
 
 /**
- * Combat Action Definition
+ * Combat Action Definition (turn-based)
+ * - apCost: action points spent on use (default 1)
+ * - cooldown: turns until usable again
  */
 export interface CombatActionDefinition {
   id: string;
@@ -46,9 +48,11 @@ export interface CombatActionDefinition {
   category: CombatActionCategory;
   cost: ResourceCost;
   damage?: number;
+  shieldDamage?: number;
   shieldRepair?: number;
   hullRepair?: number;
   statusEffect?: StatusEffect;
+  apCost: number;
   cooldown: number;
 }
 
@@ -71,7 +75,7 @@ export interface EnemyActionCondition {
 }
 
 /**
- * Enemy Action Definition (real-time)
+ * Enemy Action Definition (turn-based)
  */
 export interface EnemyActionDefinition {
   id: string;
@@ -82,11 +86,11 @@ export interface EnemyActionDefinition {
   selfDamage?: number;        // damage to self (e.g. Self-Implosion)
   selfShieldHeal?: number;    // heal own shields (e.g. Shield Siphon)
   selfHullHeal?: number;      // heal own hull (e.g. Repair Drones)
-  stunDuration?: number;      // stun player for N seconds
-  armorBuff?: number;         // temporarily increase own armor by N (duration = cooldown)
+  stunDuration?: number;      // stun player for N turns
+  armorBuff?: number;         // temporarily increase own armor by N (duration in turns = cooldown)
   radiationStacks?: number;   // apply N radiation stacks to player
-  cloakDuration?: number;     // enemy becomes untargetable for N seconds
-  cooldown: number;           // seconds between uses
+  cloakDuration?: number;     // enemy becomes untargetable for N turns
+  cooldown: number;           // turns between uses
   useCondition: EnemyActionCondition;
   conditionLabel?: string;    // human-readable condition (shown in UI)
 }
@@ -191,7 +195,12 @@ export interface BattleLogEntry {
 }
 
 /**
- * Combat State interface (real-time)
+ * Turn phases
+ */
+export type CombatTurnPhase = 'PLAYER' | 'ENEMY';
+
+/**
+ * Combat State interface (turn-based, AP-driven)
  */
 export interface CombatState {
   active: boolean;
@@ -215,13 +224,20 @@ export interface CombatState {
   };
   battleLog: BattleLogEntry[];
   availableActions: string[];
-  cooldowns: Record<string, number>;          // player ability cooldowns (seconds, fractional)
-  enemyCooldowns: Record<string, number>;     // enemy ability cooldowns (seconds, fractional)
-  playerStunTimer: number;                    // seconds of stun remaining
+
+  // ── Turn / AP system ──
+  turn: number;                               // current turn number (1-indexed)
+  turnPhase: CombatTurnPhase;                 // who is acting
+  playerAP: number;                           // current AP available this turn
+  maxPlayerAP: number;                        // AP refilled at start of each player turn (upgradeable)
+  playerStunTurns: number;                    // turns of stun remaining
+
+  cooldowns: Record<string, number>;          // player ability cooldowns (turns)
+  enemyCooldowns: Record<string, number>;     // enemy ability cooldowns (turns)
+
   lastActionResult?: ActionResult;
   lastEnemyActionId: string | null;
-  /** Per-enemy-action "just fired" flash timers (seconds remaining) */
-  enemyActionFlash: Record<string, number>;
+
   rewards?: {
     energy: number;
     insight: number;
@@ -229,12 +245,13 @@ export interface CombatState {
     scrap: number;
     relics?: number;
   };
-  // Radiation mechanic — every 4s the player takes stacks*3 hull damage and loses 1 stack
+
+  // Radiation: at start of each player turn, deal stacks*3 hull damage and lose 1 stack
   radiationStacks: number;
-  radiationTickTimer: number;                 // seconds until next radiation tick
-  // Cloak mechanic
-  enemyCloaked: boolean;                      // enemy currently untargetable
-  enemyCloakTimer: number;                    // seconds of cloak remaining
+
+  // Cloak: enemy untargetable for N turns
+  enemyCloaked: boolean;
+  enemyCloakTurns: number;
 }
 
 /**

@@ -153,7 +153,7 @@ export default function BattlePage() {
 
   /* Is the enemy's intent revealed? (EXPOSE status effect active) */
   const isEnemyExposed = (state.combat?.enemyStats?.statusEffects ?? [])
-    .some((e) => e.type === "EXPOSE" && e.remainingTime > 0);
+    .some((e) => e.type === "EXPOSE" && e.remainingTurns > 0);
 
   /* Void enemies always reveal their abilities (Phase 2 design) */
   const isVoidRegion = (state.combat?.currentRegion ?? "") === "void";
@@ -161,6 +161,14 @@ export default function BattlePage() {
   /* Radiation & Cloak */
   const radiationStacks = state.combat?.radiationStacks ?? 0;
   const enemyCloaked = state.combat?.enemyCloaked ?? false;
+
+  /* Turn / AP */
+  const turn = state.combat?.turn ?? 1;
+  const turnPhase = state.combat?.turnPhase ?? "PLAYER";
+  const playerAP = state.combat?.playerAP ?? 0;
+  const maxPlayerAP = state.combat?.maxPlayerAP ?? 1;
+  const playerStunTurns = state.combat?.playerStunTurns ?? 0;
+  const lastEnemyActionId = state.combat?.lastEnemyActionId ?? null;
 
   /* ----------------------------- BATTLE LOG ------------------------------- */
   const battleLog = state.combat?.battleLog ?? [];
@@ -219,6 +227,9 @@ export default function BattlePage() {
               >
                 Combat — {enemy.name}
               </h1>
+              <span className="text-xs font-mono text-muted-foreground">
+                Turn {turn} · {turnPhase === "PLAYER" ? "Your Turn" : "Enemy Turn"}
+              </span>
             </div>
             <div className="flex items-center gap-3">
               {(radiationStacks > 0) && (
@@ -305,10 +316,13 @@ export default function BattlePage() {
               cooldowns={state.combat?.cooldowns ?? {}}
               canAfford={canAfford}
               onAction={performCombatAction}
-              isStunned={(state.combat?.playerStunTimer ?? 0) > 0}
-              stunSecondsRemaining={state.combat?.playerStunTimer ?? 0}
+              isStunned={playerStunTurns > 0}
+              stunTurnsRemaining={playerStunTurns}
               enemyCloaked={enemyCloaked}
               ammo={state.ammo}
+              playerAP={playerAP}
+              maxPlayerAP={maxPlayerAP}
+              turnPhase={turnPhase}
             />
 
             <div className="flex flex-col gap-2">
@@ -325,7 +339,7 @@ export default function BattlePage() {
                     : []
                 }
                 enemyCooldowns={state.combat?.enemyCooldowns ?? {}}
-                enemyActionFlash={state.combat?.enemyActionFlash ?? {}}
+                lastEnemyActionId={lastEnemyActionId}
                 alwaysReveal={isVoidRegion}
                 isExposed={isEnemyExposed}
               />
