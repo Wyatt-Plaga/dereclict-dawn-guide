@@ -40,6 +40,15 @@ export interface BuyEfficiencyUpgradeAction {
   };
 }
 
+/** Buy a +1 max-workers upgrade for a slot (costs quaternary resource of the wing) */
+export interface BuyMaxWorkersUpgradeAction {
+  type: 'BUY_MAX_WORKERS_UPGRADE';
+  payload: {
+    wing: WingId;
+    slot: ResourceSlot;   // which slot to raise the worker cap on
+  };
+}
+
 /** Hire a worker into the shared pool (costs energy) */
 export interface HireWorkerAction {
   type: 'HIRE_WORKER';
@@ -70,12 +79,12 @@ export interface EnableAutomationAction {
   };
 }
 
-/** Unlock the next resource tier (secondary or tertiary) for a wing */
+/** Unlock the next resource tier (secondary, tertiary, or quaternary) for a wing */
 export interface UnlockTierAction {
   type: 'UNLOCK_TIER';
   payload: {
     wing: WingId;
-    tier: 'secondary' | 'tertiary';
+    tier: 'secondary' | 'tertiary' | 'quaternary';
   };
 }
 
@@ -191,6 +200,7 @@ export type GameAction =
   | UnassignWorkerAction
   | BuyCapacityUpgradeAction
   | BuyEfficiencyUpgradeAction
+  | BuyMaxWorkersUpgradeAction
   | HireWorkerAction
   | BuyWorkerCapUpgradeAction
   | EnableAutomationAction

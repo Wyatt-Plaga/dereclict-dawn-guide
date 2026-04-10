@@ -8,11 +8,11 @@ import { getResourceAccessor } from '../utils/resourceAccessor';
 import { ResourceSystem } from './ResourceSystem';
 import {
   WingId, ResourceSlot, SLOT_ORDER,
-  capacityUpgradeCost, efficiencyUpgradeCost,
+  capacityUpgradeCost, efficiencyUpgradeCost, maxWorkersUpgradeCost,
   workerHireEnergyCost, workerMaxUpgradeRelicCost,
   WORKER_BASE, WORKER_PER_UPGRADE, WORKER_BOSS_GATE_SIZE,
 } from '../content/wingResources';
-import { capKey, effKey } from '../types/resources';
+import { capKey, effKey, maxWorkersKey } from '../types/resources';
 import { incrementAtPath } from '../utils/objectPath';
 
 export class UpgradeSystem {
@@ -36,6 +36,11 @@ export class UpgradeSystem {
         if (upgradeType.startsWith('__eff__')) {
           const slot = upgradeType.replace('__eff__', '') as ResourceSlot;
           this.buyEfficiencyUpgrade(state, category as WingId, slot);
+          return;
+        }
+        if (upgradeType.startsWith('__maxWorkers__')) {
+          const slot = upgradeType.replace('__maxWorkers__', '') as ResourceSlot;
+          this.buyMaxWorkersUpgrade(state, category as WingId, slot);
           return;
         }
         if (upgradeType === '__hireWorker__') {
@@ -114,6 +119,19 @@ export class UpgradeSystem {
     if (wing.resources.tertiary < cost) return false;
     wing.resources.tertiary -= cost;
     (wing.upgrades as any)[effKey(slot)] = level + 1;
+
+    return true;
+  }
+
+  /** Buy a +1 max-workers upgrade for a specific slot in a wing (costs quaternary resource) */
+  buyMaxWorkersUpgrade(state: GameState, wingId: WingId, slot: ResourceSlot): boolean {
+    const wing = state.categories[wingId] as WingCategory;
+    const level = wing.upgrades[maxWorkersKey(slot)] as number;
+    const cost = maxWorkersUpgradeCost(level);
+
+    if (wing.resources.quaternary < cost) return false;
+    wing.resources.quaternary -= cost;
+    (wing.upgrades as any)[maxWorkersKey(slot)] = level + 1;
 
     return true;
   }

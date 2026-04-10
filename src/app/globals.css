@@ -40,8 +40,8 @@
     /* Ship system colors - Neon / Sci-Fi Palette */
     --chart-1: 180 100% 50%; /* Energy - Cyan */
     --chart-2: 280 80% 65%; /* Insight - Neon Purple */
-    --chart-3: 340 90% 65%; /* Crew - Pink/Red */
-    --chart-4: 230 10% 60%; /* Scrap - Silver */
+    --chart-3: 355 80% 60%; /* Crew - Red */
+    --chart-4: 18 75% 55%;  /* Scrap - Rust Orange */
     --chart-5: 45 100% 50%; /* Relics - Gold */
     
     --radius: 2px; /* Tech look typically has sharp or small rounded corners */

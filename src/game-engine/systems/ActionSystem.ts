@@ -7,12 +7,14 @@ import {
   CraftAmmoAction, UpgradeAmmoCapacityAction,
   AssignWorkerAction, UnassignWorkerAction,
   BuyCapacityUpgradeAction, BuyEfficiencyUpgradeAction,
+  BuyMaxWorkersUpgradeAction,
   HireWorkerAction, BuyWorkerCapUpgradeAction,
   EnableAutomationAction, UnlockTierAction,
 } from '../types/actions';
 import { ALL_PLAYER_ABILITIES } from '@/game-engine/content/playerAbilities';
 import { AMMO_TYPES, getAmmoMax, getAmmoUpgradeRelicCost, AmmoTypeId } from '@/game-engine/content/ammoTypes';
 import { WING_DEFS, WING_ORDER, SLOT_ORDER, WingId } from '@/game-engine/content/wingResources';
+import { ResourceSystem } from './ResourceSystem';
 import { getResourceAccessor } from '../utils/resourceAccessor';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { EventBus } from "../core/EventBus";
@@ -40,6 +42,8 @@ export class ActionSystem {
         return this.handleBuyCapacityUpgrade(state, action);
       case 'BUY_EFFICIENCY_UPGRADE':
         return this.handleBuyEfficiencyUpgrade(state, action);
+      case 'BUY_MAX_WORKERS_UPGRADE':
+        return this.handleBuyMaxWorkersUpgrade(state, action);
       case 'HIRE_WORKER':
         return this.handleHireWorker(state, action);
       case 'BUY_WORKER_CAP_UPGRADE':
@@ -89,7 +93,9 @@ export class ActionSystem {
     let total = 0;
     for (const wingId of WING_ORDER) {
       const w = state.categories[wingId] as WingCategory;
-      total += w.workers.primary + w.workers.secondary + w.workers.tertiary;
+      for (const slot of SLOT_ORDER) {
+        total += w.workers[slot];
+      }
     }
     return total;
   }
@@ -98,6 +104,10 @@ export class ActionSystem {
     const { wing: wingId, slot } = action.payload;
     const wing = state.categories[wingId] as WingCategory;
     if (!wing.unlocked) return state;
+
+    // Per-slot worker cap
+    const slotMax = ResourceSystem.getMaxWorkersForSlot(wing, slot);
+    if (wing.workers[slot] >= slotMax) return state;
 
     // Draw from the shared pool — only assign if there's an unassigned worker free
     const assigned = this.getGlobalAssigned(state);
@@ -137,6 +147,17 @@ export class ActionSystem {
         state,
         category: action.payload.wing,
         upgradeType: `__eff__${action.payload.slot}`
+      });
+    }
+    return state;
+  }
+
+  private handleBuyMaxWorkersUpgrade(state: GameState, action: BuyMaxWorkersUpgradeAction): GameState {
+    if (this.eventBus) {
+      this.eventBus.emit('PURCHASE_UPGRADE', {
+        state,
+        category: action.payload.wing,
+        upgradeType: `__maxWorkers__${action.payload.slot}`
       });
     }
     return state;
@@ -182,6 +203,7 @@ export class ActionSystem {
     // Check tier is unlocked
     if (slot === 'secondary' && !wing.secondaryUnlocked) return state;
     if (slot === 'tertiary' && !wing.tertiaryUnlocked) return state;
+    if (slot === 'quaternary' && !wing.quaternaryUnlocked) return state;
 
     const capKey = `${slot}Capacity` as keyof typeof wing.stats;
     const cap = wing.stats[capKey] as number;
@@ -206,6 +228,11 @@ export class ActionSystem {
       const cost = slotDef.consumeRate * (amount / slotDef.baseRate);
       if (wing.resources.secondary < cost) return state;
       wing.resources.secondary -= cost;
+    } else if (slot === 'quaternary') {
+      // Quaternary consumes tertiary
+      const cost = slotDef.consumeRate * (amount / slotDef.baseRate);
+      if (wing.resources.tertiary < cost) return state;
+      wing.resources.tertiary -= cost;
     }
 
     wing.resources[slot] = Math.min(wing.resources[slot] + amount, cap);
@@ -218,11 +245,13 @@ export class ActionSystem {
     if (!wing.unlocked) return state;
     if (wing.automated[slot]) return state;
 
-    // All automation thresholds are checked against tertiary resource
+    // Primary/secondary/tertiary automation thresholds are checked against tertiary resource;
+    // quaternary automation is checked against quaternary resource (since the chain has grown).
     const def = WING_DEFS[wingId];
     const thresholdKey = `automate${slot.charAt(0).toUpperCase()}${slot.slice(1)}` as keyof typeof def.unlockThresholds;
     const threshold = def.unlockThresholds[thresholdKey] as number;
-    if (wing.resources.tertiary < threshold) return state;
+    const reservoir = slot === 'quaternary' ? wing.resources.quaternary : wing.resources.tertiary;
+    if (reservoir < threshold) return state;
 
     wing.automated[slot] = true;
 
@@ -244,11 +273,16 @@ export class ActionSystem {
       if (wing.secondaryUnlocked) return state;
       if (wing.resources.primary < thresholds.secondary) return state;
       wing.secondaryUnlocked = true;
-    } else {
+    } else if (tier === 'tertiary') {
       if (wing.tertiaryUnlocked) return state;
       if (!wing.secondaryUnlocked) return state;
       if (wing.resources.secondary < thresholds.tertiary) return state;
       wing.tertiaryUnlocked = true;
+    } else {
+      if (wing.quaternaryUnlocked) return state;
+      if (!wing.tertiaryUnlocked) return state;
+      if (wing.resources.tertiary < thresholds.quaternary) return state;
+      wing.quaternaryUnlocked = true;
     }
 
     return state;

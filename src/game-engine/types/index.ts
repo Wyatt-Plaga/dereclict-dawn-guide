@@ -94,11 +94,12 @@ import { WING_DEFS, WingId, WORKER_BASE, WORKER_PER_UPGRADE, WORKER_BOSS_GATE_SI
 function defaultWingCategory(wingId: WingId, unlocked: boolean) {
     const def = WING_DEFS[wingId];
     return {
-        resources: { primary: 0, secondary: 0, tertiary: 0 },
-        workers: { primary: 0, secondary: 0, tertiary: 0 },
+        resources: { primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
+        workers: { primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
         upgrades: {
-            primaryCap: 0, secondaryCap: 0, tertiaryCap: 0,
-            primaryEff: 0, secondaryEff: 0, tertiaryEff: 0,
+            primaryCap: 0, secondaryCap: 0, tertiaryCap: 0, quaternaryCap: 0,
+            primaryEff: 0, secondaryEff: 0, tertiaryEff: 0, quaternaryEff: 0,
+            primaryMaxWorkers: 0, secondaryMaxWorkers: 0, tertiaryMaxWorkers: 0, quaternaryMaxWorkers: 0,
         },
         stats: {
             primaryCapacity: def.resources.primary.baseCapacity,
@@ -107,11 +108,14 @@ function defaultWingCategory(wingId: WingId, unlocked: boolean) {
             secondaryRate: 0,
             tertiaryCapacity: def.resources.tertiary.baseCapacity,
             tertiaryRate: 0,
+            quaternaryCapacity: def.resources.quaternary.baseCapacity,
+            quaternaryRate: 0,
         },
         unlocked,
         secondaryUnlocked: false,
         tertiaryUnlocked: false,
-        automated: { primary: false, secondary: false, tertiary: false },
+        quaternaryUnlocked: false,
+        automated: { primary: false, secondary: false, tertiary: false, quaternary: false },
     };
 }
 
@@ -139,7 +143,7 @@ export const initialGameState: GameState = {
         max: Math.min(WORKER_BASE, INITIAL_BOSS_GATE_LEVEL * WORKER_BOSS_GATE_SIZE),
     },
     lastUpdate: Date.now(),
-    version: 4,
+    version: 5,
     logs: {
         discovered: {},
         unread: []

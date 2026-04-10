@@ -8,9 +8,9 @@ import GameLoader from "@/app/components/GameLoader";
 import WorkerAllocationBar from "@/app/components/WorkerAllocationBar";
 import WingResourceRow from "@/app/components/WingResourceRow";
 import ResourceClickButton from "@/app/components/ResourceClickButton";
-import { WING_DEFS, SLOT_ORDER, WingId, ResourceSlot, capacityUpgradeCost, efficiencyUpgradeCost } from "@/game-engine/content/wingResources";
+import { WING_DEFS, SLOT_ORDER, WingId, ResourceSlot, capacityUpgradeCost, efficiencyUpgradeCost, maxWorkersUpgradeCost } from "@/game-engine/content/wingResources";
 import { ResourceSystem } from "@/game-engine/systems/ResourceSystem";
-import { WingCategory, capKey, effKey } from "@/game-engine/types/resources";
+import { WingCategory, capKey, effKey, maxWorkersKey } from "@/game-engine/types/resources";
 import { LucideIcon, ChevronUp, Wrench, Cpu, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
@@ -31,7 +31,12 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
 
   // Track which elements just appeared so we can animate them
   const [animating, setAnimating] = useState<Set<string>>(new Set());
-  const prevState = useRef({ secondary: wing.secondaryUnlocked, tertiary: wing.tertiaryUnlocked, automated: { ...wing.automated } });
+  const prevState = useRef({
+    secondary: wing.secondaryUnlocked,
+    tertiary: wing.tertiaryUnlocked,
+    quaternary: wing.quaternaryUnlocked,
+    automated: { ...wing.automated },
+  });
 
   useEffect(() => {
     const prev = prevState.current;
@@ -39,47 +44,63 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
 
     if (wing.secondaryUnlocked && !prev.secondary) newAnims.add('slot-secondary');
     if (wing.tertiaryUnlocked && !prev.tertiary) newAnims.add('slot-tertiary');
+    if (wing.quaternaryUnlocked && !prev.quaternary) newAnims.add('slot-quaternary');
     if (wing.automated.primary && !prev.automated.primary) newAnims.add('auto-primary');
     if (wing.automated.secondary && !prev.automated.secondary) newAnims.add('auto-secondary');
     if (wing.automated.tertiary && !prev.automated.tertiary) newAnims.add('auto-tertiary');
+    if (wing.automated.quaternary && !prev.automated.quaternary) newAnims.add('auto-quaternary');
 
-    prevState.current = { secondary: wing.secondaryUnlocked, tertiary: wing.tertiaryUnlocked, automated: { ...wing.automated } };
+    prevState.current = {
+      secondary: wing.secondaryUnlocked,
+      tertiary: wing.tertiaryUnlocked,
+      quaternary: wing.quaternaryUnlocked,
+      automated: { ...wing.automated },
+    };
 
     if (newAnims.size > 0) {
       setAnimating(newAnims);
       const timer = setTimeout(() => setAnimating(new Set()), 1200);
       return () => clearTimeout(timer);
     }
-  }, [wing.secondaryUnlocked, wing.tertiaryUnlocked, wing.automated.primary, wing.automated.secondary, wing.automated.tertiary]);
+  }, [wing.secondaryUnlocked, wing.tertiaryUnlocked, wing.quaternaryUnlocked, wing.automated.primary, wing.automated.secondary, wing.automated.tertiary, wing.automated.quaternary]);
 
   // Workers are drawn from a single global pool now
   const globalAssigned = (['reactor', 'processor', 'crewQuarters', 'manufacturing'] as WingId[])
     .reduce((sum, id) => {
       const w = state.categories[id] as WingCategory;
-      return sum + w.workers.primary + w.workers.secondary + w.workers.tertiary;
+      return sum + w.workers.primary + w.workers.secondary + w.workers.tertiary + w.workers.quaternary;
     }, 0);
   const totalWorkers = state.workers?.total ?? 0;
   const freeWorkers = totalWorkers - globalAssigned;
   const hasAvailable = freeWorkers > 0 && wing.unlocked;
 
-  const anyAutomated = wing.automated.primary || wing.automated.secondary || wing.automated.tertiary;
+  const anyAutomated = wing.automated.primary || wing.automated.secondary || wing.automated.tertiary || wing.automated.quaternary;
 
   // Which slots are visible (tier unlocked)
   const visibleSlots: ResourceSlot[] = ['primary'];
   if (wing.secondaryUnlocked) visibleSlots.push('secondary');
   if (wing.tertiaryUnlocked) visibleSlots.push('tertiary');
+  if (wing.quaternaryUnlocked) visibleSlots.push('quaternary');
 
   // Check if next tier can be unlocked (threshold met but not yet unlocked)
   const canUnlockSecondary = ResourceSystem.canUnlockTier(wing, wingId, 'secondary');
   const canUnlockTertiary = ResourceSystem.canUnlockTier(wing, wingId, 'tertiary');
+  const canUnlockQuaternary = ResourceSystem.canUnlockTier(wing, wingId, 'quaternary');
 
   // Check if a slot can have automation enabled right now
   const canEnableSlotAutomation = (slot: ResourceSlot): boolean => {
     if (wing.automated[slot]) return false;
-    if (!wing.tertiaryUnlocked) return false;
+    // Quaternary automation requires the quaternary tier to be unlocked and uses
+    // the quaternary reservoir. All others gate on the tertiary tier.
+    if (slot === 'quaternary') {
+      if (!wing.quaternaryUnlocked) return false;
+    } else if (!wing.tertiaryUnlocked) {
+      return false;
+    }
     const thresholdKey = `automate${slot.charAt(0).toUpperCase()}${slot.slice(1)}` as keyof typeof def.unlockThresholds;
     const threshold = def.unlockThresholds[thresholdKey] as number;
-    return wing.resources.tertiary >= threshold;
+    const reservoir = slot === 'quaternary' ? wing.resources.quaternary : wing.resources.tertiary;
+    return reservoir >= threshold;
   };
 
   const getConsumeLabel = (slot: ResourceSlot): string | undefined => {
@@ -92,6 +113,9 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
     }
     if (slot === 'tertiary') {
       return `${slotDef.consumeRate} ${def.resources.secondary.name}/s per worker`;
+    }
+    if (slot === 'quaternary') {
+      return `${slotDef.consumeRate} ${def.resources.tertiary.name}/s per worker`;
     }
     return undefined;
   };
@@ -122,6 +146,12 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
                   <span className={`text-${def.color}/50`}>{def.resources.tertiary.name}</span>
                 </>
               )}
+              {wing.quaternaryUnlocked && (
+                <>
+                  <span>&rarr;</span>
+                  <span className={`text-${def.color}/40`}>{def.resources.quaternary.name}</span>
+                </>
+              )}
             </div>
           )}
 
@@ -137,6 +167,8 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
                 // ── Automated slot: worker assignment + upgrades ──
                 const cLevel = wing.upgrades[capKey(slot)] as number;
                 const eLevel = wing.upgrades[effKey(slot)] as number;
+                const mLevel = wing.upgrades[maxWorkersKey(slot)] as number;
+                const slotMax = ResourceSystem.getMaxWorkersForSlot(wing, slot);
 
                 return (
                   <div key={slot} className={isNewAuto ? 'animate-glow-once rounded' : ''}>
@@ -148,6 +180,7 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
                     capacity={wing.stats[`${slot}Capacity` as keyof typeof wing.stats] as number}
                     rate={wing.stats[`${slot}Rate` as keyof typeof wing.stats] as number}
                     workers={wing.workers[slot]}
+                    maxWorkers={slotMax}
                     canAssign={hasAvailable}
                     onAssign={() => dispatch({ type: 'ASSIGN_WORKER', payload: { wing: wingId, slot } })}
                     onUnassign={() => dispatch({ type: 'UNASSIGN_WORKER', payload: { wing: wingId, slot } })}
@@ -162,6 +195,13 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
                     effCurrencyName={def.resources.tertiary.name}
                     effCurrencyAvailable={wing.resources.tertiary}
                     onBuyEff={() => dispatch({ type: 'BUY_EFFICIENCY_UPGRADE', payload: { wing: wingId, slot } })}
+                    {...(wing.quaternaryUnlocked ? {
+                      maxWorkersLevel: mLevel,
+                      maxWorkersCost: maxWorkersUpgradeCost(mLevel),
+                      maxWorkersCurrencyName: def.resources.quaternary.name,
+                      maxWorkersCurrencyAvailable: wing.resources.quaternary,
+                      onBuyMaxWorkers: () => dispatch({ type: 'BUY_MAX_WORKERS_UPGRADE', payload: { wing: wingId, slot } }),
+                    } : {})}
                     tier={slot}
                   />
                   </div>
@@ -176,6 +216,7 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
               const canAutomate = canEnableSlotAutomation(slot);
               const cLevel = wing.upgrades[capKey(slot)] as number;
               const eLevel = wing.upgrades[effKey(slot)] as number;
+              const mLevel = wing.upgrades[maxWorkersKey(slot)] as number;
 
               // Click cost calculation (mirrors ActionSystem logic)
               let clickCost = 0;
@@ -255,6 +296,22 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
                           <span className="text-muted-foreground/50">({efficiencyUpgradeCost(eLevel)} {def.resources.tertiary.name})</span>
                         </button>
                       )}
+                      {wing.quaternaryUnlocked && (
+                        <button
+                          onClick={() => dispatch({ type: 'BUY_MAX_WORKERS_UPGRADE', payload: { wing: wingId, slot } })}
+                          disabled={wing.resources.quaternary < maxWorkersUpgradeCost(mLevel)}
+                          className={cn(
+                            "flex-1 flex items-center justify-center gap-1 py-1 rounded text-[10px] font-mono transition-colors",
+                            wing.resources.quaternary >= maxWorkersUpgradeCost(mLevel)
+                              ? `bg-${def.color}/10 text-${def.color} hover:bg-${def.color}/20 border border-${def.color}/20`
+                              : "bg-muted/10 text-muted-foreground/40 cursor-not-allowed border border-muted/10"
+                          )}
+                        >
+                          <ChevronUp className="h-3 w-3" />
+                          Crew Lv.{mLevel}
+                          <span className="text-muted-foreground/50">({maxWorkersUpgradeCost(mLevel)} {def.resources.quaternary.name})</span>
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -307,6 +364,22 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
                 </div>
                 <p className="text-[10px] text-muted-foreground text-center mt-1 font-mono">
                   Advanced processing available
+                </p>
+              </button>
+            )}
+            {canUnlockQuaternary && (
+              <button
+                onClick={() => dispatch({ type: 'UNLOCK_TIER', payload: { wing: wingId, tier: 'quaternary' } })}
+                className={`system-panel p-4 border-${def.color}/40 hover:bg-${def.color}/10 transition-colors animate-unlock-btn-in`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Cpu className={`h-5 w-5 text-${def.color} animate-pulse`} />
+                  <span className={`font-mono font-semibold text-${def.color}`}>
+                    Unlock {def.resources.quaternary.name}
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground text-center mt-1 font-mono">
+                  Specialist tier available
                 </p>
               </button>
             )}

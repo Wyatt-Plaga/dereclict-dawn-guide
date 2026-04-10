@@ -25,7 +25,12 @@ export class GameEngine {
         this.systems = new GameSystemManager(this.eventBus);
         this.saveSystem = new SaveSystem();
 
-        this.systems.upgrade.updateAllStats(this.state);
+        // updateAllStats mutates — must run inside produce because the state
+        // we just loaded (cached or initialGameState) may be frozen by immer
+        // from a previous engine instance.
+        this.state = produce(this.state, (draft) => {
+            this.systems.upgrade.updateAllStats(draft as GameState);
+        });
 
         this.lastTick = Date.now();
         this.isRunning = false;
@@ -156,7 +161,11 @@ export class GameEngine {
             lastUpdate: Date.now(),
         };
 
-        this.systems.upgrade.updateAllStats(this.state);
+        // Wrap in produce — the spread above shares inner refs with
+        // initialGameState which immer may have frozen.
+        this.state = produce(this.state, (draft) => {
+            this.systems.upgrade.updateAllStats(draft as GameState);
+        });
         cacheState(this.state);
         this.eventBus.emit('stateUpdated', this.state);
     }
@@ -166,6 +175,11 @@ export class GameEngine {
         if (!saveData) return false;
 
         const s = saveData.state as any;
+
+        // Dev: any save predating the quaternary slot is wiped (no migration).
+        if ((s.version ?? 0) < 5) {
+            return false;
+        }
 
         // ─── V2 → V3 migration: global workerPool → per-wing workers ───
         if (s.workerPool && !('workerGateLevel' in s)) {

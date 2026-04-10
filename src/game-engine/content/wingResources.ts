@@ -13,7 +13,7 @@
  */
 
 export type WingId = 'reactor' | 'processor' | 'crewQuarters' | 'manufacturing';
-export type ResourceSlot = 'primary' | 'secondary' | 'tertiary';
+export type ResourceSlot = 'primary' | 'secondary' | 'tertiary' | 'quaternary';
 
 export interface SlotResourceDef {
   id: string;           // unique string id (e.g. 'energy', 'fuelRods')
@@ -30,10 +30,12 @@ export interface SlotResourceDef {
 export interface WingUnlockThresholds {
   secondary: number;          // primary resource amount to unlock secondary clicking
   tertiary: number;           // secondary resource amount to unlock tertiary clicking
+  quaternary: number;         // tertiary resource amount to unlock quaternary clicking
   /** Per-slot automation: tertiary resource amount needed to enable automation */
   automatePrimary: number;    // tertiary resource to automate primary slot
   automateSecondary: number;  // tertiary resource to automate secondary slot
   automateTertiary: number;   // tertiary resource to automate tertiary slot
+  automateQuaternary: number; // quaternary resource to automate quaternary slot
 }
 
 export interface WingDef {
@@ -63,6 +65,14 @@ export function capacityUpgradeCost(level: number): number {
 export function efficiencyUpgradeCost(level: number): number {
   return Math.ceil(3 * Math.pow(1.5, level));
 }
+
+/** Cost of a +1 max-workers upgrade for a slot (paid in quaternary resource) */
+export function maxWorkersUpgradeCost(level: number): number {
+  return Math.ceil(5 * Math.pow(1.6, level));
+}
+
+/** Starting per-slot worker cap */
+export const INITIAL_MAX_WORKERS_PER_SLOT = 5;
 
 /** Energy cost to hire one new worker (global pool) */
 export function workerHireEnergyCost(currentWorkers: number): number {
@@ -99,9 +109,12 @@ export const WING_DEFS: Record<WingId, WingDef> = {
     color: 'chart-1',
     clickText: 'Generate Energy',
     clickAmount: 1,
-    clickAmounts: { primary: 1, secondary: 0.5, tertiary: 0.2 },
+    clickAmounts: { primary: 1, secondary: 0.5, tertiary: 0.2, quaternary: 0.1 },
     energyCostPerPrimaryWorker: 0,
-    unlockThresholds: { secondary: 100, tertiary: 15, automatePrimary: 5, automateSecondary: 7, automateTertiary: 8 },
+    unlockThresholds: {
+      secondary: 100, tertiary: 15, quaternary: 6,
+      automatePrimary: 5, automateSecondary: 7, automateTertiary: 8, automateQuaternary: 4,
+    },
     resources: {
       primary: {
         id: 'energy',
@@ -133,6 +146,16 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         capacityPerLevel: 4,
         efficiencyBonus: 0.5,
       },
+      quaternary: {
+        id: 'plasmaConduits',
+        name: 'Plasma Conduits',
+        description: 'High-pressure routing channels. Spent to raise the worker cap on each slot.',
+        baseCapacity: 6,
+        baseRate: 0.06,
+        consumeRate: 0.3,      // thermal cores/s per worker
+        capacityPerLevel: 3,
+        efficiencyBonus: 0.5,
+      },
     },
   },
 
@@ -144,9 +167,12 @@ export const WING_DEFS: Record<WingId, WingDef> = {
     color: 'chart-2',
     clickText: 'Process Data',
     clickAmount: 0.5,
-    clickAmounts: { primary: 0.5, secondary: 0.3, tertiary: 0.1 },
+    clickAmounts: { primary: 0.5, secondary: 0.3, tertiary: 0.1, quaternary: 0.05 },
     energyCostPerPrimaryWorker: 1.0,
-    unlockThresholds: { secondary: 50, tertiary: 10, automatePrimary: 3, automateSecondary: 4, automateTertiary: 5 },
+    unlockThresholds: {
+      secondary: 50, tertiary: 10, quaternary: 4,
+      automatePrimary: 3, automateSecondary: 4, automateTertiary: 5, automateQuaternary: 3,
+    },
     resources: {
       primary: {
         id: 'insight',
@@ -178,6 +204,16 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         capacityPerLevel: 3,
         efficiencyBonus: 0.5,
       },
+      quaternary: {
+        id: 'heuristics',
+        name: 'Heuristics',
+        description: 'Self-tuning decision models. Spent to raise the worker cap on each slot.',
+        baseCapacity: 4,
+        baseRate: 0.05,
+        consumeRate: 0.2,      // algorithms/s per worker
+        capacityPerLevel: 2,
+        efficiencyBonus: 0.5,
+      },
     },
   },
 
@@ -189,9 +225,12 @@ export const WING_DEFS: Record<WingId, WingDef> = {
     color: 'chart-3',
     clickText: 'Awaken Crew',
     clickAmount: 0.5,
-    clickAmounts: { primary: 0.5, secondary: 0.2, tertiary: 0.1 },
+    clickAmounts: { primary: 0.5, secondary: 0.2, tertiary: 0.1, quaternary: 0.05 },
     energyCostPerPrimaryWorker: 1.0,
-    unlockThresholds: { secondary: 20, tertiary: 8, automatePrimary: 3, automateSecondary: 4, automateTertiary: 5 },
+    unlockThresholds: {
+      secondary: 20, tertiary: 8, quaternary: 4,
+      automatePrimary: 3, automateSecondary: 4, automateTertiary: 5, automateQuaternary: 3,
+    },
     resources: {
       primary: {
         id: 'crew',
@@ -223,6 +262,16 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         capacityPerLevel: 2,
         efficiencyBonus: 0.5,
       },
+      quaternary: {
+        id: 'officers',
+        name: 'Officers',
+        description: 'Specialist crew leaders. Spent to raise the worker cap on each slot.',
+        baseCapacity: 4,
+        baseRate: 0.03,
+        consumeRate: 0.15,     // command tokens/s per worker
+        capacityPerLevel: 2,
+        efficiencyBonus: 0.5,
+      },
     },
   },
 
@@ -234,9 +283,12 @@ export const WING_DEFS: Record<WingId, WingDef> = {
     color: 'chart-4',
     clickText: 'Collect Scrap',
     clickAmount: 1,
-    clickAmounts: { primary: 1, secondary: 0.3, tertiary: 0.1 },
+    clickAmounts: { primary: 1, secondary: 0.3, tertiary: 0.1, quaternary: 0.05 },
     energyCostPerPrimaryWorker: 1.0,
-    unlockThresholds: { secondary: 100, tertiary: 10, automatePrimary: 3, automateSecondary: 4, automateTertiary: 5 },
+    unlockThresholds: {
+      secondary: 100, tertiary: 10, quaternary: 4,
+      automatePrimary: 3, automateSecondary: 4, automateTertiary: 5, automateQuaternary: 3,
+    },
     resources: {
       primary: {
         id: 'scrap',
@@ -268,6 +320,16 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         capacityPerLevel: 3,
         efficiencyBonus: 0.5,
       },
+      quaternary: {
+        id: 'prototypes',
+        name: 'Prototypes',
+        description: 'Functional test builds. Spent to raise the worker cap on each slot.',
+        baseCapacity: 4,
+        baseRate: 0.03,
+        consumeRate: 0.15,     // schematics/s per worker
+        capacityPerLevel: 2,
+        efficiencyBonus: 0.5,
+      },
     },
   },
 };
@@ -283,7 +345,7 @@ export const REGION_WING_UNLOCKS: { region: string; wing: WingId; unlocksRegion:
 export const WING_ORDER: WingId[] = ['reactor', 'processor', 'crewQuarters', 'manufacturing'];
 
 /** All resource slot types in chain order */
-export const SLOT_ORDER: ResourceSlot[] = ['primary', 'secondary', 'tertiary'];
+export const SLOT_ORDER: ResourceSlot[] = ['primary', 'secondary', 'tertiary', 'quaternary'];
 
 /** Map a concrete resource id (e.g. 'energy') to its wing and slot */
 export function findResourceDef(resourceId: string): { wing: WingDef; slot: ResourceSlot; def: SlotResourceDef } | null {

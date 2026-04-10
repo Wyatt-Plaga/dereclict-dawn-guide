@@ -11,11 +11,12 @@ import type { ResourceSlot } from '../content/wingResources';
 /* Per-wing state                                                             */
 /* ========================================================================== */
 
-/** Resource amounts for a single wing (primary / secondary / tertiary) */
+/** Resource amounts for a single wing (primary / secondary / tertiary / quaternary) */
 export interface WingResources {
   primary: number;
   secondary: number;
   tertiary: number;
+  quaternary: number;
 }
 
 /** Workers assigned to each slot within a wing */
@@ -23,18 +24,26 @@ export interface WingWorkers {
   primary: number;
   secondary: number;
   tertiary: number;
+  quaternary: number;
 }
 
-/** Upgrade levels within a wing (capacity + efficiency for each slot) */
+/** Upgrade levels within a wing (capacity, efficiency, max workers per slot) */
 export interface WingUpgrades {
   // Capacity levels — purchased with the secondary resource
   primaryCap: number;
   secondaryCap: number;
   tertiaryCap: number;
+  quaternaryCap: number;
   // Efficiency levels — purchased with the tertiary resource
   primaryEff: number;
   secondaryEff: number;
   tertiaryEff: number;
+  quaternaryEff: number;
+  // Max-worker levels — purchased with the quaternary resource
+  primaryMaxWorkers: number;
+  secondaryMaxWorkers: number;
+  tertiaryMaxWorkers: number;
+  quaternaryMaxWorkers: number;
 }
 
 /** Computed stats for a wing (derived from upgrades + workers) */
@@ -45,6 +54,8 @@ export interface WingStats {
   secondaryRate: number;
   tertiaryCapacity: number;
   tertiaryRate: number;
+  quaternaryCapacity: number;
+  quaternaryRate: number;
 }
 
 /** Global shared worker pool */
@@ -62,6 +73,7 @@ export interface SlotAutomation {
   primary: boolean;
   secondary: boolean;
   tertiary: boolean;
+  quaternary: boolean;
 }
 
 /** Standard wing category shape */
@@ -75,6 +87,8 @@ export interface WingCategory {
   secondaryUnlocked: boolean;
   /** Progression: whether tertiary resource tier is visible */
   tertiaryUnlocked: boolean;
+  /** Progression: whether quaternary resource tier is visible */
+  quaternaryUnlocked: boolean;
   /** Per-slot: whether automation is enabled (replaces clicking with workers) */
   automated: SlotAutomation;
 }
@@ -155,4 +169,9 @@ export function capKey(slot: ResourceSlot): keyof WingUpgrades {
 /** Get the efficiency key for a slot */
 export function effKey(slot: ResourceSlot): keyof WingUpgrades {
   return `${slot}Eff` as keyof WingUpgrades;
+}
+
+/** Get the max-workers level key for a slot */
+export function maxWorkersKey(slot: ResourceSlot): keyof WingUpgrades {
+  return `${slot}MaxWorkers` as keyof WingUpgrades;
 }

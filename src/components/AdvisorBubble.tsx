@@ -5,12 +5,16 @@ import { cn } from "@/lib/utils";
 import { useAdvisor } from "@/components/providers/advisor-provider";
 import GlitchText from "@/components/GlitchText";
 
+/** One full cycle of ai-advisor-protagonist.gif (17 frames @ 235ms). */
+const ADVISOR_GIF_MS = 3995;
+
 interface AdvisorBubbleProps {
   /** Sprite path. Defaults to the VIKI-style holographic projection. */
   spritePath?: string;
   /** Display size of the sprite in pixels (square). */
   spriteSize?: number;
-  /** How long (ms) the bubble stays before auto-hiding. 0 = never auto-hide. */
+  /** How long (ms) the bubble stays before auto-hiding. 0 = never auto-hide.
+   *  Defaults to one full GIF cycle so the animation plays exactly once. */
   durationMs?: number;
 }
 
@@ -19,13 +23,15 @@ interface AdvisorBubbleProps {
  * Reads its current message + formation level from the AdvisorProvider.
  */
 export default function AdvisorBubble({
-  spritePath = "/ai-advisor-protagonist.png",
+  spritePath = "/ai-advisor-protagonist.gif",
   spriteSize = 168,
-  durationMs = 6000,
+  durationMs = ADVISOR_GIF_MS,
 }: AdvisorBubbleProps) {
   const { message, clearAdvisor, formationLevel } = useAdvisor();
   const [visible, setVisible] = useState(false);
   const [shownText, setShownText] = useState<string | null>(null);
+  // Bumped on every new message so the <img> remounts and the GIF restarts at frame 0.
+  const [showId, setShowId] = useState(0);
 
   // When a new message comes in, show it. Auto-hide after duration.
   useEffect(() => {
@@ -35,6 +41,7 @@ export default function AdvisorBubble({
     }
     setShownText(message);
     setVisible(true);
+    setShowId((id) => id + 1);
 
     if (durationMs > 0) {
       const t = setTimeout(() => setVisible(false), durationMs);
@@ -82,8 +89,10 @@ export default function AdvisorBubble({
         />
       </div>
 
-      {/* AI projection — gentle float bob with hologram glow */}
+      {/* AI projection — gentle float bob with hologram glow.
+          key={showId} forces remount so the GIF restarts at frame 0 each show. */}
       <img
+        key={showId}
         src={spritePath}
         alt="ship AI"
         width={spriteSize}

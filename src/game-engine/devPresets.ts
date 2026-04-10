@@ -27,7 +27,12 @@ function regionHistory(region: RegionType, count: number): EncounterHistory[] {
 export interface DevPreset {
     name: string;
     description: string;
-    state: Partial<GameState>;
+    /**
+     * Partial state fragment, deep-merged into initialGameState by loadPreset.
+     * Typed as `any` because the inner wing categories supply only partial
+     * fields and rely on mergeWing() to fill defaults for new slots/upgrades.
+     */
+    state: any;
 }
 
 const postVoid: DevPreset = {

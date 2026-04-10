@@ -1,6 +1,6 @@
 import { GameState, WingCategory } from '../types';
-import { BuffType } from '../types/resources';
-import { WING_DEFS, WingId, WING_ORDER, SLOT_ORDER, ResourceSlot, WORKER_BASE, WORKER_PER_UPGRADE, WORKER_BOSS_GATE_SIZE } from '../content/wingResources';
+import { BuffType, maxWorkersKey } from '../types/resources';
+import { WING_DEFS, WingId, WING_ORDER, SLOT_ORDER, ResourceSlot, WORKER_BASE, WORKER_PER_UPGRADE, WORKER_BOSS_GATE_SIZE, INITIAL_MAX_WORKERS_PER_SLOT } from '../content/wingResources';
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger";
 import { getResourceAccessor } from '../utils/resourceAccessor';
 
@@ -105,6 +105,16 @@ export class ResourceSystem {
           } else {
             wing.resources.secondary -= needed;
           }
+        } else if (slot === 'quaternary') {
+          // Consumes tertiary
+          const needed = workers * slotDef.consumeRate * delta;
+          if (wing.resources.tertiary < needed) {
+            const ratio = needed > 0 ? wing.resources.tertiary / needed : 0;
+            produce *= ratio;
+            wing.resources.tertiary = 0;
+          } else {
+            wing.resources.tertiary -= needed;
+          }
         }
 
         // Apply production capped at capacity
@@ -184,12 +194,21 @@ export class ResourceSystem {
   /* ---------------------------------------------------------------------- */
 
   /** Check if tier unlock thresholds are met (used by UI to show buttons) */
-  static canUnlockTier(wing: WingCategory, wingId: WingId, tier: 'secondary' | 'tertiary'): boolean {
+  static canUnlockTier(wing: WingCategory, wingId: WingId, tier: 'secondary' | 'tertiary' | 'quaternary'): boolean {
     const thresholds = WING_DEFS[wingId].unlockThresholds;
     if (tier === 'secondary') {
       return !wing.secondaryUnlocked && wing.resources.primary >= thresholds.secondary;
     }
-    return !wing.tertiaryUnlocked && wing.resources.secondary >= thresholds.tertiary;
+    if (tier === 'tertiary') {
+      return !wing.tertiaryUnlocked && wing.secondaryUnlocked && wing.resources.secondary >= thresholds.tertiary;
+    }
+    return !wing.quaternaryUnlocked && wing.tertiaryUnlocked && wing.resources.tertiary >= thresholds.quaternary;
+  }
+
+  /** Get the current per-slot worker cap for a given slot in a wing */
+  static getMaxWorkersForSlot(wing: WingCategory, slot: ResourceSlot): number {
+    const level = wing.upgrades[maxWorkersKey(slot)] as number;
+    return INITIAL_MAX_WORKERS_PER_SLOT + level;
   }
 
   /* ---------------------------------------------------------------------- */
