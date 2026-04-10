@@ -27,10 +27,12 @@ export interface LogEntry {
 // or accept that we might need to keep these in index.ts if they strictly depend on GameState.
 // Actually, they depend on keys of GameState['categories'].
 
-export type LogUnlockCondition = 
+export type LogUnlockCondition =
     | ResourceThresholdCondition
     | UpgradePurchasedCondition
-    | MultiCondition;
+    | MultiCondition
+    | RegionCompletedCondition
+    | VictoryCountCondition;
 
 export interface ResourceThresholdCondition {
     type: 'RESOURCE_THRESHOLD';
@@ -49,6 +51,16 @@ export interface MultiCondition {
     type: 'MULTI_CONDITION';
     operator: 'AND' | 'OR';
     conditions: LogUnlockCondition[];
+}
+
+export interface RegionCompletedCondition {
+    type: 'REGION_COMPLETED';
+    regionKey: string;  // e.g. "void", "nebula", "nebula-t2"
+}
+
+export interface VictoryCountCondition {
+    type: 'VICTORY_COUNT';
+    count: number;  // total combat victories >= this
 }
 
 /**

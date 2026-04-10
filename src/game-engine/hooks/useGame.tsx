@@ -85,7 +85,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       try {
         await engineRef.current.initialize();
       } catch (error) {
-        console.error("Failed to initialize game:", error);
+        Logger.error(LogCategory.ENGINE, `Failed to initialize game: ${error}`, LogContext.STARTUP);
         // Fallback to starting the game if initialization fails
         engineRef.current.start();
       } finally {

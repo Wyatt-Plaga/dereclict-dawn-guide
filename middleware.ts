@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 
-// Default Next.js middleware to allow all requests
 export function middleware(request: NextRequest) {
-  return NextResponse.next()
+  if (request.nextUrl.pathname === '/') {
+    return NextResponse.redirect(new URL('/reactor', request.url));
+  }
+  return NextResponse.next();
 }
 
 // Clerk authentication code removed – no auth required.

@@ -1,40 +1,85 @@
-/**
- * Action Types
- * 
- * These are all the possible actions that can be dispatched to modify the game state.
- * Think of these as the different types of requests that can be made.
- */
+import type { WingId, ResourceSlot } from '../content/wingResources';
 
-/**
- * Categories in the game
- */
 export type GameCategory = 'reactor' | 'processor' | 'crewQuarters' | 'manufacturing';
 
-/**
- * Base Action interface
- * All actions must have a type
- */
-export interface GameAction {
-  type: string;
-  payload?: any;
-}
+/* ========================================================================== */
+/* Worker / Wing actions                                                      */
+/* ========================================================================== */
 
-/**
- * Click Resource Action
- * Triggered when the player clicks on a resource generator button
- */
-export interface ClickResourceAction extends GameAction {
-  type: 'CLICK_RESOURCE';
+export interface AssignWorkerAction {
+  type: 'ASSIGN_WORKER';
   payload: {
-    category: GameCategory;
+    wing: WingId;
+    slot: ResourceSlot;
   };
 }
 
-/**
- * Purchase Upgrade Action
- * Triggered when the player buys an upgrade
- */
-export interface PurchaseUpgradeAction extends GameAction {
+export interface UnassignWorkerAction {
+  type: 'UNASSIGN_WORKER';
+  payload: {
+    wing: WingId;
+    slot: ResourceSlot;
+  };
+}
+
+/** Buy a capacity upgrade (costs secondary resource of the wing) */
+export interface BuyCapacityUpgradeAction {
+  type: 'BUY_CAPACITY_UPGRADE';
+  payload: {
+    wing: WingId;
+    slot: ResourceSlot;   // which slot's capacity to upgrade
+  };
+}
+
+/** Buy an efficiency upgrade (costs tertiary resource of the wing) */
+export interface BuyEfficiencyUpgradeAction {
+  type: 'BUY_EFFICIENCY_UPGRADE';
+  payload: {
+    wing: WingId;
+    slot: ResourceSlot;   // which slot's efficiency to upgrade
+  };
+}
+
+/** Hire a worker into the shared pool (costs energy) */
+export interface HireWorkerAction {
+  type: 'HIRE_WORKER';
+}
+
+/** Upgrade the shared worker maximum (costs relics, +5 per level) */
+export interface BuyWorkerCapUpgradeAction {
+  type: 'BUY_WORKER_CAP_UPGRADE';
+}
+
+/* ========================================================================== */
+/* Existing actions (kept)                                                    */
+/* ========================================================================== */
+
+export interface ClickResourceAction {
+  type: 'CLICK_RESOURCE' | 'RESOURCE_CLICK';
+  payload: {
+    category: GameCategory;
+    slot?: ResourceSlot;  // defaults to 'primary'
+  };
+}
+
+export interface EnableAutomationAction {
+  type: 'ENABLE_AUTOMATION';
+  payload: {
+    wing: WingId;
+    slot: ResourceSlot;
+  };
+}
+
+/** Unlock the next resource tier (secondary or tertiary) for a wing */
+export interface UnlockTierAction {
+  type: 'UNLOCK_TIER';
+  payload: {
+    wing: WingId;
+    tier: 'secondary' | 'tertiary';
+  };
+}
+
+export interface PurchaseUpgradeAction {
   type: 'PURCHASE_UPGRADE';
   payload: {
     category: GameCategory;
@@ -42,78 +87,87 @@ export interface PurchaseUpgradeAction extends GameAction {
   };
 }
 
-/**
- * Mark Log as Read Action
- * Triggered when a player views a log
- */
-export interface MarkLogReadAction extends GameAction {
+export interface MarkLogReadAction {
   type: 'MARK_LOG_READ';
   payload: {
     logId: string;
   };
 }
 
-/**
- * Mark All Logs as Read Action
- * Triggered when a player clicks "Mark All as Read"
- */
-export interface MarkAllLogsReadAction extends GameAction {
+export interface MarkAllLogsReadAction {
   type: 'MARK_ALL_LOGS_READ';
 }
 
-/**
- * Initiate Jump Action
- * Triggered when a player initiates a jump to start an encounter
- */
-export interface InitiateJumpAction extends GameAction {
+export interface InitiateJumpAction {
   type: 'INITIATE_JUMP';
 }
 
-/**
- * Complete Encounter Action
- * Triggered when a player completes an encounter
- */
-export interface CompleteEncounterAction extends GameAction {
+export interface CompleteEncounterAction {
   type: 'COMPLETE_ENCOUNTER';
   payload?: {
     choiceId?: string;
   };
 }
 
-/**
- * Select Region Action
- * Triggered when a player selects a region to navigate to
- */
-export interface SelectRegionAction extends GameAction {
+export interface SelectRegionAction {
   type: 'SELECT_REGION';
   payload: {
     region: string;
+    tier?: number;
   };
 }
 
-/**
- * Make Story Choice Action
- * Triggered when a player makes a story choice
- */
-export interface MakeStoryChoiceAction extends GameAction {
-  type: 'MAKE_STORY_CHOICE';
+export interface StoryChoiceAction {
+  type: 'STORY_CHOICE';
   payload: {
     choiceId: string;
   };
 }
 
-/**
- * Enemy Action Resolve
- * Triggered internally by the UI after the enemy has finished charging
- */
-export interface EnemyActionResolveAction extends GameAction {
-  type: 'ENEMY_ACTION_RESOLVE';
+export interface CombatActionAction {
+  type: 'COMBAT_ACTION';
+  payload: {
+    actionId: string;
+  };
+}
+
+export interface RetreatFromBattleAction {
+  type: 'RETREAT_FROM_BATTLE';
+}
+
+export interface EquipAbilityAction {
+  type: 'EQUIP_ABILITY';
+  payload: {
+    abilityId: string;
+  };
+}
+
+export interface UnequipAbilityAction {
+  type: 'UNEQUIP_ABILITY';
+  payload: {
+    abilityId: string;
+  };
+}
+
+export interface CraftAmmoAction {
+  type: 'CRAFT_AMMO';
+  payload: {
+    ammoType: string;
+    amount: number;
+  };
+}
+
+export interface UpgradeAmmoCapacityAction {
+  type: 'UPGRADE_AMMO_CAPACITY';
+  payload: {
+    ammoType: string;
+  };
 }
 
 /**
- * Union type of all possible game actions
+ * Union type of all possible game actions.
  */
-export type GameActions = 
+export type GameAction =
   | ClickResourceAction
   | PurchaseUpgradeAction
   | MarkLogReadAction
@@ -121,5 +175,21 @@ export type GameActions =
   | InitiateJumpAction
   | CompleteEncounterAction
   | SelectRegionAction
-  | MakeStoryChoiceAction
-  | EnemyActionResolveAction; 
+  | StoryChoiceAction
+  | CombatActionAction
+  | RetreatFromBattleAction
+  | EquipAbilityAction
+  | UnequipAbilityAction
+  | CraftAmmoAction
+  | UpgradeAmmoCapacityAction
+  | AssignWorkerAction
+  | UnassignWorkerAction
+  | BuyCapacityUpgradeAction
+  | BuyEfficiencyUpgradeAction
+  | HireWorkerAction
+  | BuyWorkerCapUpgradeAction
+  | EnableAutomationAction
+  | UnlockTierAction;
+
+/** @deprecated Use GameAction instead */
+export type GameActions = GameAction;

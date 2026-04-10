@@ -1,5 +1,5 @@
 import { RegionType } from './regions';
-import { ResourceReward } from './resources';
+import { ResourceReward, BuffReward } from './resources';
 
 /**
  * Encounter Types
@@ -29,6 +29,7 @@ export interface EncounterChoice {
     text: string;
     outcome: {
         resources?: ResourceReward[];
+        buff?: BuffReward;
         text: string;
         continuesToNextEncounter?: boolean;
     };
@@ -39,6 +40,6 @@ export interface EncounterHistory {
     id: string;
     result: string;
     date: number;
-    region: RegionType;
+    region: string;  // base RegionType or tiered key like "nebula-t2"
 }
 

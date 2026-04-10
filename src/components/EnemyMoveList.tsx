@@ -1,63 +1,111 @@
 import { EnemyActionDefinition } from '@/game-engine/types/combat';
 import { cn } from '@/lib/utils';
-import { Zap, Shield, Crosshair, Flame } from 'lucide-react';
 
 interface Props {
   actions: EnemyActionDefinition[];
-  chargingActionId?: string; // currently charging
+  enemyCooldowns: Record<string, number>;
+  enemyActionFlash?: Record<string, number>;
+  /** When true, ability descriptions/stats are visible without using Scan. */
+  alwaysReveal?: boolean;
+  isExposed?: boolean;
 }
 
-// Simple helper to choose an icon based on action id keywords
-const iconForAction = (id: string) => {
-  if (id.includes('shield')) return <Shield className="h-5 w-5 mr-2" />;
-  if (id.includes('laser')) return <Zap className="h-5 w-5 mr-2" />;
-  if (id.includes('cannon') || id.includes('volley')) return <Crosshair className="h-5 w-5 mr-2" />;
-  if (id.includes('missile') || id.includes('flame')) return <Flame className="h-5 w-5 mr-2" />;
-  return <Zap className="h-5 w-5 mr-2" />;
-};
+function formatSeconds(s: number): string {
+  if (s <= 0) return "0s";
+  if (s >= 10) return `${Math.ceil(s)}s`;
+  return `${s.toFixed(1)}s`;
+}
 
-const getActionSummary = (action: EnemyActionDefinition) => {
-  if (action.damage && action.shieldDamage) return `Dmg: ${action.damage} | Shld: ${action.shieldDamage}`;
-  if (action.damage) return `Damage: ${action.damage}`;
-  if (action.shieldDamage) return `Shield Dmg: ${action.shieldDamage}`;
-  if (action.statusEffect) return `${action.statusEffect.type} (${action.statusEffect.duration}t)`;
-  return "";
-};
+export default function EnemyMoveList({
+  actions,
+  enemyCooldowns,
+  enemyActionFlash = {},
+  alwaysReveal = false,
+  isExposed = false,
+}: Props) {
+  const reveal = alwaysReveal || isExposed;
 
-export default function EnemyMoveList({ actions, chargingActionId }: Props) {
   return (
-    <div className={`grid gap-3 h-full font-mono ${
-      actions.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
-    }`}>
-      {actions.map((a) => (
-        <button
-          key={a.id}
-          type="button"
-          disabled
-          className={cn(
-            'system-panel relative flex flex-col items-center justify-center p-4 h-full text-center min-h-[100px]',
-            chargingActionId === a.id && 'bg-chart-2/20 text-chart-2 animate-pulse border-chart-2/50'
-          )}
-        >
-          <div className="flex flex-col items-center mb-2 relative z-10 w-full">
-            <div className="flex items-center mb-1">
-              {iconForAction(a.id)}
-              <span className="text-sm font-medium truncate">{a.name}</span>
-            </div>
-            <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight px-2">
-              {a.description}
-            </p>
-          </div>
-          
-          <div className="mt-auto relative z-10 bg-background/50 px-2 py-1 rounded text-xs font-semibold">
-            {getActionSummary(a)}
-          </div>
+    <div className="flex flex-col gap-1.5">
+      {actions.map((a) => {
+        const cooldown = enemyCooldowns[a.id] ?? 0;
+        const cdPct = cooldown > 0 ? Math.min(1, cooldown / a.cooldown) : 0;
+        const justUsed = (enemyActionFlash[a.id] ?? 0) > 0;
+        const isReady = cooldown <= 0;
 
-          {chargingActionId === a.id && (
-            <span className="absolute inset-y-0 left-0 bg-chart-2/10 animate-grow pointer-events-none w-full" />
-          )}
-        </button>
-      ))}
+        // Stats summary
+        const stats: string[] = [];
+        if (a.hullDamage) stats.push(`${a.hullDamage} hull`);
+        if (a.shieldDamage) stats.push(`${a.shieldDamage} shield`);
+        if (a.stunDuration) stats.push(`stun ${a.stunDuration}s`);
+        if (a.selfShieldHeal) stats.push(`heals ${a.selfShieldHeal}`);
+        if (a.radiationStacks) stats.push(`+${a.radiationStacks} rad`);
+        if (a.cloakDuration) stats.push(`cloak ${a.cloakDuration}s`);
+
+        return (
+          <div
+            key={a.id}
+            className={cn(
+              'system-panel relative overflow-hidden p-2.5 transition-colors',
+              justUsed && 'bg-red-500/10 border-red-500/30',
+              isReady && !justUsed && 'border-yellow-500/20',
+            )}
+          >
+            {/* Cooldown fill */}
+            {cdPct > 0 && (
+              <span
+                className="absolute inset-y-0 left-0 bg-red-500/8 pointer-events-none transition-all duration-100"
+                style={{ width: `${cdPct * 100}%` }}
+              />
+            )}
+
+            {/* Row 1: Name + status */}
+            <div className="flex items-center justify-between relative z-10 mb-0.5">
+              <span className={cn("text-sm font-medium font-mono", justUsed && "text-red-400")}>
+                {a.name}
+              </span>
+              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                {justUsed && (
+                  <span className="text-[10px] text-red-400 font-mono font-bold">FIRED</span>
+                )}
+                {cooldown > 0 && reveal && (
+                  <span className="text-[10px] text-muted-foreground font-mono">{formatSeconds(cooldown)}</span>
+                )}
+                {isReady && !justUsed && (
+                  <span className="text-[10px] text-yellow-400/80 font-mono animate-pulse">READY</span>
+                )}
+              </div>
+            </div>
+
+            {/* Row 2: Description (when revealed) */}
+            {reveal && (
+              <p className="text-[11px] text-muted-foreground leading-snug relative z-10 mb-1">
+                {a.description}
+              </p>
+            )}
+
+            {/* Row 3: Stats + condition */}
+            <div className="flex items-center justify-between relative z-10">
+              {reveal && stats.length > 0 ? (
+                <span className="text-[10px] font-mono text-muted-foreground/80">
+                  {stats.join(" · ")}
+                </span>
+              ) : !reveal ? (
+                <span className="text-[10px] font-mono text-muted-foreground/50 italic">
+                  Use Scan to reveal details
+                </span>
+              ) : (
+                <span />
+              )}
+              {a.conditionLabel && reveal && (
+                <span className="text-[9px] font-mono text-yellow-400/70 ml-2 shrink-0">
+                  {a.conditionLabel}
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
-} 
+}

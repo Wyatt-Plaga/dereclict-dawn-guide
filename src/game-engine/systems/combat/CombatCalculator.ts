@@ -22,8 +22,13 @@ export class CombatCalculator {
     currentShield: number,
     damage: number,
     shieldDamageMultiplier: number = 1,
-    hullDamageMultiplier: number = 1
+    hullDamageMultiplier: number = 1,
+    armor: number = 0
   ): { newHealth: number; newShield: number; shieldDamage: number; hullDamage: number } {
+    // Armor: flat damage reduction per hit, minimum 1 damage
+    if (armor > 0) {
+      damage = Math.max(1, damage - armor);
+    }
     let shieldDamage = 0;
     let hullDamage = 0;
     let newShield = currentShield;
@@ -104,15 +109,15 @@ export class CombatCalculator {
   }
 
   /**
-   * Process status effect turn updates
+   * Decrement status effect timers (real-time, in seconds)
    */
-  static processStatusEffects(effects: StatusEffectInstance[]): StatusEffectInstance[] {
+  static processStatusEffects(effects: StatusEffectInstance[], delta: number): StatusEffectInstance[] {
     return effects
       .map(effect => ({
         ...effect,
-        remainingTurns: effect.remainingTurns - 1
+        remainingTime: effect.remainingTime - delta
       }))
-      .filter(effect => effect.remainingTurns > 0);
+      .filter(effect => effect.remainingTime > 0);
   }
 }
 

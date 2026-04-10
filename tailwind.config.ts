@@ -91,13 +91,30 @@ const config: Config = {
 				fill: {
 					'0%': { height: '0%' },
 					'100%': { height: '100%' }
+				},
+				'slot-reveal': {
+					'0%': { opacity: '0', transform: 'translateY(-12px) scaleY(0.95)', maxHeight: '0px' },
+					'40%': { opacity: '0.4', maxHeight: '300px' },
+					'100%': { opacity: '1', transform: 'translateY(0) scaleY(1)', maxHeight: '300px' }
+				},
+				'glow-once': {
+					'0%': { boxShadow: '0 0 0px 0px transparent' },
+					'30%': { boxShadow: '0 0 20px 4px hsl(var(--primary) / 0.4)' },
+					'100%': { boxShadow: '0 0 0px 0px transparent' }
+				},
+				'unlock-btn-in': {
+					'0%': { opacity: '0', transform: 'scale(0.92)' },
+					'100%': { opacity: '1', transform: 'scale(1)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				grow: 'grow 2s linear forwards',
-				fill: 'fill 2s linear forwards'
+				fill: 'fill 2s linear forwards',
+				'slot-reveal': 'slot-reveal 0.6s ease-out forwards',
+				'glow-once': 'glow-once 1s ease-out forwards',
+				'unlock-btn-in': 'unlock-btn-in 0.4s ease-out forwards'
 			},
 		}
 	},

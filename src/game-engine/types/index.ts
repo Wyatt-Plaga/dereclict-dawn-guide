@@ -6,7 +6,10 @@ import { RegionType } from './regions';
 import { LogEntry, LogCategory } from './logs';
 import { BaseEncounter, EncounterHistory } from './encounters';
 import { CombatState } from './combat';
-import { ReactorCategory, ProcessorCategory, CrewQuartersCategory, ManufacturingCategory } from './resources';
+import {
+  ReactorCategory, ProcessorCategory, CrewQuartersCategory,
+  ManufacturingCategory, ActiveBuff, WorkerPool
+} from './resources';
 
 // Re-export all types for convenience
 export * from './regions';
@@ -21,60 +24,95 @@ export * from './actions';
  * Main game state that holds all game data
  */
 export interface GameState {
-    /**
-     * All game categories
-     */
     categories: {
         reactor: ReactorCategory;
         processor: ProcessorCategory;
         crewQuarters: CrewQuartersCategory;
         manufacturing: ManufacturingCategory;
     };
-    
-    /**
-     * Timestamp of the last update
-     */
+
+    /** Boss-gated worker cap — each level raises the global max workers ceiling */
+    workerGateLevel: number;
+
+    /** Shared worker pool used by all wings */
+    workers: WorkerPool;
+
     lastUpdate: number;
-    
-    /**
-     * Game state version for save compatibility
-     */
     version: number;
 
-    /**
-     * Game logs for story progression
-     */
     logs: {
         discovered: Record<string, LogEntry>;
-        unread: string[]; // IDs of unread logs
+        unread: string[];
     };
 
-    /**
-     * Navigation state
-     */
-    navigation: {
+    bridge: {
         currentRegion: RegionType;
-        completedRegions: RegionType[];
+        currentTier: number;
+        completedRegions: string[];
     };
 
-    /**
-     * Encounter state
-     */
     encounters: {
         active: boolean;
         encounter?: BaseEncounter;
         history: EncounterHistory[];
+        /** A retreat pins this enemy to its region — re-entering that region forces the rematch */
+        pendingRematch?: { enemyId: string; regionKey: string };
     };
 
-    /**
-     * Combat state
-     */
     combat: CombatState;
 
-    /**
-     * Universal resources not tied to a single wing
-     */
-    relics: number; // General currency obtained from combat, no capacity limit
+    /** Universal resources not tied to a single wing */
+    relics: number;
+
+    /** Equipment system */
+    inventory: string[];
+    loadout: {
+        shield: string | null;
+        weapons: string[];
+        utilities: string[];
+        stance: string | null;
+    };
+
+    /** Ammo system */
+    ammo: {
+        powerCells:  { current: number; tier: number };
+        munitions:   { current: number; tier: number };
+        dataCores:   { current: number; tier: number };
+        repairKits:  { current: number; tier: number };
+    };
+
+    /** Active timed buffs from story encounters */
+    buffs: ActiveBuff[];
+}
+
+/* ========================================================================== */
+/* Helpers to create default wing state                                       */
+/* ========================================================================== */
+
+import { WING_DEFS, WingId, WORKER_BASE, WORKER_PER_UPGRADE, WORKER_BOSS_GATE_SIZE, INITIAL_BOSS_GATE_LEVEL } from '../content/wingResources';
+
+function defaultWingCategory(wingId: WingId, unlocked: boolean) {
+    const def = WING_DEFS[wingId];
+    return {
+        resources: { primary: 0, secondary: 0, tertiary: 0 },
+        workers: { primary: 0, secondary: 0, tertiary: 0 },
+        upgrades: {
+            primaryCap: 0, secondaryCap: 0, tertiaryCap: 0,
+            primaryEff: 0, secondaryEff: 0, tertiaryEff: 0,
+        },
+        stats: {
+            primaryCapacity: def.resources.primary.baseCapacity,
+            primaryRate: 0,
+            secondaryCapacity: def.resources.secondary.baseCapacity,
+            secondaryRate: 0,
+            tertiaryCapacity: def.resources.tertiary.baseCapacity,
+            tertiaryRate: 0,
+        },
+        unlocked,
+        secondaryUnlocked: false,
+        tertiaryUnlocked: false,
+        automated: { primary: false, secondary: false, tertiary: false },
+    };
 }
 
 /**
@@ -83,78 +121,32 @@ export interface GameState {
 export const initialGameState: GameState = {
     categories: {
         reactor: {
-            resources: {
-                energy: 0,
-            },
-            upgrades: {
-                reactorExpansions: 0,
-                energyConverters: 0,
-                converterEfficiency: 0,
+            ...defaultWingCategory('reactor', true),
+            specialUpgrades: {
                 shielding: 0,
                 shieldBoosts: 0,
-                navigationUnlocked: 0,
+                bridgeUnlocked: 0,
             },
-            stats: {
-                energyCapacity: 100,
-                energyPerSecond: 0,  // Will increase with energyConverters
-            }
         },
-        processor: {
-            resources: {
-                insight: 0,
-            },
-            upgrades: {
-                mainframeExpansions: 0,
-                processingThreads: 0,
-                threadEfficiency: 0,
-                unlocked: 0,
-            },
-            stats: {
-                insightCapacity: 50,
-                insightPerSecond: 0,  // Will increase with processingThreads
-                insightPerClick: 0.5,
-            }
-        },
-        crewQuarters: {
-            resources: {
-                crew: 0,
-            },
-            upgrades: {
-                additionalQuarters: 0,
-                workerCrews: 0,
-                crewEfficiency: 0,
-                unlocked: 0,
-            },
-            stats: {
-                crewCapacity: 5,
-                crewPerSecond: 0,  // Will increase with workerCrews
-                awakeningProgress: 0,
-            }
-        },
-        manufacturing: {
-            resources: {
-                scrap: 0,
-            },
-            upgrades: {
-                cargoHoldExpansions: 0,
-                manufacturingBays: 0,
-                bayEfficiency: 0,
-                unlocked: 0,
-            },
-            stats: {
-                scrapCapacity: 100,
-                scrapPerSecond: 0,  // Will increase with manufacturingBays
-            }
-        }
+        processor: defaultWingCategory('processor', false),
+        crewQuarters: defaultWingCategory('crewQuarters', false),
+        manufacturing: defaultWingCategory('manufacturing', false),
+    },
+    workerGateLevel: INITIAL_BOSS_GATE_LEVEL,
+    workers: {
+        total: 0,
+        maxLevel: 0,
+        max: Math.min(WORKER_BASE, INITIAL_BOSS_GATE_LEVEL * WORKER_BOSS_GATE_SIZE),
     },
     lastUpdate: Date.now(),
-    version: 1,
+    version: 4,
     logs: {
         discovered: {},
         unread: []
     },
-    navigation: {
+    bridge: {
         currentRegion: 'void',
+        currentTier: 1,
         completedRegions: []
     },
     encounters: {
@@ -165,7 +157,6 @@ export const initialGameState: GameState = {
         active: false,
         currentEnemy: null,
         currentRegion: null,
-        turn: 0,
         encounterCompleted: false,
         playerStats: {
             health: 100,
@@ -186,13 +177,33 @@ export const initialGameState: GameState = {
         cooldowns: {},
         lastActionResult: undefined,
         lastEnemyActionId: null,
+        enemyCooldowns: {},
+        enemyActionFlash: {},
+        playerStunTimer: 0,
         rewards: {
             energy: 0,
             insight: 0,
             crew: 0,
             scrap: 0
         },
-        enemyIntentions: null
+        radiationStacks: 0,
+        radiationTickTimer: 4,
+        enemyCloaked: false,
+        enemyCloakTimer: 0
     },
     relics: 0,
-}; 
+    inventory: ['basic-phaser'],
+    loadout: {
+        shield: null,
+        weapons: ['basic-phaser'],
+        utilities: [],
+        stance: null,
+    },
+    ammo: {
+        powerCells:  { current: 5, tier: 0 },
+        munitions:   { current: 0, tier: 0 },
+        dataCores:   { current: 3, tier: 0 },
+        repairKits:  { current: 2, tier: 0 },
+    },
+    buffs: [],
+};

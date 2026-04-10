@@ -1,41 +1,33 @@
 import { GameState } from '../types';
 
-/**
- * Memory cache for preserving game state during in-app navigation
- * 
- * This provides immediate state availability while the persistent
- * storage is still loading, preventing UI flicker.
- */
-
-// In-memory store that persists between route changes
-let cachedGameState: GameState | null = null;
-
-// Window-level cache for improved resilience during development
-if (typeof window !== 'undefined') {
-  // @ts-expect-error - Using a non-standard property
-  if (window.__GAME_STATE_CACHE__) {
-    // @ts-expect-error
-    cachedGameState = window.__GAME_STATE_CACHE__;
+declare global {
+  interface Window {
+    __GAME_STATE_CACHE__?: GameState;
   }
 }
 
-/**
- * Get the cached game state, if available
- */
+let cachedGameState: GameState | null = null;
+
+if (typeof window !== 'undefined' && window.__GAME_STATE_CACHE__) {
+  cachedGameState = window.__GAME_STATE_CACHE__;
+}
+
 export function getCachedState(): GameState | null {
   return cachedGameState;
 }
 
-/**
- * Cache the current game state for quick access
- */
 export function cacheState(state: GameState): void {
-  // Store in module-level variable for in-app navigation
-  cachedGameState = JSON.parse(JSON.stringify(state));
-  
-  // Also store in window object for more resilience
+  cachedGameState = state;
+
   if (typeof window !== 'undefined') {
-    // @ts-expect-error
-    window.__GAME_STATE_CACHE__ = JSON.parse(JSON.stringify(state));
+    window.__GAME_STATE_CACHE__ = state;
   }
-} 
+}
+
+export function clearCachedState(): void {
+  cachedGameState = null;
+
+  if (typeof window !== 'undefined') {
+    window.__GAME_STATE_CACHE__ = undefined;
+  }
+}

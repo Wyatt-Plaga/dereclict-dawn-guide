@@ -1,6 +1,6 @@
 import { RegionType } from './regions';
 import { BaseEncounter } from './encounters';
-import { ResourceCost, ResourceReward } from './resources';
+import { ResourceCost, ResourceReward, ResourceType } from './resources';
 
 export { RegionType }; // Re-export RegionType
 
@@ -30,9 +30,10 @@ export interface StatusEffect {
 
 /**
  * Status Effect Instance (applied to an entity)
+ * remainingTime is in seconds for real-time combat.
  */
 export interface StatusEffectInstance extends StatusEffect {
-  remainingTurns: number;
+  remainingTime: number;
 }
 
 /**
@@ -52,31 +53,42 @@ export interface CombatActionDefinition {
 }
 
 /**
- * Enemy Action Condition Types
+ * Enemy Action Condition Types (real-time)
  */
-export type EnemyActionConditionType = 'HEALTH_THRESHOLD' | 'SHIELD_THRESHOLD' | 'ALWAYS' | 'RANDOM';
+export type EnemyActionConditionType =
+  | 'ALWAYS'
+  | 'PLAYER_HEALTH_BELOW'    // player health below threshold %
+  | 'PLAYER_HAS_SHIELDS'     // player shield > 0
+  | 'PLAYER_NO_SHIELDS'      // player shield <= 0
+  | 'PLAYER_RADIATION_ABOVE'; // player radiation stacks above threshold
 
 /**
  * Enemy Action Condition
  */
 export interface EnemyActionCondition {
   type: EnemyActionConditionType;
-  threshold?: number;
-  probability?: number;
+  threshold?: number;         // for PLAYER_HEALTH_BELOW (0-1)
 }
 
 /**
- * Enemy Action Definition
+ * Enemy Action Definition (real-time)
  */
 export interface EnemyActionDefinition {
   id: string;
   name: string;
   description: string;
-  damage?: number;
-  shieldDamage?: number;
-  statusEffect?: StatusEffect;
-  cooldown: number;
+  hullDamage?: number;        // direct hull damage
+  shieldDamage?: number;      // direct shield damage
+  selfDamage?: number;        // damage to self (e.g. Self-Implosion)
+  selfShieldHeal?: number;    // heal own shields (e.g. Shield Siphon)
+  selfHullHeal?: number;      // heal own hull (e.g. Repair Drones)
+  stunDuration?: number;      // stun player for N seconds
+  armorBuff?: number;         // temporarily increase own armor by N (duration = cooldown)
+  radiationStacks?: number;   // apply N radiation stacks to player
+  cloakDuration?: number;     // enemy becomes untargetable for N seconds
+  cooldown: number;           // seconds between uses
   useCondition: EnemyActionCondition;
+  conditionLabel?: string;    // human-readable condition (shown in UI)
 }
 
 /**
@@ -98,7 +110,7 @@ export enum EnemyType {
  * Enemy Loot Definition
  */
 export interface EnemyLoot {
-  type: string;
+  type: ResourceType;
   amount: number;
   probability?: number;
 }
@@ -115,6 +127,7 @@ export interface EnemyDefinition {
   maxHealth: number;
   shield: number;
   maxShield: number;
+  armor?: number;             // flat damage reduction per hit: actualDmg = max(1, dmg - armor)
   actions: string[];
   loot: EnemyLoot[];
   image?: string;
@@ -178,13 +191,12 @@ export interface BattleLogEntry {
 }
 
 /**
- * Combat State interface
+ * Combat State interface (real-time)
  */
 export interface CombatState {
   active: boolean;
   currentEnemy: string | null;
-  currentRegion: string | null; // RegionType? index.ts said string | null. Let's use RegionType | null
-  turn: number;
+  currentRegion: string | null;
   encounterCompleted: boolean;
   outcome?: 'victory' | 'defeat' | 'retreat';
   playerStats: {
@@ -203,16 +215,26 @@ export interface CombatState {
   };
   battleLog: BattleLogEntry[];
   availableActions: string[];
-  cooldowns: Record<string, number>;
+  cooldowns: Record<string, number>;          // player ability cooldowns (seconds, fractional)
+  enemyCooldowns: Record<string, number>;     // enemy ability cooldowns (seconds, fractional)
+  playerStunTimer: number;                    // seconds of stun remaining
   lastActionResult?: ActionResult;
   lastEnemyActionId: string | null;
+  /** Per-enemy-action "just fired" flash timers (seconds remaining) */
+  enemyActionFlash: Record<string, number>;
   rewards?: {
     energy: number;
     insight: number;
     crew: number;
     scrap: number;
+    relics?: number;
   };
-  enemyIntentions: any | null; // Define better type if possible
+  // Radiation mechanic — every 4s the player takes stacks*3 hull damage and loses 1 stack
+  radiationStacks: number;
+  radiationTickTimer: number;                 // seconds until next radiation tick
+  // Cloak mechanic
+  enemyCloaked: boolean;                      // enemy currently untargetable
+  enemyCloakTimer: number;                    // seconds of cloak remaining
 }
 
 /**

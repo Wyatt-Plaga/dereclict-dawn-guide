@@ -1,97 +1,158 @@
 /**
- * Reactor Category - Energy generation and storage
+ * Resource type definitions for the wing-based worker system.
+ *
+ * Each wing has three resource slots: primary, secondary, tertiary.
+ * Workers are assigned from a shared pool to produce each resource.
  */
-export interface ReactorCategory {
-    resources: {
-        energy: number;
-    };
-    upgrades: {
-        reactorExpansions: number;  // Increases energy capacity
-        energyConverters: number;   // Automatic energy generation
-        converterEfficiency?: number; // Improves energy converter output (salvage cost)
-        shielding?: number;            // Enables shields (0/1)
-        shieldBoosts?: number;         // Additional +100 shields per level (salvage cost)
-        navigationUnlocked?: number;   // Unlocks navigation system (0/1)
-    };
-    stats: {
-        energyCapacity: number;
-        energyPerSecond: number;    // Auto-generation rate
-    };
+
+import type { ResourceSlot } from '../content/wingResources';
+
+/* ========================================================================== */
+/* Per-wing state                                                             */
+/* ========================================================================== */
+
+/** Resource amounts for a single wing (primary / secondary / tertiary) */
+export interface WingResources {
+  primary: number;
+  secondary: number;
+  tertiary: number;
 }
 
-/**
- * Processor Category - Insight generation and computation
- */
-export interface ProcessorCategory {
-    resources: {
-        insight: number;
-    };
-    upgrades: {
-        mainframeExpansions: number;  // Increases insight capacity
-        processingThreads: number;    // Automatic insight generation
-        threadEfficiency?: number;   // Improves insight generation efficiency (salvage)
-        unlocked?: number; // 0 = locked, 1 = unlocked
-    };
-    stats: {
-        insightCapacity: number;
-        insightPerSecond: number;     // Auto-generation rate
-        insightPerClick: number;      // Currently fixed at 0.5
-    };
+/** Workers assigned to each slot within a wing */
+export interface WingWorkers {
+  primary: number;
+  secondary: number;
+  tertiary: number;
 }
 
-/**
- * Crew Quarters Category - Crew management
- */
-export interface CrewQuartersCategory {
-    resources: {
-        crew: number;
-    };
-    upgrades: {
-        additionalQuarters: number;  // Increases crew capacity
-        workerCrews: number;         // Automatic crew awakening
-        crewEfficiency?: number;    // Improves crew awakening rate (salvage)
-        unlocked?: number;
-    };
-    stats: {
-        crewCapacity: number;
-        crewPerSecond: number;       // Auto-awakening rate
-        awakeningProgress: number;   // Tracks 0-10 clicks for manual awakening
-    };
+/** Upgrade levels within a wing (capacity + efficiency for each slot) */
+export interface WingUpgrades {
+  // Capacity levels — purchased with the secondary resource
+  primaryCap: number;
+  secondaryCap: number;
+  tertiaryCap: number;
+  // Efficiency levels — purchased with the tertiary resource
+  primaryEff: number;
+  secondaryEff: number;
+  tertiaryEff: number;
 }
 
-/**
- * Manufacturing Category - Resource gathering and production
- */
-export interface ManufacturingCategory {
-    resources: {
-        scrap: number;
-    };
-    upgrades: {
-        cargoHoldExpansions: number;  // Increases scrap capacity
-        manufacturingBays: number;    // Automatic scrap collection
-        bayEfficiency?: number;      // Improves scrap production efficiency (salvage cost)
-        unlocked?: number;
-    };
-    stats: {
-        scrapCapacity: number;
-        scrapPerSecond: number;       // Auto-collection rate
-    };
+/** Computed stats for a wing (derived from upgrades + workers) */
+export interface WingStats {
+  primaryCapacity: number;
+  primaryRate: number;       // net production rate (positive = producing)
+  secondaryCapacity: number;
+  secondaryRate: number;
+  tertiaryCapacity: number;
+  tertiaryRate: number;
 }
 
-/**
- * Resource Cost
- */
+/** Global shared worker pool */
+export interface WorkerPool {
+  /** Total hired workers (across all wings) */
+  total: number;
+  /** Number of relic-purchased max-worker upgrades */
+  maxLevel: number;
+  /** Computed maximum workers (base + upgrades, capped by boss gate) */
+  max: number;
+}
+
+/** Per-slot automation flags */
+export interface SlotAutomation {
+  primary: boolean;
+  secondary: boolean;
+  tertiary: boolean;
+}
+
+/** Standard wing category shape */
+export interface WingCategory {
+  resources: WingResources;
+  workers: WingWorkers;
+  upgrades: WingUpgrades;
+  stats: WingStats;
+  unlocked: boolean;
+  /** Progression: whether secondary resource tier is visible */
+  secondaryUnlocked: boolean;
+  /** Progression: whether tertiary resource tier is visible */
+  tertiaryUnlocked: boolean;
+  /** Per-slot: whether automation is enabled (replaces clicking with workers) */
+  automated: SlotAutomation;
+}
+
+/* ========================================================================== */
+/* Wing types (each wing IS a WingCategory, reactor has extras)               */
+/* ========================================================================== */
+
+export interface ReactorCategory extends WingCategory {
+  specialUpgrades: {
+    shielding: number;
+    shieldBoosts: number;
+    bridgeUnlocked: number;
+  };
+}
+
+export type ProcessorCategory = WingCategory;
+export type CrewQuartersCategory = WingCategory;
+export type ManufacturingCategory = WingCategory;
+
+/* ========================================================================== */
+/* Resource types for combat/encounters (unchanged from original)             */
+/* ========================================================================== */
+
+export type ResourceType = 'energy' | 'insight' | 'crew' | 'scrap' | 'relics';
+
 export interface ResourceCost {
-  type: string;
+  type: ResourceType;
   amount: number;
 }
 
-/**
- * Resource Reward
- */
 export interface ResourceReward {
-    type: string;
-    amount: number;
-    message?: string;
+  type: string;       // 'energy' | 'insight' | 'crew' | 'scrap' | 'relics' | 'ammo'
+  amount: number;
+  ammoType?: string;  // e.g. 'powerCells' — only when type === 'ammo'
+  message?: string;   // optional flavour text for encounter rewards
 }
 
+export interface BuffReward {
+  type: BuffType;
+  magnitude: number;
+  durationMs: number;
+  name: string;
+  description: string;
+}
+
+/* ========================================================================== */
+/* Buffs (unchanged)                                                          */
+/* ========================================================================== */
+
+export type BuffType =
+  | 'energyRate'
+  | 'insightRate'
+  | 'scrapRate'
+  | 'crewRate'
+  | 'combatDamage'
+  | 'shieldStrength';
+
+export interface ActiveBuff {
+  id: string;
+  name: string;
+  description: string;
+  type: BuffType;
+  magnitude: number;
+  remainingMs: number;
+  totalMs: number;
+}
+
+/* ========================================================================== */
+/* Helpers                                                                    */
+/* ========================================================================== */
+
+/** Get the capacity key for a slot */
+export function capKey(slot: ResourceSlot): keyof WingUpgrades {
+  return `${slot}Cap` as keyof WingUpgrades;
+}
+
+/** Get the efficiency key for a slot */
+export function effKey(slot: ResourceSlot): keyof WingUpgrades {
+  return `${slot}Eff` as keyof WingUpgrades;
+}

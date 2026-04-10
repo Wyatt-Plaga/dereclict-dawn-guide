@@ -20,10 +20,10 @@ export default function EncounterPage() {
     LogContext.UI_RENDER
   );
   
-  // If there's no active encounter, redirect back to navigation
+  // If there's no active encounter, redirect back to bridge
   useEffect(() => {
     if (!state.encounters.active) {
-      router.push('/navigation');
+      router.push('/bridge');
     }
 
     // If combat is active, redirect to battle page
@@ -49,7 +49,7 @@ export default function EncounterPage() {
     
     if (choiceId) {
       dispatch({
-        type: 'MAKE_STORY_CHOICE',
+        type: 'STORY_CHOICE',
         payload: {
           choiceId
         }
@@ -62,8 +62,8 @@ export default function EncounterPage() {
     
     // Give a small delay to ensure the state is updated before navigating
     setTimeout(() => {
-      // Navigate back to the navigation page
-      router.push('/navigation');
+      // Navigate back to the bridge
+      router.push('/bridge');
     }, 100);
   };
   
@@ -76,11 +76,11 @@ export default function EncounterPage() {
           <div className="flex flex-col items-center justify-center flex-grow p-4">
             <div className="system-panel p-6 text-center">
               <p className="text-lg">No active encounter detected...</p>
-              <button 
-                onClick={() => router.push('/navigation')}
+              <button
+                onClick={() => router.push('/bridge')}
                 className="mt-4 system-panel py-2 px-4 hover:bg-accent/10 transition-colors"
               >
-                Return to Navigation
+                Return to Bridge
               </button>
             </div>
           </div>

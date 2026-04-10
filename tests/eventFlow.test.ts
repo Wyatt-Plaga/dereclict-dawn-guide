@@ -15,21 +15,37 @@ describe('EventBus integration', () => {
     state = clone(initialGameState);
   });
 
-  it('purchase upgrade via event bus mutates state', () => {
-    // give resources
-    state.categories.reactor.resources.energy = 200;
+  it('purchase special upgrade via event bus mutates state', () => {
+    // give relics for shielding upgrade
+    state.relics = 200;
 
     // attach systems
     new UpgradeSystem(bus);
     const actionSystem = new ActionSystem(bus);
 
-    // dispatch purchase upgrade through ActionSystem handler
+    // dispatch purchase of shielding (a catalog-based special upgrade)
     actionSystem.processAction(state, {
       type: 'PURCHASE_UPGRADE',
-      payload: { category: 'reactor', upgradeType: 'reactorExpansions' }
+      payload: { category: 'reactor', upgradeType: 'shielding' }
     } as any);
 
-    expect(state.categories.reactor.upgrades.reactorExpansions).toBe(1);
-    expect(state.categories.reactor.resources.energy).toBeLessThan(200);
+    expect(state.categories.reactor.specialUpgrades.shielding).toBe(1);
+    expect(state.relics).toBeLessThan(200);
   });
-}); 
+
+  it('purchase capacity upgrade via event bus', () => {
+    // give secondary resources for capacity upgrade
+    state.categories.reactor.resources.secondary = 100;
+
+    new UpgradeSystem(bus);
+    const actionSystem = new ActionSystem(bus);
+
+    actionSystem.processAction(state, {
+      type: 'BUY_CAPACITY_UPGRADE',
+      payload: { wing: 'reactor', slot: 'primary' }
+    } as any);
+
+    expect(state.categories.reactor.upgrades.primaryCap).toBe(1);
+    expect(state.categories.reactor.resources.secondary).toBeLessThan(100);
+  });
+});

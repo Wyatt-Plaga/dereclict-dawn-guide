@@ -1,7 +1,8 @@
-import { GameState, LogUnlockCondition, ResourceThresholdCondition, UpgradePurchasedCondition, LogDefinition } from '../types';
+import { GameState, LogUnlockCondition, ResourceThresholdCondition, UpgradePurchasedCondition, RegionCompletedCondition, VictoryCountCondition, LogDefinition } from '../types';
 import { LOG_DEFINITIONS } from '../content/logDefinitions';
 import { EventBus } from "../core/EventBus";
 import { EventMap } from "../types/events";
+import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 
 /**
  * LogSystem
@@ -17,12 +18,12 @@ export class LogSystem {
     constructor(eventBus?: EventBus<EventMap>) {
         this.logDefinitions = LOG_DEFINITIONS;
         if (eventBus) {
-            eventBus.on('MARK_LOG_READ', (data: any) => {
-                const { state, logId } = data as { state: GameState; logId: string };
+            eventBus.on('MARK_LOG_READ', (data) => {
+                const { state, logId } = data;
                 this.markLogRead(state, logId);
             });
-            eventBus.on('MARK_ALL_LOGS_READ', (data: any) => {
-                const { state } = data as { state: GameState };
+            eventBus.on('MARK_ALL_LOGS_READ', (data) => {
+                const { state } = data;
                 this.markAllLogsRead(state);
             });
         }
@@ -162,9 +163,13 @@ export class LogSystem {
                 return this.checkUpgradePurchased(state, condition as UpgradePurchasedCondition);
             case 'MULTI_CONDITION':
                 const multiCondition = condition as any; // TypeScript workaround
-                return multiCondition.operator === 'AND' 
+                return multiCondition.operator === 'AND'
                     ? multiCondition.conditions.every((c: LogUnlockCondition) => this.checkSingleCondition(state, c))
                     : multiCondition.conditions.some((c: LogUnlockCondition) => this.checkSingleCondition(state, c));
+            case 'REGION_COMPLETED':
+                return this.checkRegionCompleted(state, condition as RegionCompletedCondition);
+            case 'VICTORY_COUNT':
+                return this.checkVictoryCount(state, condition as VictoryCountCondition);
             default:
                 return false;
         }
@@ -211,7 +216,7 @@ export class LogSystem {
             return amount >= threshold;
         } catch (error) {
             // Log error and return false if any exception occurs
-            console.error('Error checking resource threshold:', error);
+            Logger.error(LogCategory.STATE, `Error checking resource threshold: ${error}`, LogContext.NONE);
             return false;
         }
     }
@@ -253,8 +258,17 @@ export class LogSystem {
             return upgradeValue > 0;
         } catch (error) {
             // Log error and return false if any exception occurs
-            console.error('Error checking upgrade purchased:', error);
+            Logger.error(LogCategory.STATE, `Error checking upgrade purchased: ${error}`, LogContext.NONE);
             return false;
         }
     }
-} 
+
+    private checkRegionCompleted(state: GameState, condition: RegionCompletedCondition): boolean {
+        return state.bridge?.completedRegions?.includes(condition.regionKey) ?? false;
+    }
+
+    private checkVictoryCount(state: GameState, condition: VictoryCountCondition): boolean {
+        const victories = state.encounters?.history?.filter(h => h.result === 'victory').length ?? 0;
+        return victories >= condition.count;
+    }
+}

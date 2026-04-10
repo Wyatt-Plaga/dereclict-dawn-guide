@@ -251,23 +251,4 @@ export class SaveSystem {
     return saveData;
   }
   
-  // Future Supabase integration methods
-  public async syncToCloud(userId: string): Promise<void> {
-    // This will be implemented when Supabase is added
-    Logger.info(
-      LogCategory.ENGINE, 
-      `[Future] Sync to cloud for user: ${userId}`, 
-      LogContext.NONE
-    );
-  }
-  
-  public async syncFromCloud(userId: string): Promise<boolean> {
-    // This will be implemented when Supabase is added
-    Logger.info(
-      LogCategory.ENGINE, 
-      `[Future] Sync from cloud for user: ${userId}`, 
-      LogContext.NONE
-    );
-    return false;
-  }
 } 
