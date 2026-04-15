@@ -1,5 +1,5 @@
 import { GameState, WingCategory } from '../types';
-import { BuffType, maxWorkersKey } from '../types/resources';
+import { BuffType, maxWorkersKey, capStatKey, rateStatKey } from '../types/resources';
 import { WING_DEFS, WingId, WING_ORDER, SLOT_ORDER, SLOT_CONSUMES, ResourceSlot, WORKER_BASE, WORKER_PER_UPGRADE, WORKER_BOSS_GATE_SIZE, INITIAL_MAX_WORKERS_PER_SLOT, computeCapacity } from '../content/wingResources';
 import { FUEL_CAPACITY, FUEL_RATE_PER_SECOND, fuelPumpMultiplier } from '../content/bridgeFuel';
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger";
@@ -125,8 +125,7 @@ export class ResourceSystem {
           this.setRate(wing, slot, 0);
           continue;
         }
-        const capKey = `${slot}Capacity` as keyof typeof wing.stats;
-        const cap = wing.stats[capKey] as number;
+        const cap = wing.stats[capStatKey(slot)];
         let consumed = plan.consume[slot];
         if (wingId === 'reactor' && slot === 'primary') {
           consumed += nonReactorEnergyDemand;
@@ -163,8 +162,7 @@ export class ResourceSystem {
       for (const slot of SLOT_ORDER) {
         const slotDef = def.resources[slot];
         const capLevel = wing.upgrades[`${slot}Cap` as keyof typeof wing.upgrades] as number;
-        const capKey = `${slot}Capacity` as keyof typeof wing.stats;
-        (wing.stats as any)[capKey] = computeCapacity(slotDef.baseCapacity, capLevel);
+        wing.stats[capStatKey(slot)] = computeCapacity(slotDef.baseCapacity, capLevel);
       }
     }
 
@@ -240,8 +238,7 @@ export class ResourceSystem {
   /* ---------------------------------------------------------------------- */
 
   private setRate(wing: WingCategory, slot: ResourceSlot, rate: number) {
-    const key = `${slot}Rate` as keyof typeof wing.stats;
-    (wing.stats as any)[key] = rate;
+    wing.stats[rateStatKey(slot)] = rate;
   }
 
   private updateBuffs(state: GameState, delta: number) {

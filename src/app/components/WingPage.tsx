@@ -10,8 +10,15 @@ import WingResourceRow from "@/app/components/WingResourceRow";
 import ResourceClickButton from "@/app/components/ResourceClickButton";
 import { WING_DEFS, SLOT_ORDER, SLOT_CONSUMES, WingId, ResourceSlot, capacityUpgradeCost, efficiencyUpgradeCost, maxWorkersUpgradeCost } from "@/game-engine/content/wingResources";
 import { ResourceSystem } from "@/game-engine/systems/ResourceSystem";
-import { WingCategory, capKey, effKey, maxWorkersKey } from "@/game-engine/types/resources";
+import { WingCategory, capKey, effKey, maxWorkersKey, getCapacity, getRate } from "@/game-engine/types/resources";
 import { LucideIcon, ChevronUp, Wrench, Cpu, Package } from "lucide-react";
+
+type TierName = 'secondary' | 'tertiary' | 'quaternary';
+const TIER_UNLOCK_META: Record<TierName, { icon: LucideIcon; subtext: string }> = {
+  secondary:  { icon: Package, subtext: 'A new resource has been detected' },
+  tertiary:   { icon: Cpu,     subtext: 'Advanced processing available' },
+  quaternary: { icon: Cpu,     subtext: 'Specialist tier available' },
+};
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 
@@ -168,8 +175,8 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
                       description={slotDef.description}
                       color={def.color}
                       current={wing.resources[slot]}
-                      capacity={wing.stats[`${slot}Capacity` as keyof typeof wing.stats] as number}
-                      rate={wing.stats[`${slot}Rate` as keyof typeof wing.stats] as number}
+                      capacity={getCapacity(wing, slot)}
+                      rate={getRate(wing, slot)}
                       workers={wing.workers[slot]}
                       maxWorkers={slotMax}
                       canAssign={hasAvailable}
@@ -203,8 +210,7 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
               }
 
               // ── Manual slot: click button + upgrades + optional automation ──
-              const capStat = `${slot}Capacity` as keyof typeof wing.stats;
-              const cap = wing.stats[capStat] as number;
+              const cap = getCapacity(wing, slot);
               const current = wing.resources[slot];
               const pct = cap > 0 ? (current / cap) * 100 : 0;
               const canAutomate = canEnableSlotAutomation(slot);
@@ -320,54 +326,28 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
             })}
 
             {/* Tier unlock buttons */}
-            {canUnlockSecondary && (
-              <button
-                onClick={() => dispatch({ type: 'UNLOCK_TIER', payload: { wing: wingId, tier: 'secondary' } })}
-                className={`system-panel p-4 border-${def.color}/40 hover:bg-${def.color}/10 transition-colors animate-unlock-btn-in`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <Package className={`h-5 w-5 text-${def.color} animate-pulse`} />
-                  <span className={`font-mono font-semibold text-${def.color}`}>
-                    Unlock {def.resources.secondary.name}
-                  </span>
-                </div>
-                <p className="text-[10px] text-muted-foreground text-center mt-1 font-mono">
-                  A new resource has been detected
-                </p>
-              </button>
-            )}
-            {canUnlockTertiary && (
-              <button
-                onClick={() => dispatch({ type: 'UNLOCK_TIER', payload: { wing: wingId, tier: 'tertiary' } })}
-                className={`system-panel p-4 border-${def.color}/40 hover:bg-${def.color}/10 transition-colors animate-unlock-btn-in`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <Cpu className={`h-5 w-5 text-${def.color} animate-pulse`} />
-                  <span className={`font-mono font-semibold text-${def.color}`}>
-                    Unlock {def.resources.tertiary.name}
-                  </span>
-                </div>
-                <p className="text-[10px] text-muted-foreground text-center mt-1 font-mono">
-                  Advanced processing available
-                </p>
-              </button>
-            )}
-            {canUnlockQuaternary && (
-              <button
-                onClick={() => dispatch({ type: 'UNLOCK_TIER', payload: { wing: wingId, tier: 'quaternary' } })}
-                className={`system-panel p-4 border-${def.color}/40 hover:bg-${def.color}/10 transition-colors animate-unlock-btn-in`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <Cpu className={`h-5 w-5 text-${def.color} animate-pulse`} />
-                  <span className={`font-mono font-semibold text-${def.color}`}>
-                    Unlock {def.resources.quaternary.name}
-                  </span>
-                </div>
-                <p className="text-[10px] text-muted-foreground text-center mt-1 font-mono">
-                  Specialist tier available
-                </p>
-              </button>
-            )}
+            {(['secondary', 'tertiary', 'quaternary'] as TierName[]).map(tier => {
+              const canUnlock = { secondary: canUnlockSecondary, tertiary: canUnlockTertiary, quaternary: canUnlockQuaternary }[tier];
+              if (!canUnlock) return null;
+              const { icon: TierIcon, subtext } = TIER_UNLOCK_META[tier];
+              return (
+                <button
+                  key={tier}
+                  onClick={() => dispatch({ type: 'UNLOCK_TIER', payload: { wing: wingId, tier } })}
+                  className={`system-panel p-4 border-${def.color}/40 hover:bg-${def.color}/10 transition-colors animate-unlock-btn-in`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <TierIcon className={`h-5 w-5 text-${def.color} animate-pulse`} />
+                    <span className={`font-mono font-semibold text-${def.color}`}>
+                      Unlock {def.resources[tier].name}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-center mt-1 font-mono">
+                    {subtext}
+                  </p>
+                </button>
+              );
+            })}
           </div>
 
           {/* Extra content (special upgrades, etc.) */}

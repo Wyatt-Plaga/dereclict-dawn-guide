@@ -109,6 +109,34 @@ export class CombatCalculator {
   }
 
   /**
+   * Split-damage model used for player attacks: shieldDamage hits shields,
+   * damage hits hull *directly* (doesn't bleed through shields). Both legs
+   * are multiplied by weakenMult and reduced by armor (minimum 1).
+   */
+  static calculateSplitDamage(
+    currentHealth: number,
+    currentShield: number,
+    hullDamageRaw: number,
+    shieldDamageRaw: number,
+    weakenMult: number = 1,
+    armor: number = 0
+  ): { newHealth: number; newShield: number; hullDamage: number; shieldDamage: number } {
+    const hullDmg = Math.max(1, Math.floor(hullDamageRaw * weakenMult) - armor);
+    // Shield damage falls back to hull damage if not explicitly set (legacy behavior).
+    const shieldDmg = Math.max(1, Math.floor((shieldDamageRaw || hullDamageRaw) * weakenMult) - armor);
+
+    const actualShieldDmg = Math.min(currentShield, shieldDmg);
+    const actualHullDmg = hullDamageRaw > 0 ? Math.min(currentHealth, hullDmg) : 0;
+
+    return {
+      newShield: currentShield - actualShieldDmg,
+      newHealth: currentHealth - actualHullDmg,
+      shieldDamage: actualShieldDmg,
+      hullDamage: actualHullDmg,
+    };
+  }
+
+  /**
    * Decrement status effect timers by one turn and drop expired effects.
    */
   static processStatusEffects(effects: StatusEffectInstance[]): StatusEffectInstance[] {

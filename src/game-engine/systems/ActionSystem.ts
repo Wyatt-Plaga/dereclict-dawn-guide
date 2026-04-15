@@ -19,6 +19,7 @@ import { WING_DEFS, WING_ORDER, SLOT_ORDER, SLOT_CONSUMES, WingId } from '@/game
 import { FUEL_PUMP_MAX_LEVEL, fuelPumpUpgradeCost } from '@/game-engine/content/bridgeFuel';
 import { RESEARCH_BY_ID, canResearch } from '@/game-engine/content/research';
 import { ResourceSystem } from './ResourceSystem';
+import { getCapacity } from '@/game-engine/types/resources';
 import { getResourceAccessor } from '../utils/resourceAccessor';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { EventBus } from "../core/EventBus";
@@ -37,7 +38,9 @@ export class ActionSystem {
       case 'CLICK_RESOURCE':
         return this.handleResourceClick(state, action);
       case 'PURCHASE_UPGRADE':
-        return this.handleUpgradePurchase(state, action.payload.category, action.payload.upgradeType);
+        return this.emit(state, 'PURCHASE_UPGRADE',
+          { state, category: action.payload.category, upgradeType: action.payload.upgradeType },
+          LogContext.UPGRADE_PURCHASE);
       case 'ASSIGN_WORKER':
         return this.handleAssignWorker(state, action);
       case 'UNASSIGN_WORKER':
@@ -69,23 +72,23 @@ export class ActionSystem {
       case 'PURCHASE_RESEARCH':
         return this.handlePurchaseResearch(state, action);
       case 'MARK_LOG_READ':
-        return this.handleMarkLogRead(state, action.payload.logId);
+        return this.emit(state, 'MARK_LOG_READ', { state, logId: action.payload.logId }, LogContext.LOG_INTERACTION);
       case 'MARK_ALL_LOGS_READ':
-        return this.handleMarkAllLogsRead(state);
+        return this.emit(state, 'MARK_ALL_LOGS_READ', { state }, LogContext.LOG_INTERACTION);
       case 'SELECT_REGION':
         return this.handleSelectRegion(state, action.payload.region as RegionType, action.payload.tier);
       case 'INITIATE_JUMP':
-        return this.handleInitiateJump(state);
+        return this.emit(state, 'INITIATE_JUMP', { state });
       case 'COMPLETE_ENCOUNTER':
-        return this.handleCompleteEncounter(state, action);
+        return this.emit(state, 'COMPLETE_ENCOUNTER', { state, choiceId: action.payload?.choiceId });
       case 'STORY_CHOICE':
-        return this.handleStoryChoice(state, action);
+        return this.emit(state, 'COMPLETE_ENCOUNTER', { state, choiceId: action.payload.choiceId });
       case 'COMBAT_ACTION':
-        return this.handleCombatAction(state, action);
+        return this.emit(state, 'COMBAT_ACTION', { state, actionId: action.payload.actionId }, LogContext.COMBAT_ACTION);
       case 'RETREAT_FROM_BATTLE':
-        return this.handleRetreatFromBattle(state);
+        return this.emit(state, 'RETREAT_FROM_BATTLE', { state });
       case 'END_TURN':
-        return this.handleEndTurn(state);
+        return this.emit(state, 'END_TURN', { state }, LogContext.COMBAT_ACTION);
       case 'EQUIP_ABILITY':
         return this.handleEquipAbility(state, action);
       case 'UNEQUIP_ABILITY':
@@ -149,61 +152,37 @@ export class ActionSystem {
   /* ====================================================================== */
 
   private handleBuyCapacityUpgrade(state: GameState, action: BuyCapacityUpgradeAction): GameState {
-    if (this.eventBus) {
-      this.eventBus.emit('PURCHASE_UPGRADE', {
-        state,
-        category: action.payload.wing,
-        upgradeType: `__cap__${action.payload.slot}`
-      });
-    }
-    return state;
+    return this.emit(state, 'PURCHASE_UPGRADE',
+      { state, category: action.payload.wing, upgradeType: `__cap__${action.payload.slot}` },
+      LogContext.UPGRADE_PURCHASE);
   }
 
   private handleBuyEfficiencyUpgrade(state: GameState, action: BuyEfficiencyUpgradeAction): GameState {
     if (!state.laboratory.efficiencyUpgrades) return state;
-    if (this.eventBus) {
-      this.eventBus.emit('PURCHASE_UPGRADE', {
-        state,
-        category: action.payload.wing,
-        upgradeType: `__eff__${action.payload.slot}`
-      });
-    }
-    return state;
+    return this.emit(state, 'PURCHASE_UPGRADE',
+      { state, category: action.payload.wing, upgradeType: `__eff__${action.payload.slot}` },
+      LogContext.UPGRADE_PURCHASE);
   }
 
   private handleBuyMaxWorkersUpgrade(state: GameState, action: BuyMaxWorkersUpgradeAction): GameState {
     if (!state.laboratory.maxWorkersUpgrades) return state;
-    if (this.eventBus) {
-      this.eventBus.emit('PURCHASE_UPGRADE', {
-        state,
-        category: action.payload.wing,
-        upgradeType: `__maxWorkers__${action.payload.slot}`
-      });
-    }
-    return state;
+    return this.emit(state, 'PURCHASE_UPGRADE',
+      { state, category: action.payload.wing, upgradeType: `__maxWorkers__${action.payload.slot}` },
+      LogContext.UPGRADE_PURCHASE);
   }
 
-  private handleHireWorker(state: GameState, action: HireWorkerAction): GameState {
+  private handleHireWorker(state: GameState, _action: HireWorkerAction): GameState {
     if (!state.laboratory.workerHiring) return state;
-    if (this.eventBus) {
-      this.eventBus.emit('PURCHASE_UPGRADE', {
-        state,
-        category: 'reactor',
-        upgradeType: '__hireWorker__'
-      });
-    }
-    return state;
+    return this.emit(state, 'PURCHASE_UPGRADE',
+      { state, category: 'reactor', upgradeType: '__hireWorker__' },
+      LogContext.UPGRADE_PURCHASE);
   }
 
-  private handleBuyWorkerCapUpgrade(state: GameState, action: BuyWorkerCapUpgradeAction): GameState {
-    if (this.eventBus) {
-      this.eventBus.emit('PURCHASE_UPGRADE', {
-        state,
-        category: 'reactor', // unused for global upgrades
-        upgradeType: '__workerCap__'
-      });
-    }
-    return state;
+  private handleBuyWorkerCapUpgrade(state: GameState, _action: BuyWorkerCapUpgradeAction): GameState {
+    // category is unused for global upgrades but required by the event schema
+    return this.emit(state, 'PURCHASE_UPGRADE',
+      { state, category: 'reactor', upgradeType: '__workerCap__' },
+      LogContext.UPGRADE_PURCHASE);
   }
 
   /* ====================================================================== */
@@ -226,8 +205,7 @@ export class ActionSystem {
     if (slot === 'tertiary' && !wing.tertiaryUnlocked) return state;
     if (slot === 'quaternary' && !wing.quaternaryUnlocked) return state;
 
-    const capKey = `${slot}Capacity` as keyof typeof wing.stats;
-    const cap = wing.stats[capKey] as number;
+    const cap = getCapacity(wing, slot);
     if (wing.resources[slot] >= cap) return state;
 
     const slotDef = def.resources[slot];
@@ -374,97 +352,30 @@ export class ActionSystem {
   }
 
   /* ====================================================================== */
-  /* Special upgrade purchase (catalog-based)                                */
+  /* Event-bus delegation helper                                             */
   /* ====================================================================== */
 
-  private handleUpgradePurchase(state: GameState, category: GameCategory, upgradeType: string): GameState {
+  /**
+   * Forward an event to the event bus (or log an error if none is wired).
+   * Returns state unchanged so the dispatcher can `return this.emit(...)`.
+   */
+  private emit<K extends keyof EventMap>(
+    state: GameState,
+    event: K,
+    payload: EventMap[K],
+    context: LogContext = LogContext.NONE,
+  ): GameState {
     if (this.eventBus) {
-      this.eventBus.emit('PURCHASE_UPGRADE', { state, category, upgradeType });
-      return state;
+      this.eventBus.emit(event, payload);
+    } else {
+      Logger.error(LogCategory.ACTIONS, `EventBus unavailable for ${String(event)}`, context);
     }
-    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for PURCHASE_UPGRADE', LogContext.UPGRADE_PURCHASE);
-    return state;
-  }
-
-  /* ====================================================================== */
-  /* Navigation / Encounters / Combat (unchanged)                            */
-  /* ====================================================================== */
-
-  private handleMarkLogRead(state: GameState, logId: string): GameState {
-    if (this.eventBus) {
-      this.eventBus.emit('MARK_LOG_READ', { state, logId });
-      return state;
-    }
-    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for MARK_LOG_READ', LogContext.LOG_INTERACTION);
-    return state;
-  }
-
-  private handleMarkAllLogsRead(state: GameState): GameState {
-    if (this.eventBus) {
-      this.eventBus.emit('MARK_ALL_LOGS_READ', { state });
-      return state;
-    }
-    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for MARK_ALL_LOGS_READ', LogContext.LOG_INTERACTION);
-    return state;
-  }
-
-  private handleInitiateJump(state: GameState): GameState {
-    if (this.eventBus) {
-      this.eventBus.emit('INITIATE_JUMP', { state });
-      return state;
-    }
-    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for INITIATE_JUMP', LogContext.NONE);
-    return state;
-  }
-
-  private handleCompleteEncounter(state: GameState, action: CompleteEncounterAction): GameState {
-    if (this.eventBus) {
-      this.eventBus.emit('COMPLETE_ENCOUNTER', { state, choiceId: action.payload?.choiceId });
-      return state;
-    }
-    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for COMPLETE_ENCOUNTER', LogContext.NONE);
     return state;
   }
 
   private handleSelectRegion(state: GameState, region: RegionType, tier?: number): GameState {
     state.bridge.currentRegion = region;
     state.bridge.currentTier = tier ?? 1;
-    return state;
-  }
-
-  private handleStoryChoice(state: GameState, action: StoryChoiceAction): GameState {
-    if (this.eventBus) {
-      this.eventBus.emit('COMPLETE_ENCOUNTER', { state, choiceId: action.payload.choiceId });
-      return state;
-    }
-    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for STORY_CHOICE', LogContext.NONE);
-    return state;
-  }
-
-  private handleCombatAction(state: GameState, action: CombatActionAction): GameState {
-    if (this.eventBus) {
-      this.eventBus.emit('COMBAT_ACTION', { state, actionId: action.payload.actionId });
-      return state;
-    }
-    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for COMBAT_ACTION', LogContext.COMBAT_ACTION);
-    return state;
-  }
-
-  private handleRetreatFromBattle(state: GameState): GameState {
-    if (this.eventBus) {
-      this.eventBus.emit('RETREAT_FROM_BATTLE', { state });
-      return state;
-    }
-    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for RETREAT_FROM_BATTLE', LogContext.NONE);
-    return state;
-  }
-
-  private handleEndTurn(state: GameState): GameState {
-    if (this.eventBus) {
-      this.eventBus.emit('END_TURN', { state });
-      return state;
-    }
-    Logger.error(LogCategory.ACTIONS, 'EventBus unavailable for END_TURN', LogContext.COMBAT_ACTION);
     return state;
   }
 

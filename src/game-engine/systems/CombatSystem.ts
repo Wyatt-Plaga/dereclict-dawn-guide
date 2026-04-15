@@ -15,6 +15,7 @@ import { EventBus } from "../core/EventBus";
 import { EventMap } from "../types/events";
 import { CombatCalculator } from './combat/CombatCalculator';
 import { CombatLogger } from './combat/CombatLogger';
+import { resolvePlayerAction, PlayerCombatAction } from './combat/abilityAdapter';
 import { PLAYER_ACTIONS, ENEMY_ACTIONS } from '@/game-engine/content/combatActions';
 import { ALL_PLAYER_ABILITIES } from '@/game-engine/content/playerAbilities';
 import { getResourceAccessor } from '../utils/resourceAccessor';
@@ -88,24 +89,9 @@ export class CombatSystem {
       }
     }
 
-    // Look up from equipment system first, fall back to legacy
+    // Resolve action via the equipment system, falling back to legacy PLAYER_ACTIONS
     const ability = ALL_PLAYER_ABILITIES[actionId];
-    const legacyAction = PLAYER_ACTIONS[actionId];
-    const action: (CombatActionDefinition & { shieldDamage?: number }) | undefined = ability ? {
-      id: ability.id,
-      name: ability.name,
-      description: ability.description,
-      category: ability.category,
-      cost: ability.cost ?? { type: 'energy' as const, amount: 0 },
-      damage: ability.damage,
-      shieldRepair: ability.shieldRepair,
-      hullRepair: ability.hullRepair,
-      statusEffect: ability.statusEffect,
-      apCost: ability.apCost,
-      cooldown: ability.cooldown,
-      shieldDamage: ability.shieldDamage,
-    } : legacyAction;
-
+    const action = resolvePlayerAction(actionId);
     if (!action) {
       return { success: false, message: `Unknown action: ${actionId}` };
     }
@@ -164,32 +150,32 @@ export class CombatSystem {
     return result;
   }
 
-  private applyPlayerAction(state: GameState, action: CombatActionDefinition & { shieldDamage?: number }, enemyArmor: number = 0): ActionResult {
+  private applyPlayerAction(state: GameState, action: PlayerCombatAction, enemyArmor: number = 0): ActionResult {
     const result: ActionResult = { success: true, message: `Used ${action.name}` };
     result.resourcesConsumed = action.cost ? [action.cost] : [];
 
     const weakenEffect = state.combat.enemyStats.statusEffects.find(e => e.type === 'WEAKEN');
     const weakenMult = weakenEffect ? (1 + weakenEffect.magnitude) : 1;
 
-    // Split damage model: shieldDamage hits shields, damage hits hull (both reduced by armor)
+    // Split damage model: shieldDamage hits shields, damage hits hull directly
     if (action.damage || action.shieldDamage) {
-      const hullDmg = Math.max(1, Math.floor((action.damage || 0) * weakenMult) - enemyArmor);
-      const shieldDmg = Math.max(1, Math.floor((action.shieldDamage || action.damage || 0) * weakenMult) - enemyArmor);
+      const dmg = CombatCalculator.calculateSplitDamage(
+        state.combat.enemyStats.health,
+        state.combat.enemyStats.shield,
+        action.damage ?? 0,
+        action.shieldDamage ?? 0,
+        weakenMult,
+        enemyArmor,
+      );
+      state.combat.enemyStats.shield = dmg.newShield;
+      state.combat.enemyStats.health = dmg.newHealth;
 
-      // Apply shield damage first
-      const actualShieldDmg = Math.min(state.combat.enemyStats.shield, shieldDmg);
-      state.combat.enemyStats.shield -= actualShieldDmg;
+      result.damageDealt = dmg.hullDamage;
+      result.shieldDamage = dmg.shieldDamage;
 
-      // Apply hull damage directly (doesn't go through shields)
-      const actualHullDmg = action.damage ? Math.min(state.combat.enemyStats.health, hullDmg) : 0;
-      state.combat.enemyStats.health -= actualHullDmg;
-
-      result.damageDealt = actualHullDmg;
-      result.shieldDamage = actualShieldDmg;
-
-      const parts = [];
-      if (actualShieldDmg > 0) parts.push(`${actualShieldDmg} shield`);
-      if (actualHullDmg > 0) parts.push(`${actualHullDmg} hull`);
+      const parts: string[] = [];
+      if (dmg.shieldDamage > 0) parts.push(`${dmg.shieldDamage} shield`);
+      if (dmg.hullDamage > 0) parts.push(`${dmg.hullDamage} hull`);
       result.message = `${action.name} dealt ${parts.join(' + ')} damage`;
     }
 

@@ -4,6 +4,7 @@
  */
 
 import { RegionType, ResourceReward } from '../types';
+import { randomFrom } from '../utils/random';
 
 /**
  * Chances of getting encounters in different regions
@@ -119,28 +120,16 @@ export const EMPTY_ENCOUNTER_MESSAGES: Record<RegionType, string[]> = {
     ]
 };
 
-/**
- * Helper function to get a random title for an empty encounter
- */
 export function getRandomEmptyEncounterTitle(region: RegionType): string {
-    const titles = EMPTY_ENCOUNTER_TITLES[region];
-    return titles[Math.floor(Math.random() * titles.length)];
+    return randomFrom(EMPTY_ENCOUNTER_TITLES[region]);
 }
 
-/**
- * Helper function to get a random description for an empty encounter
- */
 export function getRandomEmptyEncounterDescription(region: RegionType): string {
-    const descriptions = EMPTY_ENCOUNTER_DESCRIPTIONS[region];
-    return descriptions[Math.floor(Math.random() * descriptions.length)];
+    return randomFrom(EMPTY_ENCOUNTER_DESCRIPTIONS[region]);
 }
 
-/**
- * Helper function to get a random message for an empty encounter
- */
 export function getRandomEmptyEncounterMessage(region: RegionType): string {
-    const messages = EMPTY_ENCOUNTER_MESSAGES[region];
-    return messages[Math.floor(Math.random() * messages.length)];
+    return randomFrom(EMPTY_ENCOUNTER_MESSAGES[region]);
 }
 
 /**
@@ -213,16 +202,11 @@ export function generateEmptyEncounterRewards(region: RegionType): ResourceRewar
         }
     };
 
-    // Get a random message for a given resource type and region
     const getRandomMessage = (region: RegionType, type: string): string => {
-        const messagesForRegion = resourceMessages[region] || {};
-        const messagesForType = messagesForRegion[type] || [];
-        
-        if (messagesForType.length === 0) {
-            return `The Dawn collected ${type} resources from the ${region} region.`;
-        }
-        
-        return messagesForType[Math.floor(Math.random() * messagesForType.length)];
+        const messagesForType = resourceMessages[region]?.[type] ?? [];
+        return messagesForType.length === 0
+            ? `The Dawn collected ${type} resources from the ${region} region.`
+            : randomFrom(messagesForType);
     };
     
     // Different regions provide different resources and amounts

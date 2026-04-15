@@ -176,6 +176,26 @@ export function maxWorkersKey(slot: ResourceSlot): keyof WingUpgrades {
   return `${slot}MaxWorkers` as keyof WingUpgrades;
 }
 
+/** Get the stats key for a slot's capacity */
+export function capStatKey(slot: ResourceSlot): keyof WingStats {
+  return `${slot}Capacity` as keyof WingStats;
+}
+
+/** Get the stats key for a slot's current production rate */
+export function rateStatKey(slot: ResourceSlot): keyof WingStats {
+  return `${slot}Rate` as keyof WingStats;
+}
+
+/** Read the computed capacity for a slot. */
+export function getCapacity(wing: WingCategory, slot: ResourceSlot): number {
+  return wing.stats[capStatKey(slot)];
+}
+
+/** Read the current production rate for a slot. */
+export function getRate(wing: WingCategory, slot: ResourceSlot): number {
+  return wing.stats[rateStatKey(slot)];
+}
+
 /* ========================================================================== */
 /* Laboratory / Research state                                                */
 /* ========================================================================== */
