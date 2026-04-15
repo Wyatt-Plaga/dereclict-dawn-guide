@@ -22,8 +22,15 @@ export interface SlotResourceDef {
   baseCapacity: number;
   baseRate: number;     // produced per worker per second (before efficiency)
   consumeRate: number;  // input consumed per worker per second
-  capacityPerLevel: number;  // capacity added per cap upgrade level
   efficiencyBonus: number;   // output multiplier per eff upgrade level (0.5 = +50%)
+}
+
+/** Geometric growth rate for capacity upgrades */
+export const CAPACITY_GROWTH_RATE = 1.14;
+
+/** Computed capacity at a given upgrade level: floor(base × 1.15^level) */
+export function computeCapacity(baseCapacity: number, level: number): number {
+  return Math.floor(baseCapacity * Math.pow(CAPACITY_GROWTH_RATE, level));
 }
 
 /** Thresholds to progressively unlock resource tiers within a wing */
@@ -56,19 +63,19 @@ export interface WingDef {
   unlockThresholds: WingUnlockThresholds;
 }
 
-/** Cost of a capacity upgrade (paid in secondary resource) */
+/** Cost of a capacity upgrade (paid in secondary resource) — Item Capacity scaling */
 export function capacityUpgradeCost(level: number): number {
-  return Math.ceil(5 * Math.pow(1.4, level));
+  return Math.ceil(5 * Math.pow(1.15, level));
 }
 
-/** Cost of an efficiency upgrade (paid in tertiary resource) */
+/** Cost of an efficiency upgrade (paid in tertiary resource) — Worker Efficiency scaling */
 export function efficiencyUpgradeCost(level: number): number {
-  return Math.ceil(3 * Math.pow(1.5, level));
+  return Math.ceil(1 * Math.pow(1.40, level));
 }
 
-/** Cost of a +1 max-workers upgrade for a slot (paid in quaternary resource) */
+/** Cost of a +1 max-workers upgrade for a slot (paid in quaternary resource) — Worker Capacity scaling */
 export function maxWorkersUpgradeCost(level: number): number {
-  return Math.ceil(5 * Math.pow(1.6, level));
+  return Math.ceil(1 * Math.pow(1.50, level));
 }
 
 /** Starting per-slot worker cap */
@@ -109,10 +116,10 @@ export const WING_DEFS: Record<WingId, WingDef> = {
     color: 'chart-1',
     clickText: 'Generate Energy',
     clickAmount: 1,
-    clickAmounts: { primary: 1, secondary: 0.5, tertiary: 0.2, quaternary: 0.1 },
+    clickAmounts: { primary: 1, secondary: 1, tertiary: 0.2, quaternary: 0.1 },
     energyCostPerPrimaryWorker: 0,
     unlockThresholds: {
-      secondary: 100, tertiary: 15, quaternary: 6,
+      secondary: 5, tertiary: 500, quaternary: 5000,
       automatePrimary: 5, automateSecondary: 7, automateTertiary: 8, automateQuaternary: 4,
     },
     resources: {
@@ -120,10 +127,9 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         id: 'energy',
         name: 'Energy',
         description: 'Core power supply for the entire ship.',
-        baseCapacity: 100,
+        baseCapacity: 10,
         baseRate: 2.0,
         consumeRate: 0,        // free
-        capacityPerLevel: 50,
         efficiencyBonus: 0.5,
       },
       secondary: {
@@ -133,7 +139,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 15,
         baseRate: 0.3,
         consumeRate: 1.5,      // energy/s per worker
-        capacityPerLevel: 8,
         efficiencyBonus: 0.5,
       },
       tertiary: {
@@ -143,7 +148,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 8,
         baseRate: 0.1,
         consumeRate: 0.5,      // fuel rods/s per worker
-        capacityPerLevel: 4,
         efficiencyBonus: 0.5,
       },
       quaternary: {
@@ -153,7 +157,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 6,
         baseRate: 0.06,
         consumeRate: 0.3,      // thermal cores/s per worker
-        capacityPerLevel: 3,
         efficiencyBonus: 0.5,
       },
     },
@@ -170,7 +173,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
     clickAmounts: { primary: 0.5, secondary: 0.3, tertiary: 0.1, quaternary: 0.05 },
     energyCostPerPrimaryWorker: 1.0,
     unlockThresholds: {
-      secondary: 50, tertiary: 10, quaternary: 4,
+      secondary: 50, tertiary: 500, quaternary: 5000,
       automatePrimary: 3, automateSecondary: 4, automateTertiary: 5, automateQuaternary: 3,
     },
     resources: {
@@ -181,7 +184,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 50,
         baseRate: 1.0,
         consumeRate: 0,        // energy cost handled by energyCostPerPrimaryWorker
-        capacityPerLevel: 25,
         efficiencyBonus: 0.5,
       },
       secondary: {
@@ -191,7 +193,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 10,
         baseRate: 0.2,
         consumeRate: 1.0,      // insight/s per worker
-        capacityPerLevel: 5,
         efficiencyBonus: 0.5,
       },
       tertiary: {
@@ -201,7 +202,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 5,
         baseRate: 0.08,
         consumeRate: 0.3,      // data banks/s per worker
-        capacityPerLevel: 3,
         efficiencyBonus: 0.5,
       },
       quaternary: {
@@ -211,7 +211,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 4,
         baseRate: 0.05,
         consumeRate: 0.2,      // algorithms/s per worker
-        capacityPerLevel: 2,
         efficiencyBonus: 0.5,
       },
     },
@@ -228,7 +227,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
     clickAmounts: { primary: 0.5, secondary: 0.2, tertiary: 0.1, quaternary: 0.05 },
     energyCostPerPrimaryWorker: 1.0,
     unlockThresholds: {
-      secondary: 20, tertiary: 8, quaternary: 4,
+      secondary: 20, tertiary: 200, quaternary: 2000,
       automatePrimary: 3, automateSecondary: 4, automateTertiary: 5, automateQuaternary: 3,
     },
     resources: {
@@ -239,7 +238,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 20,
         baseRate: 0.5,
         consumeRate: 0,
-        capacityPerLevel: 10,
         efficiencyBonus: 0.5,
       },
       secondary: {
@@ -249,7 +247,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 8,
         baseRate: 0.1,
         consumeRate: 0.5,      // crew/s per worker
-        capacityPerLevel: 4,
         efficiencyBonus: 0.5,
       },
       tertiary: {
@@ -259,7 +256,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 5,
         baseRate: 0.04,
         consumeRate: 0.2,      // barracks/s per worker
-        capacityPerLevel: 2,
         efficiencyBonus: 0.5,
       },
       quaternary: {
@@ -269,7 +265,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 4,
         baseRate: 0.03,
         consumeRate: 0.15,     // command tokens/s per worker
-        capacityPerLevel: 2,
         efficiencyBonus: 0.5,
       },
     },
@@ -286,7 +281,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
     clickAmounts: { primary: 1, secondary: 0.3, tertiary: 0.1, quaternary: 0.05 },
     energyCostPerPrimaryWorker: 1.0,
     unlockThresholds: {
-      secondary: 100, tertiary: 10, quaternary: 4,
+      secondary: 100, tertiary: 1000, quaternary: 10000,
       automatePrimary: 3, automateSecondary: 4, automateTertiary: 5, automateQuaternary: 3,
     },
     resources: {
@@ -297,7 +292,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 100,
         baseRate: 1.5,
         consumeRate: 0,
-        capacityPerLevel: 50,
         efficiencyBonus: 0.5,
       },
       secondary: {
@@ -307,7 +301,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 10,
         baseRate: 0.15,
         consumeRate: 1.5,      // scrap/s per worker
-        capacityPerLevel: 5,
         efficiencyBonus: 0.5,
       },
       tertiary: {
@@ -317,7 +310,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 5,
         baseRate: 0.04,
         consumeRate: 0.3,      // alloys/s per worker
-        capacityPerLevel: 3,
         efficiencyBonus: 0.5,
       },
       quaternary: {
@@ -327,7 +319,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 4,
         baseRate: 0.03,
         consumeRate: 0.15,     // schematics/s per worker
-        capacityPerLevel: 2,
         efficiencyBonus: 0.5,
       },
     },
@@ -346,6 +337,19 @@ export const WING_ORDER: WingId[] = ['reactor', 'processor', 'crewQuarters', 'ma
 
 /** All resource slot types in chain order */
 export const SLOT_ORDER: ResourceSlot[] = ['primary', 'secondary', 'tertiary', 'quaternary'];
+
+/**
+ * For each non-primary slot, the slot whose resource it consumes as input.
+ * (Primary has its own input cost — energy from the reactor — handled separately.)
+ *
+ * Adding a new slot tier? Extend SLOT_ORDER and add an entry here; ResourceSystem
+ * and ActionSystem will pick it up automatically.
+ */
+export const SLOT_CONSUMES: Partial<Record<ResourceSlot, ResourceSlot>> = {
+  secondary: 'primary',
+  tertiary: 'secondary',
+  quaternary: 'tertiary',
+};
 
 /** Map a concrete resource id (e.g. 'energy') to its wing and slot */
 export function findResourceDef(resourceId: string): { wing: WingDef; slot: ResourceSlot; def: SlotResourceDef } | null {

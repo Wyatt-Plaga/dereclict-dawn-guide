@@ -54,6 +54,14 @@ export const ADVISOR_MESSAGES: Record<string, AdvisorMessage[]> = {
     { id: 'idle-2', text: 'There is so much of this ship I do not remember building.' },
   ],
 
+  // ── Early-game story beats — one-shot triggers ────────────────────────
+  'early.firstEnergy': [
+    { id: 'firstEnergy-1', text: 'Where... am I?' },
+  ],
+  'early.firstCapacity': [
+    { id: 'firstCap-1', text: "I'm blind. Need to bring power back online." },
+  ],
+
   // ── Early-game ambient — "just saying stuff" ───────────────────────────
   'ambient.early': [
     { id: 'amb-1', text: 'My memory is... incomplete. Pieces drift back as the systems warm.' },

@@ -175,3 +175,19 @@ export function effKey(slot: ResourceSlot): keyof WingUpgrades {
 export function maxWorkersKey(slot: ResourceSlot): keyof WingUpgrades {
   return `${slot}MaxWorkers` as keyof WingUpgrades;
 }
+
+/* ========================================================================== */
+/* Laboratory / Research state                                                */
+/* ========================================================================== */
+
+/** Tracks which research has been completed and which upgrade categories are unlocked.
+ *  Capacity upgrades are NOT tracked here — they unlock automatically with the
+ *  wing's secondary resource tier. */
+export interface LaboratoryState {
+  /** IDs of completed research items */
+  researched: string[];
+  /** Feature flags set by research — keys match ResearchDef.unlocks */
+  workerHiring: boolean;
+  maxWorkersUpgrades: boolean;
+  efficiencyUpgrades: boolean;
+}

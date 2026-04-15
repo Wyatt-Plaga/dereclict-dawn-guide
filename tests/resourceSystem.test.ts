@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ResourceSystem } from '@/game-engine/systems/ResourceSystem';
-import { initialGameState, GameState } from '@/game-engine/types';
-
-const cloneState = (): GameState => JSON.parse(JSON.stringify(initialGameState));
+import { GameState } from '@/game-engine/types';
+import { freshState } from './helpers';
 
 describe('ResourceSystem worker-based production', () => {
   let system: ResourceSystem;
@@ -10,7 +9,7 @@ describe('ResourceSystem worker-based production', () => {
 
   beforeEach(() => {
     system = new ResourceSystem();
-    state = cloneState();
+    state = freshState();
   });
 
   it('generates primary resource proportional to workers × baseRate × delta', () => {
@@ -25,11 +24,11 @@ describe('ResourceSystem worker-based production', () => {
 
   it('does not exceed capacity', () => {
     state.categories.reactor.automated.primary = true;
-    state.categories.reactor.workers.primary = 5;
-    state.categories.reactor.resources.primary = 98;
-    // 5 workers × 2.0 baseRate × 1s = 10, but cap is 100
+    state.categories.reactor.workers.primary = 20;
+    state.categories.reactor.resources.primary = 3;
+    // 20 workers × 2.0 baseRate × 1s = 40, but cap is 10
     system.update(state, 1);
-    expect(state.categories.reactor.resources.primary).toBe(100);
+    expect(state.categories.reactor.resources.primary).toBe(10);
   });
 
   it('produces nothing when no workers assigned', () => {
@@ -101,15 +100,14 @@ describe('ResourceSystem.recalcStats', () => {
 
   beforeEach(() => {
     system = new ResourceSystem();
-    state = cloneState();
+    state = freshState();
   });
 
   it('updates capacity based on upgrade levels', () => {
-    const baseCap = state.categories.reactor.stats.primaryCapacity;
     state.categories.reactor.upgrades.primaryCap = 2;
     system.recalcStats(state);
-    // capacityPerLevel = 50, so 2 levels = +100
-    expect(state.categories.reactor.stats.primaryCapacity).toBe(baseCap + 100);
+    // baseCapacity=10, geometric 1.14, level 2 → floor(10 × 1.14²) = 12
+    expect(state.categories.reactor.stats.primaryCapacity).toBe(12);
   });
 });
 
@@ -119,7 +117,7 @@ describe('ResourceSystem.hasResources / consumeResources', () => {
 
   beforeEach(() => {
     system = new ResourceSystem();
-    state = cloneState();
+    state = freshState();
     // give resources via new primary slot
     state.categories.reactor.resources.primary = 50;
     state.categories.processor.resources.primary = 20;

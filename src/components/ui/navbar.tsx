@@ -1,8 +1,9 @@
 "use client"
 
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Zap, CpuIcon, Users, Package, BookOpen, Rocket, Wrench, Gem, FlaskConical, Swords } from "lucide-react"
+import { Zap, CpuIcon, Users, Package, BookOpen, Rocket, Wrench, Gem, FlaskConical, Swords, Microscope } from "lucide-react"
 import { DEV_PRESETS } from "@/game-engine/devPresets"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/game-engine/hooks/useGame"
@@ -14,6 +15,7 @@ import { clearCachedState } from "@/game-engine/core/memoryCache"
 
 const navigation = [
   { name: "Reactor", href: "/reactor", icon: Zap },
+  { name: "Laboratory", href: "/laboratory", icon: Microscope },
   { name: "Processor", href: "/processor", icon: CpuIcon },
   { name: "Crew Quarters", href: "/crew-quarters", icon: Users },
   { name: "Manufacturing", href: "/manufacturing", icon: Package },
@@ -36,11 +38,6 @@ export function NavBar() {
     showAdvisor(line.text)
   }
 
-  // If on battle page or encounter page, don't show navbar
-  if (pathname === '/battle' || pathname === '/encounter') {
-    return null
-  }
-
   // Count unread logs
   const unreadLogsCount = state?.logs?.unread?.length || 0
 
@@ -54,12 +51,18 @@ export function NavBar() {
   const processorUnlocked = state?.categories?.processor?.unlocked ?? false
   const crewUnlocked = state?.categories?.crewQuarters?.unlocked ?? false
   const manufacturingUnlocked = state?.categories?.manufacturing?.unlocked ?? false
-  const bridgeUnlocked = ((state?.categories?.reactor?.specialUpgrades?.bridgeUnlocked || 0) > 0) || devMode
+  const bridgeUnlocked = (state?.laboratory?.workerHiring ?? false) || devMode
+  // Lab shows once 50 energy has been reached, or any research is already done
+  const labUnlocked = (state?.categories?.reactor?.resources?.primary ?? 0) >= 50
+    || (state?.laboratory?.researched?.length ?? 0) > 0
+    || devMode
 
   const filteredNavigation = navigation.filter((item) => {
     switch (item.name) {
       case 'Reactor':
         return true
+      case 'Laboratory':
+        return labUnlocked
       case 'Logs':
         return hasAnyLogs
       case 'Bridge':
@@ -76,6 +79,50 @@ export function NavBar() {
         return true
     }
   })
+
+  // Track which nav items have already been seen so newly-appearing ones can
+  // play a one-shot entrance animation. On first mount we seed the set with
+  // whatever is currently visible so existing tabs don't animate on reload.
+  // The `animatingNavItems` state keeps the CSS class applied for the full
+  // animation duration — re-renders that happen during the 900ms animation
+  // won't strip the class and cut the animation short.
+  const seenNavItemsRef = useRef<Set<string> | null>(null)
+  if (seenNavItemsRef.current === null) {
+    seenNavItemsRef.current = new Set(filteredNavigation.map((i) => i.name))
+  }
+  const seenNavItems = seenNavItemsRef.current
+  const [animatingNavItems, setAnimatingNavItems] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    const newlyUnlocked: string[] = []
+    for (const item of filteredNavigation) {
+      if (!seenNavItems.has(item.name)) {
+        seenNavItems.add(item.name)
+        newlyUnlocked.push(item.name)
+      }
+    }
+    if (newlyUnlocked.length === 0) return
+    setAnimatingNavItems((prev) => {
+      const next = new Set(prev)
+      newlyUnlocked.forEach((n) => next.add(n))
+      return next
+    })
+    const timers = newlyUnlocked.map((name) =>
+      window.setTimeout(() => {
+        setAnimatingNavItems((prev) => {
+          if (!prev.has(name)) return prev
+          const next = new Set(prev)
+          next.delete(name)
+          return next
+        })
+      }, 950)
+    )
+    return () => timers.forEach((t) => clearTimeout(t))
+  })
+
+  // If on battle page or encounter page, don't show navbar
+  if (pathname === '/battle' || pathname === '/encounter') {
+    return null
+  }
 
   /* ----------------------- ENERGY BALANCE ------------------------------- */
   const rs = new ResourceSystem()
@@ -118,6 +165,7 @@ export function NavBar() {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
           const isReactor = item.name === "Reactor"
           const isLogs = item.name === "Logs"
+          const isNewlyUnlocked = animatingNavItems.has(item.name)
           return (
             <Link
               key={item.name}
@@ -127,6 +175,7 @@ export function NavBar() {
                   ? "bg-primary/20 text-primary border-l-4 border-primary shadow-[0_0_15px_rgba(0,255,255,0.1)]"
                   : "hover:bg-primary/10 text-muted-foreground hover:text-primary border-l-4 border-transparent hover:border-primary/50"
                 }
+                ${isNewlyUnlocked ? "nav-item-enter" : ""}
               `}
             >
               <div className={`absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 transition-opacity ${isActive ? 'opacity-100' : 'group-hover:opacity-50'}`} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, ChevronUp, Gauge, Users } from "lucide-react";
+import { Minus, Plus, ChevronUp, Gauge, Users, Power } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -16,27 +16,25 @@ interface WingResourceRowProps {
   canAssign: boolean;        // whether there's a free worker to assign
   onAssign: () => void;
   onUnassign: () => void;
-  // Consumption info
   consumeLabel?: string;     // e.g., "1.5 Energy/s per worker"
-  // Upgrade info
+  // Upgrade info — pass undefined for onBuyX to hide the button
   capLevel: number;
   capCost: number;
   capCurrencyName: string;
   capCurrencyAvailable: number;
-  onBuyCap: () => void;
+  onBuyCap?: () => void;
   effLevel: number;
   effCost: number;
   effCurrencyName: string;
   effCurrencyAvailable: number;
-  onBuyEff: () => void;
-  // Max-workers upgrade (optional — only shown when quaternary tier exists)
+  onBuyEff?: () => void;
   maxWorkersLevel?: number;
   maxWorkersCost?: number;
   maxWorkersCurrencyName?: string;
   maxWorkersCurrencyAvailable?: number;
   onBuyMaxWorkers?: () => void;
-  // Slot tier for visual styling
   tier: 'primary' | 'secondary' | 'tertiary' | 'quaternary';
+  onDisableAutomation?: () => void;
 }
 
 export default function WingResourceRow({
@@ -47,11 +45,16 @@ export default function WingResourceRow({
   effLevel, effCost, effCurrencyName, effCurrencyAvailable, onBuyEff,
   maxWorkersLevel, maxWorkersCost, maxWorkersCurrencyName, maxWorkersCurrencyAvailable, onBuyMaxWorkers,
   tier,
+  onDisableAutomation,
 }: WingResourceRowProps) {
-  const canBuyCap = capCurrencyAvailable >= capCost;
-  const canBuyEff = effCurrencyAvailable >= effCost;
+  const showCap = onBuyCap !== undefined;
+  const showEff = onBuyEff !== undefined;
   const showMaxWorkers = onBuyMaxWorkers !== undefined && maxWorkersCost !== undefined;
+  const canBuyCap = showCap && capCurrencyAvailable >= capCost;
+  const canBuyEff = showEff && effCurrencyAvailable >= effCost;
   const canBuyMaxWorkers = showMaxWorkers && (maxWorkersCurrencyAvailable ?? 0) >= (maxWorkersCost ?? 0);
+  const anyUpgrade = showCap || showEff || showMaxWorkers;
+  const upgradeColCount = [showCap, showEff, showMaxWorkers].filter(Boolean).length;
   const slotFull = workers >= maxWorkers;
   const plusDisabled = !canAssign || slotFull;
   const pct = capacity > 0 ? (current / capacity) * 100 : 0;
@@ -74,12 +77,23 @@ export default function WingResourceRow({
             <span className="text-[9px] font-mono text-muted-foreground/60 uppercase">efficiency upgrades</span>
           )}
         </div>
-        <span className={`text-xs font-mono text-${color}`}>
-          {Math.floor(current)}/{Math.floor(capacity)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-mono text-${color}`}>
+            {Math.floor(current)}/{Math.floor(capacity)}
+          </span>
+          {onDisableAutomation && (
+            <button
+              onClick={onDisableAutomation}
+              title="Disable automation"
+              className={`h-6 w-6 flex items-center justify-center rounded transition-colors bg-${color}/10 text-${color}/70 hover:bg-red-500/20 hover:text-red-400`}
+            >
+              <Power className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Worker controls + progress bar — primary action row */}
+      {/* Worker controls + progress bar */}
       <div className="flex items-center gap-2 mb-2">
         <button
           onClick={onAssign}
@@ -117,9 +131,9 @@ export default function WingResourceRow({
       <div className="flex items-center justify-between mb-3">
         <div className="text-[10px] text-muted-foreground font-mono">
           {rate > 0 ? (
-            <span className={`text-${color}`}>+{rate.toFixed(1)}/s</span>
+            <span className={`text-${color}`}>+{rate.toFixed(2)}/s</span>
           ) : rate < 0 ? (
-            <span className="text-red-400">{rate.toFixed(1)}/s</span>
+            <span className="text-red-400">{rate.toFixed(2)}/s</span>
           ) : workers > 0 ? (
             <span className="text-amber-400">stalled (no input)</span>
           ) : (
@@ -129,64 +143,72 @@ export default function WingResourceRow({
         </div>
       </div>
 
-      {/* Upgrade buttons row */}
-      <div className={cn("grid gap-2", showMaxWorkers ? "grid-cols-3" : "grid-cols-2")}>
-        {/* Capacity upgrade */}
-        <button
-          onClick={onBuyCap}
-          disabled={!canBuyCap}
-          className={cn(
-            "flex items-center gap-1.5 p-2 rounded text-left transition-colors",
-            canBuyCap
-              ? "bg-primary/5 hover:bg-primary/10 border border-primary/10"
-              : "bg-muted/5 border border-muted/10 opacity-50 cursor-not-allowed"
+      {/* Upgrade buttons row (only when research unlocks them) */}
+      {anyUpgrade && (
+        <div className={cn(
+          "grid gap-2",
+          upgradeColCount === 1 && "grid-cols-1",
+          upgradeColCount === 2 && "grid-cols-2",
+          upgradeColCount === 3 && "grid-cols-3",
+        )}>
+          {showCap && (
+            <button
+              onClick={onBuyCap}
+              disabled={!canBuyCap}
+              className={cn(
+                "flex items-center gap-1.5 p-2 rounded text-left transition-colors",
+                canBuyCap
+                  ? "bg-primary/5 hover:bg-primary/10 border border-primary/10"
+                  : "bg-muted/5 border border-muted/10 opacity-50 cursor-not-allowed"
+              )}
+            >
+              <ChevronUp className="h-3.5 w-3.5 text-primary shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[10px] font-mono text-primary">Max Cap Lv.{capLevel}</div>
+                <div className="text-[9px] text-muted-foreground truncate">{capCost} {capCurrencyName}</div>
+              </div>
+            </button>
           )}
-        >
-          <ChevronUp className="h-3.5 w-3.5 text-primary shrink-0" />
-          <div className="min-w-0">
-            <div className="text-[10px] font-mono text-primary">Max Cap Lv.{capLevel}</div>
-            <div className="text-[9px] text-muted-foreground truncate">{capCost} {capCurrencyName}</div>
-          </div>
-        </button>
 
-        {/* Efficiency upgrade */}
-        <button
-          onClick={onBuyEff}
-          disabled={!canBuyEff}
-          className={cn(
-            "flex items-center gap-1.5 p-2 rounded text-left transition-colors",
-            canBuyEff
-              ? "bg-primary/5 hover:bg-primary/10 border border-primary/10"
-              : "bg-muted/5 border border-muted/10 opacity-50 cursor-not-allowed"
+          {showEff && (
+            <button
+              onClick={onBuyEff}
+              disabled={!canBuyEff}
+              className={cn(
+                "flex items-center gap-1.5 p-2 rounded text-left transition-colors",
+                canBuyEff
+                  ? "bg-primary/5 hover:bg-primary/10 border border-primary/10"
+                  : "bg-muted/5 border border-muted/10 opacity-50 cursor-not-allowed"
+              )}
+            >
+              <Gauge className="h-3.5 w-3.5 text-primary shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[10px] font-mono text-primary">Efficiency Lv.{effLevel}</div>
+                <div className="text-[9px] text-muted-foreground truncate">{effCost} {effCurrencyName}</div>
+              </div>
+            </button>
           )}
-        >
-          <Gauge className="h-3.5 w-3.5 text-primary shrink-0" />
-          <div className="min-w-0">
-            <div className="text-[10px] font-mono text-primary">Efficiency Lv.{effLevel}</div>
-            <div className="text-[9px] text-muted-foreground truncate">{effCost} {effCurrencyName}</div>
-          </div>
-        </button>
 
-        {/* Max-workers upgrade (only when quaternary tier exists) */}
-        {showMaxWorkers && (
-          <button
-            onClick={onBuyMaxWorkers}
-            disabled={!canBuyMaxWorkers}
-            className={cn(
-              "flex items-center gap-1.5 p-2 rounded text-left transition-colors",
-              canBuyMaxWorkers
-                ? "bg-primary/5 hover:bg-primary/10 border border-primary/10"
-                : "bg-muted/5 border border-muted/10 opacity-50 cursor-not-allowed"
-            )}
-          >
-            <Users className="h-3.5 w-3.5 text-primary shrink-0" />
-            <div className="min-w-0">
-              <div className="text-[10px] font-mono text-primary">Max Crew Lv.{maxWorkersLevel}</div>
-              <div className="text-[9px] text-muted-foreground truncate">{maxWorkersCost} {maxWorkersCurrencyName}</div>
-            </div>
-          </button>
-        )}
-      </div>
+          {showMaxWorkers && (
+            <button
+              onClick={onBuyMaxWorkers}
+              disabled={!canBuyMaxWorkers}
+              className={cn(
+                "flex items-center gap-1.5 p-2 rounded text-left transition-colors",
+                canBuyMaxWorkers
+                  ? "bg-primary/5 hover:bg-primary/10 border border-primary/10"
+                  : "bg-muted/5 border border-muted/10 opacity-50 cursor-not-allowed"
+              )}
+            >
+              <Users className="h-3.5 w-3.5 text-primary shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[10px] font-mono text-primary">Max Crew Lv.{maxWorkersLevel}</div>
+                <div className="text-[9px] text-muted-foreground truncate">{maxWorkersCost} {maxWorkersCurrencyName}</div>
+              </div>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Description */}
       <p className="text-[9px] text-muted-foreground/60 mt-2">{description}</p>

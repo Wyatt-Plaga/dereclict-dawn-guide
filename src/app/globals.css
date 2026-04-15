@@ -263,6 +263,36 @@ button.system-panel:hover {
   100% { opacity: 0; transform: translate(-50%, -50%) translateY(-40px); }
 }
 
+/* Nav item entrance — plays once when a newly-unlocked tab appears */
+.nav-item-enter {
+  animation: nav-item-enter-anim 900ms ease-out both;
+}
+
+@keyframes nav-item-enter-anim {
+  0% {
+    opacity: 0;
+    transform: translateX(-10px) scale(0.96);
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0);
+    filter: brightness(1);
+  }
+  35% {
+    opacity: 0.9;
+    transform: translateX(0) scale(1.02);
+    box-shadow: 0 0 22px 4px hsl(var(--primary) / 0.55);
+    filter: brightness(1.4);
+  }
+  70% {
+    box-shadow: 0 0 14px 2px hsl(var(--primary) / 0.35);
+    filter: brightness(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0);
+    filter: brightness(1);
+  }
+}
+
 /* AI advisor sprite — gentle floating bob */
 .advisor-bob {
   animation: advisor-bob-anim 3s ease-in-out infinite;

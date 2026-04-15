@@ -8,7 +8,7 @@ import { BaseEncounter, EncounterHistory } from './encounters';
 import { CombatState } from './combat';
 import {
   ReactorCategory, ProcessorCategory, CrewQuartersCategory,
-  ManufacturingCategory, ActiveBuff, WorkerPool
+  ManufacturingCategory, ActiveBuff, WorkerPool, LaboratoryState
 } from './resources';
 
 // Re-export all types for convenience
@@ -49,6 +49,14 @@ export interface GameState {
         currentRegion: RegionType;
         currentTier: number;
         completedRegions: string[];
+        /** Current fuel in the reservoir (spent on INITIATE_JUMP). */
+        fuel: number;
+        /** Drones assigned to generating fuel on the bridge. */
+        fuelWorkers: number;
+        /** Whether the fuel slot's workers are actively producing. */
+        fuelAutomated: boolean;
+        /** Fuel pump upgrade level. Multiplies fuel generation rate. */
+        fuelPumpLevel: number;
     };
 
     encounters: {
@@ -83,6 +91,9 @@ export interface GameState {
 
     /** Active timed buffs from story encounters */
     buffs: ActiveBuff[];
+
+    /** Laboratory — research tree progress and unlocked upgrade categories */
+    laboratory: LaboratoryState;
 }
 
 /* ========================================================================== */
@@ -143,7 +154,7 @@ export const initialGameState: GameState = {
         max: Math.min(WORKER_BASE, INITIAL_BOSS_GATE_LEVEL * WORKER_BOSS_GATE_SIZE),
     },
     lastUpdate: Date.now(),
-    version: 5,
+    version: 7,
     logs: {
         discovered: {},
         unread: []
@@ -151,7 +162,11 @@ export const initialGameState: GameState = {
     bridge: {
         currentRegion: 'void',
         currentTier: 1,
-        completedRegions: []
+        completedRegions: [],
+        fuel: 0,
+        fuelWorkers: 0,
+        fuelAutomated: false,
+        fuelPumpLevel: 0,
     },
     encounters: {
         active: false,
@@ -212,4 +227,10 @@ export const initialGameState: GameState = {
         repairKits:  { current: 2, tier: 0 },
     },
     buffs: [],
+    laboratory: {
+        researched: [],
+        workerHiring: false,
+        maxWorkersUpgrades: false,
+        efficiencyUpgrades: false,
+    },
 };

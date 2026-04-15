@@ -689,7 +689,7 @@ export class CombatSystem {
 
   checkForEncounter(state: GameState, toRegion: RegionType): boolean {
     if (!state.bridge) {
-      state.bridge = { currentRegion: toRegion, currentTier: 1, completedRegions: [] };
+      state.bridge = { currentRegion: toRegion, currentTier: 1, completedRegions: [], fuel: 0, fuelWorkers: 0, fuelAutomated: false, fuelPumpLevel: 0 };
     }
 
     const tier = state.bridge.currentTier ?? 1;

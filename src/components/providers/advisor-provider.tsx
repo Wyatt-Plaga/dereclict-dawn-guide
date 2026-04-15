@@ -3,6 +3,9 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, ReactNode, useEffect } from "react";
 import { useGame } from "@/game-engine/hooks/useGame";
 import { LOG_DEFINITIONS } from "@/game-engine/content/logDefinitions";
+import { ADVISOR_MESSAGES } from "@/game-engine/content/advisorMessages";
+import { WING_ORDER, SLOT_ORDER } from "@/game-engine/content/wingResources";
+import type { WingCategory } from "@/game-engine/types";
 
 interface AdvisorContextValue {
   /** Currently displayed message (null = bubble hidden). */
@@ -40,6 +43,58 @@ export function AdvisorProvider({ children }: { children: ReactNode }) {
     if (TOTAL_LOGS <= 0) return 1;
     return Math.min(1, discoveredCount / TOTAL_LOGS);
   }, [discoveredCount]);
+
+  // ── Auto-trigger: early-game story beats ──
+  // Each trigger fires exactly once per save. On first mount we seed the
+  // "already-fired" set from the current game state so reloads don't re-fire
+  // beats that were already experienced.
+  const firedTriggersRef = useRef<Set<string>>(new Set());
+  const triggersInitializedRef = useRef(false);
+
+  const fireTrigger = useCallback(
+    (key: string) => {
+      const pool = ADVISOR_MESSAGES[key];
+      if (!pool || pool.length === 0) return;
+      const line = pool[Math.floor(Math.random() * pool.length)];
+      showAdvisor(line.text);
+    },
+    [showAdvisor]
+  );
+
+  useEffect(() => {
+    if (!state?.categories) return;
+    const reactorEnergy = state.categories.reactor?.resources?.primary ?? 0;
+
+    // Total capacity-upgrade levels purchased across all wings/slots.
+    let totalCapLevels = 0;
+    for (const wingId of WING_ORDER) {
+      const wing = state.categories[wingId] as WingCategory | undefined;
+      if (!wing) continue;
+      for (const slot of SLOT_ORDER) {
+        const key = `${slot}Cap` as keyof typeof wing.upgrades;
+        totalCapLevels += (wing.upgrades[key] as number) ?? 0;
+      }
+    }
+
+    // First mount: prime the fired set without speaking.
+    if (!triggersInitializedRef.current) {
+      triggersInitializedRef.current = true;
+      if (reactorEnergy > 0) firedTriggersRef.current.add('early.firstEnergy');
+      if (totalCapLevels > 0) firedTriggersRef.current.add('early.firstCapacity');
+      return;
+    }
+
+    if (reactorEnergy > 0 && !firedTriggersRef.current.has('early.firstEnergy')) {
+      firedTriggersRef.current.add('early.firstEnergy');
+      fireTrigger('early.firstEnergy');
+      return;
+    }
+    if (totalCapLevels > 0 && !firedTriggersRef.current.has('early.firstCapacity')) {
+      firedTriggersRef.current.add('early.firstCapacity');
+      fireTrigger('early.firstCapacity');
+      return;
+    }
+  }, [state?.categories, fireTrigger]);
 
   // ── Auto-trigger: speak when a new log is discovered ──
   const seenLogIdsRef = useRef<Set<string>>(new Set());

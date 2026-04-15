@@ -1,6 +1,7 @@
 import { GameState, WingCategory } from '../types';
 import { BuffType, maxWorkersKey } from '../types/resources';
-import { WING_DEFS, WingId, WING_ORDER, SLOT_ORDER, ResourceSlot, WORKER_BASE, WORKER_PER_UPGRADE, WORKER_BOSS_GATE_SIZE, INITIAL_MAX_WORKERS_PER_SLOT } from '../content/wingResources';
+import { WING_DEFS, WingId, WING_ORDER, SLOT_ORDER, SLOT_CONSUMES, ResourceSlot, WORKER_BASE, WORKER_PER_UPGRADE, WORKER_BOSS_GATE_SIZE, INITIAL_MAX_WORKERS_PER_SLOT, computeCapacity } from '../content/wingResources';
+import { FUEL_CAPACITY, FUEL_RATE_PER_SECOND, fuelPumpMultiplier } from '../content/bridgeFuel';
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger";
 import { getResourceAccessor } from '../utils/resourceAccessor';
 
@@ -42,89 +43,109 @@ export class ResourceSystem {
   update(state: GameState, delta: number) {
     this.updateBuffs(state, delta);
 
-    // Calculate desired production and consumption for every slot
+    // Snapshot start-of-tick values so all scarcity checks use the same baseline.
+    const snaps = new Map<WingId, Record<ResourceSlot, number>>();
     for (const wingId of WING_ORDER) {
+      snaps.set(wingId, { ...(state.categories[wingId] as WingCategory).resources });
+    }
+
+    // Per-wing planned gross production and consumption per slot.
+    type Plan = { prod: Record<ResourceSlot, number>; consume: Record<ResourceSlot, number> };
+    const plans = new Map<WingId, Plan>();
+    for (const wingId of WING_ORDER) {
+      plans.set(wingId, {
+        prod: { primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
+        consume: { primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
+      });
+    }
+
+    // Energy withdrawn from reactor.primary by non-reactor primary workers.
+    let nonReactorEnergyDemand = 0;
+
+    // Process reactor first so its planned production is visible to non-reactor
+    // wings when they check energy scarcity.
+    const wingsInOrder: WingId[] = ['reactor', ...WING_ORDER.filter((w) => w !== 'reactor')];
+
+    for (const wingId of wingsInOrder) {
       const wing = state.categories[wingId] as WingCategory;
       if (!wing.unlocked) continue;
 
       const def = WING_DEFS[wingId];
       const buffMult = this.getBuffMultiplier(state, ResourceSystem.BUFF_MAP[wingId]);
+      const snap = snaps.get(wingId)!;
+      const plan = plans.get(wingId)!;
 
       for (const slot of SLOT_ORDER) {
-        // Only produce via workers for automated slots
-        if (!wing.automated[slot]) {
-          this.setRate(wing, slot, 0);
-          continue;
-        }
+        if (!wing.automated[slot]) continue;
+        const workers = wing.workers[slot];
+        if (workers <= 0) continue;
 
         const slotDef = def.resources[slot];
-        const workers = wing.workers[slot];
-        if (workers <= 0) {
+        const effLevel = wing.upgrades[`${slot}Eff` as keyof typeof wing.upgrades] as number;
+        const effMultiplier = 1 + effLevel * slotDef.efficiencyBonus;
+        let produce = workers * slotDef.baseRate * effMultiplier * buffMult * delta;
+
+        // Scale production down if inputs are scarce.
+        if (slot === 'primary' && wingId !== 'reactor') {
+          // Non-reactor primary consumes energy from reactor.primary (global pool).
+          const needed = workers * def.energyCostPerPrimaryWorker * delta;
+          const reactorPlan = plans.get('reactor')!;
+          const reactorStart = snaps.get('reactor')!.primary;
+          const available =
+            reactorStart + reactorPlan.prod.primary - reactorPlan.consume.primary - nonReactorEnergyDemand;
+          const usable = Math.max(0, Math.min(needed, available));
+          produce *= needed > 0 ? usable / needed : 0;
+          nonReactorEnergyDemand += usable;
+        } else {
+          const inputSlot = SLOT_CONSUMES[slot];
+          if (inputSlot) {
+            const needed = workers * slotDef.consumeRate * delta;
+            // Available from this wing's own chain: start + production so far - already-consumed.
+            const available = snap[inputSlot] + plan.prod[inputSlot] - plan.consume[inputSlot];
+            const usable = Math.max(0, Math.min(needed, available));
+            produce *= needed > 0 ? usable / needed : 0;
+            plan.consume[inputSlot] += usable;
+          }
+        }
+
+        plan.prod[slot] = produce;
+      }
+    }
+
+    // Apply all deltas atomically. Consumption drains first (floor 0), then
+    // production is added (capped — but pre-existing overflow is preserved so
+    // the cap only limits *new* production, not values already above it).
+    for (const wingId of WING_ORDER) {
+      const wing = state.categories[wingId] as WingCategory;
+      const plan = plans.get(wingId)!;
+      const snap = snaps.get(wingId)!;
+
+      for (const slot of SLOT_ORDER) {
+        if (!wing.unlocked) {
           this.setRate(wing, slot, 0);
           continue;
         }
-
-        const effLevel = wing.upgrades[`${slot}Eff` as keyof typeof wing.upgrades] as number;
-        const effMultiplier = 1 + effLevel * slotDef.efficiencyBonus;
-
-        // Raw production before clamping
-        let produce = workers * slotDef.baseRate * effMultiplier * buffMult * delta;
-
-        // Consumption of input resource
-        let canProduce = true;
-
-        if (slot === 'primary' && wingId !== 'reactor') {
-          // Non-reactor primary consumes energy
-          const energyNeeded = workers * def.energyCostPerPrimaryWorker * delta;
-          const reactorRes = state.categories.reactor.resources;
-          if (reactorRes.primary < energyNeeded) {
-            // Partial production proportional to available energy
-            const ratio = reactorRes.primary / energyNeeded;
-            produce *= ratio;
-            reactorRes.primary = 0;
-          } else {
-            reactorRes.primary -= energyNeeded;
-          }
-        } else if (slot === 'secondary') {
-          // Consumes primary
-          const needed = workers * slotDef.consumeRate * delta;
-          if (wing.resources.primary < needed) {
-            const ratio = needed > 0 ? wing.resources.primary / needed : 0;
-            produce *= ratio;
-            wing.resources.primary = 0;
-          } else {
-            wing.resources.primary -= needed;
-          }
-        } else if (slot === 'tertiary') {
-          // Consumes secondary
-          const needed = workers * slotDef.consumeRate * delta;
-          if (wing.resources.secondary < needed) {
-            const ratio = needed > 0 ? wing.resources.secondary / needed : 0;
-            produce *= ratio;
-            wing.resources.secondary = 0;
-          } else {
-            wing.resources.secondary -= needed;
-          }
-        } else if (slot === 'quaternary') {
-          // Consumes tertiary
-          const needed = workers * slotDef.consumeRate * delta;
-          if (wing.resources.tertiary < needed) {
-            const ratio = needed > 0 ? wing.resources.tertiary / needed : 0;
-            produce *= ratio;
-            wing.resources.tertiary = 0;
-          } else {
-            wing.resources.tertiary -= needed;
-          }
-        }
-
-        // Apply production capped at capacity
         const capKey = `${slot}Capacity` as keyof typeof wing.stats;
         const cap = wing.stats[capKey] as number;
-        wing.resources[slot] = Math.min(wing.resources[slot] + produce, cap);
-
-        // Store net rate for UI display (approximate, recalculated each tick)
-        this.setRate(wing, slot, produce / delta);
+        let consumed = plan.consume[slot];
+        if (wingId === 'reactor' && slot === 'primary') {
+          consumed += nonReactorEnergyDemand;
+        }
+        const produced = plan.prod[slot];
+        const afterConsume = Math.max(0, snap[slot] - consumed);
+        const effectiveCap = Math.max(cap, afterConsume);
+        wing.resources[slot] = Math.min(afterConsume + produced, effectiveCap);
+        this.setRate(wing, slot, produced / delta);
       }
+    }
+
+    // ── Bridge fuel production (standalone, not a wing) ──
+    // Single-drone slot: production runs whenever a worker is assigned.
+    // Pump upgrade multiplies the base rate.
+    if (state.bridge && state.bridge.fuelWorkers > 0) {
+      const pumpMult = fuelPumpMultiplier(state.bridge.fuelPumpLevel ?? 0);
+      const produced = state.bridge.fuelWorkers * FUEL_RATE_PER_SECOND * pumpMult * delta;
+      state.bridge.fuel = Math.min(FUEL_CAPACITY, (state.bridge.fuel ?? 0) + produced);
     }
   }
 
@@ -143,7 +164,7 @@ export class ResourceSystem {
         const slotDef = def.resources[slot];
         const capLevel = wing.upgrades[`${slot}Cap` as keyof typeof wing.upgrades] as number;
         const capKey = `${slot}Capacity` as keyof typeof wing.stats;
-        (wing.stats as any)[capKey] = slotDef.baseCapacity + capLevel * slotDef.capacityPerLevel;
+        (wing.stats as any)[capKey] = computeCapacity(slotDef.baseCapacity, capLevel);
       }
     }
 
@@ -193,16 +214,19 @@ export class ResourceSystem {
   /* Progression unlock checks                                               */
   /* ---------------------------------------------------------------------- */
 
-  /** Check if tier unlock thresholds are met (used by UI to show buttons) */
+  /** Check if tier unlock thresholds are met (used by UI to show buttons).
+   *  All tiers gate on the wing's PRIMARY resource — the primary acts as a
+   *  single progression ladder for the whole wing. */
   static canUnlockTier(wing: WingCategory, wingId: WingId, tier: 'secondary' | 'tertiary' | 'quaternary'): boolean {
     const thresholds = WING_DEFS[wingId].unlockThresholds;
+    const primary = wing.resources.primary;
     if (tier === 'secondary') {
-      return !wing.secondaryUnlocked && wing.resources.primary >= thresholds.secondary;
+      return !wing.secondaryUnlocked && primary >= thresholds.secondary;
     }
     if (tier === 'tertiary') {
-      return !wing.tertiaryUnlocked && wing.secondaryUnlocked && wing.resources.secondary >= thresholds.tertiary;
+      return !wing.tertiaryUnlocked && wing.secondaryUnlocked && primary >= thresholds.tertiary;
     }
-    return !wing.quaternaryUnlocked && wing.tertiaryUnlocked && wing.resources.tertiary >= thresholds.quaternary;
+    return !wing.quaternaryUnlocked && wing.tertiaryUnlocked && primary >= thresholds.quaternary;
   }
 
   /** Get the current per-slot worker cap for a given slot in a wing */

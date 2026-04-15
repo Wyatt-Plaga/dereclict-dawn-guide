@@ -1,18 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { EventBus } from '@/game-engine/core/EventBus';
 import { EventMap } from '@/game-engine/types/events';
-import { initialGameState, GameState } from '@/game-engine/types';
+import { GameState } from '@/game-engine/types';
 import { UpgradeSystem } from '@/game-engine/systems/UpgradeSystem';
 import { ActionSystem } from '@/game-engine/systems/ActionSystem';
-
-const clone = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
+import { freshState } from './helpers';
 
 describe('EventBus integration', () => {
   let bus: EventBus<EventMap>;
   let state: GameState;
   beforeEach(() => {
     bus = new EventBus<EventMap>();
-    state = clone(initialGameState);
+    state = freshState();
   });
 
   it('purchase special upgrade via event bus mutates state', () => {

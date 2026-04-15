@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useState } from "react";
 import { NavBar } from "@/components/ui/navbar";
 import { useSystemStatus } from "@/components/providers/system-status-provider";
 import { useGame } from "@/game-engine/hooks/useGame";
@@ -8,7 +8,7 @@ import GameLoader from "@/app/components/GameLoader";
 import WorkerAllocationBar from "@/app/components/WorkerAllocationBar";
 import WingResourceRow from "@/app/components/WingResourceRow";
 import ResourceClickButton from "@/app/components/ResourceClickButton";
-import { WING_DEFS, SLOT_ORDER, WingId, ResourceSlot, capacityUpgradeCost, efficiencyUpgradeCost, maxWorkersUpgradeCost } from "@/game-engine/content/wingResources";
+import { WING_DEFS, SLOT_ORDER, SLOT_CONSUMES, WingId, ResourceSlot, capacityUpgradeCost, efficiencyUpgradeCost, maxWorkersUpgradeCost } from "@/game-engine/content/wingResources";
 import { ResourceSystem } from "@/game-engine/systems/ResourceSystem";
 import { WingCategory, capKey, effKey, maxWorkersKey } from "@/game-engine/types/resources";
 import { LucideIcon, ChevronUp, Wrench, Cpu, Package } from "lucide-react";
@@ -64,15 +64,15 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
     }
   }, [wing.secondaryUnlocked, wing.tertiaryUnlocked, wing.quaternaryUnlocked, wing.automated.primary, wing.automated.secondary, wing.automated.tertiary, wing.automated.quaternary]);
 
-  // Workers are drawn from a single global pool now
+  // Workers are drawn from a single global pool
   const globalAssigned = (['reactor', 'processor', 'crewQuarters', 'manufacturing'] as WingId[])
     .reduce((sum, id) => {
       const w = state.categories[id] as WingCategory;
       return sum + w.workers.primary + w.workers.secondary + w.workers.tertiary + w.workers.quaternary;
-    }, 0);
+    }, 0) + (state.bridge?.fuelWorkers ?? 0);
   const totalWorkers = state.workers?.total ?? 0;
   const freeWorkers = totalWorkers - globalAssigned;
-  const hasAvailable = freeWorkers > 0 && wing.unlocked;
+  const hasAvailable = freeWorkers > 0 && wing.unlocked && state.laboratory.workerHiring;
 
   const anyAutomated = wing.automated.primary || wing.automated.secondary || wing.automated.tertiary || wing.automated.quaternary;
 
@@ -82,25 +82,21 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
   if (wing.tertiaryUnlocked) visibleSlots.push('tertiary');
   if (wing.quaternaryUnlocked) visibleSlots.push('quaternary');
 
-  // Check if next tier can be unlocked (threshold met but not yet unlocked)
+  // Check if next tier can be unlocked
   const canUnlockSecondary = ResourceSystem.canUnlockTier(wing, wingId, 'secondary');
   const canUnlockTertiary = ResourceSystem.canUnlockTier(wing, wingId, 'tertiary');
   const canUnlockQuaternary = ResourceSystem.canUnlockTier(wing, wingId, 'quaternary');
 
-  // Check if a slot can have automation enabled right now
+  // Check if a slot can have automation enabled right now. Automation is
+  // unlocked in one gate by the Workforce Systems research — after that any
+  // visible slot on the wing can be automated freely.
   const canEnableSlotAutomation = (slot: ResourceSlot): boolean => {
     if (wing.automated[slot]) return false;
-    // Quaternary automation requires the quaternary tier to be unlocked and uses
-    // the quaternary reservoir. All others gate on the tertiary tier.
-    if (slot === 'quaternary') {
-      if (!wing.quaternaryUnlocked) return false;
-    } else if (!wing.tertiaryUnlocked) {
-      return false;
-    }
-    const thresholdKey = `automate${slot.charAt(0).toUpperCase()}${slot.slice(1)}` as keyof typeof def.unlockThresholds;
-    const threshold = def.unlockThresholds[thresholdKey] as number;
-    const reservoir = slot === 'quaternary' ? wing.resources.quaternary : wing.resources.tertiary;
-    return reservoir >= threshold;
+    if (!state.laboratory.workerHiring) return false;
+    if (slot === 'secondary' && !wing.secondaryUnlocked) return false;
+    if (slot === 'tertiary' && !wing.tertiaryUnlocked) return false;
+    if (slot === 'quaternary' && !wing.quaternaryUnlocked) return false;
+    return true;
   };
 
   const getConsumeLabel = (slot: ResourceSlot): string | undefined => {
@@ -108,14 +104,9 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
     if (slot === 'primary' && wingId !== 'reactor') {
       return `${def.energyCostPerPrimaryWorker} Energy/s per worker`;
     }
-    if (slot === 'secondary') {
-      return `${slotDef.consumeRate} ${def.resources.primary.name}/s per worker`;
-    }
-    if (slot === 'tertiary') {
-      return `${slotDef.consumeRate} ${def.resources.secondary.name}/s per worker`;
-    }
-    if (slot === 'quaternary') {
-      return `${slotDef.consumeRate} ${def.resources.tertiary.name}/s per worker`;
+    const inputSlot = SLOT_CONSUMES[slot];
+    if (inputSlot) {
+      return `${slotDef.consumeRate} ${def.resources[inputSlot].name}/s per worker`;
     }
     return undefined;
   };
@@ -134,7 +125,7 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
           {/* Energy balance — show when any slot is automated */}
           {anyAutomated && <WorkerAllocationBar />}
 
-          {/* Resource chain label — show when at least secondary is visible */}
+          {/* Resource chain label */}
           {wing.secondaryUnlocked && (
             <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground mb-2">
               <span className={`text-${def.color}`}>{def.resources.primary.name}</span>
@@ -155,16 +146,16 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
             </div>
           )}
 
-          {/* Resource slots — each independently click or automated */}
+          {/* Resource slots */}
           <div className="flex flex-col gap-3 mb-6">
             {visibleSlots.map(slot => {
               const slotDef = def.resources[slot];
-              const isAutomated = wing.automated[slot];
               const isNewSlot = animating.has(`slot-${slot}`);
               const isNewAuto = animating.has(`auto-${slot}`);
+              const isAutomated = wing.automated[slot];
 
               if (isAutomated) {
-                // ── Automated slot: worker assignment + upgrades ──
+                // ── Automated slot: worker assignment + upgrades (gated by Lab research) ──
                 const cLevel = wing.upgrades[capKey(slot)] as number;
                 const eLevel = wing.upgrades[effKey(slot)] as number;
                 const mLevel = wing.upgrades[maxWorkersKey(slot)] as number;
@@ -172,38 +163,41 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
 
                 return (
                   <div key={slot} className={isNewAuto ? 'animate-glow-once rounded' : ''}>
-                  <WingResourceRow
-                    name={slotDef.name}
-                    description={slotDef.description}
-                    color={def.color}
-                    current={wing.resources[slot]}
-                    capacity={wing.stats[`${slot}Capacity` as keyof typeof wing.stats] as number}
-                    rate={wing.stats[`${slot}Rate` as keyof typeof wing.stats] as number}
-                    workers={wing.workers[slot]}
-                    maxWorkers={slotMax}
-                    canAssign={hasAvailable}
-                    onAssign={() => dispatch({ type: 'ASSIGN_WORKER', payload: { wing: wingId, slot } })}
-                    onUnassign={() => dispatch({ type: 'UNASSIGN_WORKER', payload: { wing: wingId, slot } })}
-                    consumeLabel={getConsumeLabel(slot)}
-                    capLevel={cLevel}
-                    capCost={capacityUpgradeCost(cLevel)}
-                    capCurrencyName={def.resources.secondary.name}
-                    capCurrencyAvailable={wing.resources.secondary}
-                    onBuyCap={() => dispatch({ type: 'BUY_CAPACITY_UPGRADE', payload: { wing: wingId, slot } })}
-                    effLevel={eLevel}
-                    effCost={efficiencyUpgradeCost(eLevel)}
-                    effCurrencyName={def.resources.tertiary.name}
-                    effCurrencyAvailable={wing.resources.tertiary}
-                    onBuyEff={() => dispatch({ type: 'BUY_EFFICIENCY_UPGRADE', payload: { wing: wingId, slot } })}
-                    {...(wing.quaternaryUnlocked ? {
-                      maxWorkersLevel: mLevel,
-                      maxWorkersCost: maxWorkersUpgradeCost(mLevel),
-                      maxWorkersCurrencyName: def.resources.quaternary.name,
-                      maxWorkersCurrencyAvailable: wing.resources.quaternary,
-                      onBuyMaxWorkers: () => dispatch({ type: 'BUY_MAX_WORKERS_UPGRADE', payload: { wing: wingId, slot } }),
-                    } : {})}
-                    tier={slot}
-                  />
+                    <WingResourceRow
+                      name={slotDef.name}
+                      description={slotDef.description}
+                      color={def.color}
+                      current={wing.resources[slot]}
+                      capacity={wing.stats[`${slot}Capacity` as keyof typeof wing.stats] as number}
+                      rate={wing.stats[`${slot}Rate` as keyof typeof wing.stats] as number}
+                      workers={wing.workers[slot]}
+                      maxWorkers={slotMax}
+                      canAssign={hasAvailable}
+                      onAssign={() => dispatch({ type: 'ASSIGN_WORKER', payload: { wing: wingId, slot } })}
+                      onUnassign={() => dispatch({ type: 'UNASSIGN_WORKER', payload: { wing: wingId, slot } })}
+                      consumeLabel={getConsumeLabel(slot)}
+                      capLevel={cLevel}
+                      capCost={capacityUpgradeCost(cLevel)}
+                      capCurrencyName={def.resources.secondary.name}
+                      capCurrencyAvailable={wing.resources.secondary}
+                      onBuyCap={() => dispatch({ type: 'BUY_CAPACITY_UPGRADE', payload: { wing: wingId, slot } })}
+                      effLevel={eLevel}
+                      effCost={efficiencyUpgradeCost(eLevel)}
+                      effCurrencyName={def.resources.tertiary.name}
+                      effCurrencyAvailable={wing.resources.tertiary}
+                      {...(state.laboratory.efficiencyUpgrades && wing.tertiaryUnlocked ? {
+                        onBuyEff: () => dispatch({ type: 'BUY_EFFICIENCY_UPGRADE', payload: { wing: wingId, slot } }),
+                      } : {})}
+                      {...(state.laboratory.maxWorkersUpgrades && wing.quaternaryUnlocked ? {
+                        maxWorkersLevel: mLevel,
+                        maxWorkersCost: maxWorkersUpgradeCost(mLevel),
+                        maxWorkersCurrencyName: def.resources.quaternary.name,
+                        maxWorkersCurrencyAvailable: wing.resources.quaternary,
+                        onBuyMaxWorkers: () => dispatch({ type: 'BUY_MAX_WORKERS_UPGRADE', payload: { wing: wingId, slot } }),
+                      } : {})}
+                      tier={slot}
+                      onDisableAutomation={() => dispatch({ type: 'DISABLE_AUTOMATION', payload: { wing: wingId, slot } })}
+                    />
                   </div>
                 );
               }
@@ -218,28 +212,19 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
               const eLevel = wing.upgrades[effKey(slot)] as number;
               const mLevel = wing.upgrades[maxWorkersKey(slot)] as number;
 
-              // Click cost calculation (mirrors ActionSystem logic)
-              let clickCost = 0;
-              let clickCostName = '';
-              let canAffordClick = true;
-              if (slot === 'primary' && wingId !== 'reactor') {
-                clickCost = def.energyCostPerPrimaryWorker * (def.clickAmounts[slot] / slotDef.baseRate);
-                clickCostName = 'Energy';
-                canAffordClick = state.categories.reactor.resources.primary >= clickCost;
-              } else if (slot === 'secondary') {
-                clickCost = slotDef.consumeRate * (def.clickAmounts[slot] / slotDef.baseRate);
-                clickCostName = def.resources.primary.name;
-                canAffordClick = wing.resources.primary >= clickCost;
-              } else if (slot === 'tertiary') {
-                clickCost = slotDef.consumeRate * (def.clickAmounts[slot] / slotDef.baseRate);
-                clickCostName = def.resources.secondary.name;
-                canAffordClick = wing.resources.secondary >= clickCost;
-              }
+              // Non-primary clicks consume the prior-tier resource (mirrors the
+              // worker-second cost in ResourceSystem). Disable the click button
+              // when the player can't afford it so no animation plays.
               const atCap = current >= cap;
-              const clickDisabled = atCap || !canAffordClick;
-
-              const costLabel = clickCost > 0
-                ? `+${def.clickAmounts[slot]} (costs ${+clickCost.toFixed(1)} ${clickCostName})`
+              const clickInputSlot = SLOT_CONSUMES[slot];
+              const clickInputCost = clickInputSlot
+                ? slotDef.consumeRate * (def.clickAmounts[slot] / slotDef.baseRate)
+                : 0;
+              const cannotAfford = clickInputSlot !== undefined
+                && wing.resources[clickInputSlot] < clickInputCost;
+              const clickDisabled = atCap || cannotAfford;
+              const costLabel = clickInputSlot
+                ? `-${clickInputCost} ${def.resources[clickInputSlot].name}`
                 : `+${def.clickAmounts[slot]} per click`;
 
               return (
@@ -263,7 +248,7 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
                     shouldFlicker={shouldFlicker(flickerKey)}
                   />
 
-                  {/* Capacity & efficiency upgrades (available even in manual mode) */}
+                  {/* Capacity (auto) / efficiency / max-workers upgrades */}
                   {wing.secondaryUnlocked && (
                     <div className="flex gap-2 mt-2">
                       <button
@@ -280,7 +265,7 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
                         Cap Lv.{cLevel}
                         <span className="text-muted-foreground/50">({capacityUpgradeCost(cLevel)} {def.resources.secondary.name})</span>
                       </button>
-                      {wing.tertiaryUnlocked && (
+                      {state.laboratory.efficiencyUpgrades && wing.tertiaryUnlocked && (
                         <button
                           onClick={() => dispatch({ type: 'BUY_EFFICIENCY_UPGRADE', payload: { wing: wingId, slot } })}
                           disabled={wing.resources.tertiary < efficiencyUpgradeCost(eLevel)}
@@ -296,7 +281,7 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
                           <span className="text-muted-foreground/50">({efficiencyUpgradeCost(eLevel)} {def.resources.tertiary.name})</span>
                         </button>
                       )}
-                      {wing.quaternaryUnlocked && (
+                      {state.laboratory.maxWorkersUpgrades && wing.quaternaryUnlocked && (
                         <button
                           onClick={() => dispatch({ type: 'BUY_MAX_WORKERS_UPGRADE', payload: { wing: wingId, slot } })}
                           disabled={wing.resources.quaternary < maxWorkersUpgradeCost(mLevel)}

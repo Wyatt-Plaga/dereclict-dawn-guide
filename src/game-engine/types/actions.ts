@@ -79,6 +79,43 @@ export interface EnableAutomationAction {
   };
 }
 
+export interface DisableAutomationAction {
+  type: 'DISABLE_AUTOMATION';
+  payload: {
+    wing: WingId;
+    slot: ResourceSlot;
+  };
+}
+
+/** Assign a single drone from the free pool to the bridge fuel slot */
+export interface AssignBridgeFuelWorkerAction {
+  type: 'ASSIGN_BRIDGE_FUEL_WORKER';
+}
+
+/** Return a single drone from the bridge fuel slot to the free pool */
+export interface UnassignBridgeFuelWorkerAction {
+  type: 'UNASSIGN_BRIDGE_FUEL_WORKER';
+}
+
+/** Turn bridge fuel automation on or off */
+export interface SetBridgeFuelAutomationAction {
+  type: 'SET_BRIDGE_FUEL_AUTOMATION';
+  payload: { enabled: boolean };
+}
+
+/** Buy the next fuel pump upgrade level (paid in reactor energy). */
+export interface BuyFuelPumpUpgradeAction {
+  type: 'BUY_FUEL_PUMP_UPGRADE';
+}
+
+/** Purchase a one-time research unlock in the Laboratory */
+export interface PurchaseResearchAction {
+  type: 'PURCHASE_RESEARCH';
+  payload: {
+    researchId: string;
+  };
+}
+
 /** Unlock the next resource tier (secondary, tertiary, or quaternary) for a wing */
 export interface UnlockTierAction {
   type: 'UNLOCK_TIER';
@@ -204,7 +241,13 @@ export type GameAction =
   | HireWorkerAction
   | BuyWorkerCapUpgradeAction
   | EnableAutomationAction
-  | UnlockTierAction;
+  | DisableAutomationAction
+  | AssignBridgeFuelWorkerAction
+  | UnassignBridgeFuelWorkerAction
+  | SetBridgeFuelAutomationAction
+  | BuyFuelPumpUpgradeAction
+  | UnlockTierAction
+  | PurchaseResearchAction;
 
 /** @deprecated Use GameAction instead */
 export type GameActions = GameAction;

@@ -176,8 +176,8 @@ export class GameEngine {
 
         const s = saveData.state as any;
 
-        // Dev: any save predating the quaternary slot is wiped (no migration).
-        if ((s.version ?? 0) < 5) {
+        // Dev: any save predating the current laboratory schema is wiped (no migration).
+        if ((s.version ?? 0) < 7) {
             return false;
         }
 
@@ -259,6 +259,13 @@ export class GameEngine {
             migrateWing(s.categories.processor, false);
             migrateWing(s.categories.crewQuarters, false);
             migrateWing(s.categories.manufacturing, false);
+        }
+
+        // ─── Bridge fuel fields (added post-v7) ───
+        if (s.bridge) {
+            if (s.bridge.fuel === undefined) s.bridge.fuel = 0;
+            if (s.bridge.fuelWorkers === undefined) s.bridge.fuelWorkers = 0;
+            if (s.bridge.fuelAutomated === undefined) s.bridge.fuelAutomated = false;
         }
 
         // ─── Combat field migration (from previous session) ───

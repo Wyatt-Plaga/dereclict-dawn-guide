@@ -108,6 +108,10 @@ const postVoid: DevPreset = {
             utilities: ['hull-patch', 'scan-mk1'],
             stance: null,
         },
+        laboratory: {
+            researched: ['workforce_systems', 'crew_expansion', 'optimization_routines'],
+            workerHiring: true, maxWorkersUpgrades: true, efficiencyUpgrades: true,
+        },
     },
 };
 
@@ -190,6 +194,10 @@ const midGame: DevPreset = {
             weapons: ['basic-phaser', 'flak-cannon'],
             utilities: ['hull-patch', 'scan-mk1', 'scramble-sensors-mk1'],
             stance: null,
+        },
+        laboratory: {
+            researched: ['workforce_systems', 'crew_expansion', 'optimization_routines'],
+            workerHiring: true, maxWorkersUpgrades: true, efficiencyUpgrades: true,
         },
     },
 };
@@ -281,6 +289,10 @@ const preEndgame: DevPreset = {
             weapons: ['gauss-cannon', 'flak-mk2'],
             utilities: ['hull-patch', 'hack'],
             stance: 'evasive-manoeuvres',
+        },
+        laboratory: {
+            researched: ['workforce_systems', 'crew_expansion', 'optimization_routines'],
+            workerHiring: true, maxWorkersUpgrades: true, efficiencyUpgrades: true,
         },
     },
 };
@@ -374,6 +386,10 @@ const maxPreset: DevPreset = {
             weapons: ['spark-of-creation', 'gauss-cannon'],
             utilities: ['hull-patch', 'hack'],
             stance: 'battle-stations',
+        },
+        laboratory: {
+            researched: ['workforce_systems', 'crew_expansion', 'optimization_routines'],
+            workerHiring: true, maxWorkersUpgrades: true, efficiencyUpgrades: true,
         },
     },
 };

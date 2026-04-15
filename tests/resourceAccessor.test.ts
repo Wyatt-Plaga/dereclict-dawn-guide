@@ -1,14 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { getResourceAccessor } from '@/game-engine/utils/resourceAccessor';
-import { initialGameState, GameState } from '@/game-engine/types';
-
-const clone = <T>(o: T): T => JSON.parse(JSON.stringify(o));
+import { GameState } from '@/game-engine/types';
+import { freshState } from './helpers';
 
 describe('getResourceAccessor', () => {
   let state: GameState;
 
   beforeEach(() => {
-    state = clone(initialGameState);
+    state = freshState();
   });
 
   it('maps energy to reactor primary resource', () => {

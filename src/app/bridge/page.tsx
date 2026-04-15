@@ -1,7 +1,7 @@
 "use client";
 
 import { NavBar } from "@/components/ui/navbar";
-import { Compass, Rocket, Skull, Zap, Wrench, Plus, ChevronUp, Bot } from "lucide-react";
+import { Compass, Rocket, Skull, Zap, Wrench, Plus, Minus, ChevronUp, Bot, Atom } from "lucide-react";
 import { useSystemStatus } from "@/components/providers/system-status-provider";
 import { useGame } from "@/game-engine/hooks/useGame";
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger";
@@ -30,7 +30,15 @@ const REGION_COLOR_MAP: Record<RegionType, { text: string; border: string; hover
 };
 import { RegionType } from "@/game-engine/types/regions";
 import { useDevMode } from "@/components/providers/dev-mode-provider";
-import { JUMP_COSTS } from "@/game-engine/systems/EncounterSystem";
+import {
+  FUEL_CAPACITY,
+  FUEL_RATE_PER_SECOND,
+  JUMP_FUEL_COST,
+  FUEL_PUMP_MAX_LEVEL,
+  fuelPumpUpgradeCost,
+  fuelPumpMultiplier,
+} from "@/game-engine/content/bridgeFuel";
+import { Progress } from "@/components/ui/progress";
 import { REGION_WING_UNLOCKS } from "@/game-engine/content/wingResources";
 import RegionTree from "./components/RegionTree";
 
@@ -123,10 +131,12 @@ export default function BridgePage() {
   const currentRegionKey = currentTier > 1 ? `${currentRegionId}-t${currentTier}` : currentRegionId;
   const isRematch = !!pendingRematch && pendingRematch.regionKey === currentRegionKey;
 
-  // Jump cost & affordability (free for rematch)
-  const jumpCost = isRematch ? 0 : (JUMP_COSTS[currentRegionId] ?? 5);
+  // Jump cost & affordability (free for rematch). Jumps are now fuelled
+  // by the bridge fuel reservoir instead of reactor energy.
+  const jumpCost = isRematch ? 0 : JUMP_FUEL_COST;
   const currentEnergy = Math.floor(state?.categories?.reactor?.resources?.primary ?? 0);
-  const canAffordJump = isRematch || currentEnergy >= jumpCost;
+  const currentFuel = state?.bridge?.fuel ?? 0;
+  const canAffordJump = isRematch || currentFuel >= jumpCost;
 
   const initiateJump = () => {
     if (!canAffordJump) return;
@@ -149,9 +159,21 @@ export default function BridgePage() {
     .reduce((sum, id) => {
       const w = state?.categories?.[id] as WingCategory | undefined;
       if (!w) return sum;
-      return sum + w.workers.primary + w.workers.secondary + w.workers.tertiary;
-    }, 0);
+      return sum + w.workers.primary + w.workers.secondary + w.workers.tertiary + w.workers.quaternary;
+    }, 0) + (state?.bridge?.fuelWorkers ?? 0);
   const freeWorkers = workers.total - totalAssigned;
+
+  /* ---- Fuel reservoir ---- */
+  const fuelWorkers = state?.bridge?.fuelWorkers ?? 0;
+  const fuelPumpLevel = state?.bridge?.fuelPumpLevel ?? 0;
+  const fuelPumpMult = fuelPumpMultiplier(fuelPumpLevel);
+  const fuelRatePerSec = fuelWorkers * FUEL_RATE_PER_SECOND * fuelPumpMult;
+  const fuelRatePerMin = fuelRatePerSec * 60;
+  const fuelPct = FUEL_CAPACITY > 0 ? (currentFuel / FUEL_CAPACITY) * 100 : 0;
+  const canAutomateFuel = (state?.laboratory?.workerHiring ?? false) || devMode;
+  const fuelPumpAtMax = fuelPumpLevel >= FUEL_PUMP_MAX_LEVEL;
+  const fuelPumpNextCost = fuelPumpAtMax ? 0 : fuelPumpUpgradeCost(fuelPumpLevel);
+  const canAffordFuelPump = !fuelPumpAtMax && currentEnergy >= fuelPumpNextCost;
 
   const hireCost = workerHireEnergyCost(workers.total);
   const canHire = workers.total < workers.max && currentEnergy >= hireCost;
@@ -261,11 +283,11 @@ export default function BridgePage() {
                 )}
                 <span className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                   {isRematch ? (
-                    <span>No energy cost</span>
+                    <span>No fuel cost</span>
                   ) : (
                     <>
-                      <Zap className="h-3 w-3" />
-                      {jumpCost} Energy
+                      <Atom className="h-3 w-3" />
+                      {jumpCost} Fuel
                       {!canAffordJump && (
                         <span className="text-red-400 ml-1">(insufficient)</span>
                       )}
@@ -367,6 +389,102 @@ export default function BridgePage() {
               </p>
             )}
           </div>
+
+          {/* ─── Fuel Reservoir ─────────────────────────────────────── */}
+          {canAutomateFuel && (
+            <div className="system-panel p-6 mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-primary flex items-center gap-2">
+                  <Atom className="h-5 w-5" />
+                  Fuel Reservoir
+                </h2>
+                <div className="flex items-center gap-3 text-sm font-mono">
+                  <span className={fuelWorkers > 0 ? "text-emerald-400" : "text-muted-foreground/60"}>
+                    {fuelWorkers > 0 ? "+" : ""}{fuelRatePerMin.toFixed(2)}/min
+                  </span>
+                  <span className="text-muted-foreground">
+                    {currentFuel.toFixed(2)}/{FUEL_CAPACITY} fuel
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground font-mono mb-4">
+                Fuel powers every jump. Assign drones to refine it while you explore.
+              </p>
+
+              <Progress value={fuelPct} className="h-2 mb-4" />
+
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => dispatch({ type: 'ASSIGN_BRIDGE_FUEL_WORKER' })}
+                    disabled={freeWorkers <= 0 || fuelWorkers >= 1}
+                    className={cn(
+                      "h-7 w-7 flex items-center justify-center rounded transition-colors shrink-0",
+                      freeWorkers > 0 && fuelWorkers < 1
+                        ? "bg-primary/10 text-primary hover:bg-primary/20"
+                        : "bg-muted/10 text-muted-foreground/30 cursor-not-allowed"
+                    )}
+                    aria-label="Assign fuel drone"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => dispatch({ type: 'UNASSIGN_BRIDGE_FUEL_WORKER' })}
+                    disabled={fuelWorkers <= 0}
+                    className={cn(
+                      "h-7 w-7 flex items-center justify-center rounded transition-colors shrink-0",
+                      fuelWorkers > 0
+                        ? "bg-muted/10 text-muted-foreground/60 hover:bg-muted/20"
+                        : "bg-muted/5 text-muted-foreground/20 cursor-not-allowed"
+                    )}
+                    aria-label="Remove fuel drone"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="text-xs font-mono font-semibold">{fuelWorkers}/1</span>
+                </div>
+              </div>
+
+              {/* Fuel Pump upgrade — boosts fuel generation rate, paid in energy */}
+              <button
+                onClick={() => dispatch({ type: 'BUY_FUEL_PUMP_UPGRADE' })}
+                disabled={fuelPumpAtMax || !canAffordFuelPump}
+                className={cn(
+                  "mt-4 w-full flex items-center justify-between gap-3 p-3 rounded text-left transition-colors",
+                  fuelPumpAtMax
+                    ? "bg-primary/5 border border-primary/20 cursor-default"
+                    : canAffordFuelPump
+                      ? "bg-primary/5 hover:bg-primary/10 border border-primary/20"
+                      : "bg-muted/5 border border-muted/10 opacity-50 cursor-not-allowed"
+                )}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <ChevronUp className="h-4 w-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-xs font-mono text-primary">
+                      Fuel Pump Lv.{fuelPumpLevel}/{FUEL_PUMP_MAX_LEVEL}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {fuelPumpMult.toFixed(2)}× generation rate
+                      {!fuelPumpAtMax && (
+                        <> · next: {fuelPumpMultiplier(fuelPumpLevel + 1).toFixed(2)}×</>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-[10px] font-mono text-right shrink-0">
+                  {fuelPumpAtMax ? (
+                    <span className="text-primary/70">MAX</span>
+                  ) : (
+                    <span className={canAffordFuelPump ? "text-primary" : "text-muted-foreground"}>
+                      {fuelPumpNextCost.toLocaleString()} Energy
+                    </span>
+                  )}
+                </div>
+              </button>
+            </div>
+          )}
         </div>
       </main>
     </GameLoader>

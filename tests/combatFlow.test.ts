@@ -1,17 +1,16 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { EventBus } from '@/game-engine/core/EventBus';
 import { EventMap } from '@/game-engine/types/events';
-import { initialGameState, GameState } from '@/game-engine/types';
+import { GameState } from '@/game-engine/types';
 import { CombatSystem } from '@/game-engine/systems/CombatSystem';
 import { ResourceSystem } from '@/game-engine/systems/ResourceSystem';
 import { RegionType } from '@/game-engine/types/regions';
 import { ENEMY_DEFINITIONS } from '@/game-engine/content/enemies';
-
-const clone = <T>(o: T): T => JSON.parse(JSON.stringify(o));
+import { freshState, clone } from './helpers';
 
 function makeRig() {
   const bus = new EventBus<EventMap>();
-  const state = clone(initialGameState);
+  const state = freshState();
   const resource = new ResourceSystem();
   const combat = new CombatSystem(bus);
   combat.setResourceSystem(resource);

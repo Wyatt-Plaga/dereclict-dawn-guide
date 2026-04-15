@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { UpgradeSystem } from '@/game-engine/systems/UpgradeSystem';
-import { initialGameState, GameState } from '@/game-engine/types';
+import { GameState } from '@/game-engine/types';
 import { capacityUpgradeCost, efficiencyUpgradeCost, workerHireEnergyCost, workerMaxUpgradeRelicCost } from '@/game-engine/content/wingResources';
-
-const clone = <T>(o: T): T => JSON.parse(JSON.stringify(o));
+import { freshState } from './helpers';
 
 describe('UpgradeSystem — capacity upgrades', () => {
   let system: UpgradeSystem;
@@ -11,7 +10,7 @@ describe('UpgradeSystem — capacity upgrades', () => {
 
   beforeEach(() => {
     system = new UpgradeSystem();
-    state = clone(initialGameState);
+    state = freshState();
   });
 
   it('purchases capacity upgrade when secondary resource is sufficient', () => {
@@ -48,7 +47,7 @@ describe('UpgradeSystem — efficiency upgrades', () => {
 
   beforeEach(() => {
     system = new UpgradeSystem();
-    state = clone(initialGameState);
+    state = freshState();
   });
 
   it('purchases efficiency upgrade when tertiary resource is sufficient', () => {
@@ -77,7 +76,7 @@ describe('UpgradeSystem — hire worker (global pool)', () => {
 
   beforeEach(() => {
     system = new UpgradeSystem();
-    state = clone(initialGameState);
+    state = freshState();
   });
 
   it('hires a worker when reactor energy is sufficient and below cap', () => {
@@ -113,7 +112,7 @@ describe('UpgradeSystem — global worker cap upgrade', () => {
 
   beforeEach(() => {
     system = new UpgradeSystem();
-    state = clone(initialGameState);
+    state = freshState();
   });
 
   it('upgrades worker max when relics are sufficient and below boss ceiling', () => {
@@ -146,7 +145,7 @@ describe('UpgradeSystem — special catalog upgrades', () => {
 
   beforeEach(() => {
     system = new UpgradeSystem();
-    state = clone(initialGameState);
+    state = freshState();
   });
 
   it('purchases relic-cost upgrades from relics pool', () => {
@@ -171,7 +170,7 @@ describe('UpgradeSystem — special catalog upgrades', () => {
   it('updateAllStats recalculates capacity from upgrade levels', () => {
     state.categories.reactor.upgrades.primaryCap = 3;
     system.updateAllStats(state);
-    // baseCapacity=100, capacityPerLevel=50, 3 levels → 100 + 150 = 250
-    expect(state.categories.reactor.stats.primaryCapacity).toBe(250);
+    // baseCapacity=10, geometric 1.14, level 3 → floor(10 × 1.14³) = 14
+    expect(state.categories.reactor.stats.primaryCapacity).toBe(14);
   });
 });

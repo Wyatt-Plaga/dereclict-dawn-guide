@@ -21,6 +21,7 @@ import {
 } from '../content/encounters';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { REGION_DEFINITIONS } from '../content/regions';
+import { JUMP_FUEL_COST } from '../content/bridgeFuel';
 import { EventBus } from "../core/EventBus";
 import { EventMap } from "../types/events";
 
@@ -401,13 +402,16 @@ const STORY_POOLS: Record<string, StoryTemplate[]> = {
     ],
 };
 
-/** Energy cost to jump in each region */
+/**
+ * @deprecated — jumps now cost fuel, not energy. Retained for any lingering UI
+ * references; new code should import JUMP_FUEL_COST from content/bridgeFuel.
+ */
 export const JUMP_COSTS: Record<RegionType, number> = {
-  void: 5,
-  nebula: 15,
-  asteroid: 15,
-  deepspace: 20,
-  blackhole: 25,
+  void: JUMP_FUEL_COST,
+  nebula: JUMP_FUEL_COST,
+  asteroid: JUMP_FUEL_COST,
+  deepspace: JUMP_FUEL_COST,
+  blackhole: JUMP_FUEL_COST,
 };
 
 /** Get the REGION_DEFINITIONS key for a base region at a given tier.
@@ -453,12 +457,13 @@ export class EncounterSystem {
                     return;
                 }
 
-                // Deduct jump energy cost
-                const cost = JUMP_COSTS[currentRegion] ?? 5;
-                state.categories.reactor.resources.primary = Math.max(
-                    0,
-                    state.categories.reactor.resources.primary - cost
-                );
+                // Deduct jump fuel cost — jumps are funded by the bridge
+                // reservoir, not the reactor.
+                if ((state.bridge.fuel ?? 0) < JUMP_FUEL_COST) {
+                    // Not enough fuel — refuse the jump.
+                    return;
+                }
+                state.bridge.fuel = Math.max(0, (state.bridge.fuel ?? 0) - JUMP_FUEL_COST);
 
                 const encounter = this.generateEncounter(state);
                 state.encounters.active = true;
