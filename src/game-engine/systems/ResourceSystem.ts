@@ -229,8 +229,7 @@ export class ResourceSystem {
 
   /** Get the current per-slot worker cap for a given slot in a wing */
   static getMaxWorkersForSlot(wing: WingCategory, slot: ResourceSlot): number {
-    const level = wing.upgrades[maxWorkersKey(slot)] as number;
-    return INITIAL_MAX_WORKERS_PER_SLOT + level;
+    return INITIAL_MAX_WORKERS_PER_SLOT + wing.upgrades[maxWorkersKey(slot)];
   }
 
   /* ---------------------------------------------------------------------- */

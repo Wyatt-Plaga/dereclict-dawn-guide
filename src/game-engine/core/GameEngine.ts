@@ -1,6 +1,6 @@
 import { EventBus } from './EventBus';
 import { EventMap } from '../types/events';
-import { GameState, initialGameState } from '../types';
+import { GameState, initialGameState, WingCategory } from '../types';
 import { GameSystemManager } from '../systems';
 import { GameAction } from '../types/actions';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
@@ -128,36 +128,37 @@ export class GameEngine {
     public loadPreset(preset: Partial<GameState>) {
         const init = initialGameState;
 
-        const mergeWing = (base: any, over: any) => ({
+        const mergeWing = <T extends WingCategory>(base: T, over: Partial<T> | undefined): T => ({
             ...base,
-            ...(over || {}),
-            resources: { ...base.resources, ...(over?.resources || {}) },
-            workers: { ...base.workers, ...(over?.workers || {}) },
-            upgrades: { ...base.upgrades, ...(over?.upgrades || {}) },
-            stats: { ...base.stats, ...(over?.stats || {}) },
-            automated: { ...base.automated, ...(over?.automated || {}) },
+            ...(over ?? {}),
+            resources: { ...base.resources, ...(over?.resources ?? {}) },
+            workers: { ...base.workers, ...(over?.workers ?? {}) },
+            upgrades: { ...base.upgrades, ...(over?.upgrades ?? {}) },
+            stats: { ...base.stats, ...(over?.stats ?? {}) },
+            automated: { ...base.automated, ...(over?.automated ?? {}) },
         });
 
+        const reactorPreset = preset.categories?.reactor;
         this.state = {
             ...init,
             ...preset,
             categories: {
                 reactor: {
-                    ...mergeWing(init.categories.reactor, preset.categories?.reactor),
+                    ...mergeWing(init.categories.reactor, reactorPreset),
                     specialUpgrades: {
                         ...init.categories.reactor.specialUpgrades,
-                        ...(preset.categories?.reactor as any)?.specialUpgrades,
+                        ...(reactorPreset?.specialUpgrades ?? {}),
                     },
                 },
                 processor: mergeWing(init.categories.processor, preset.categories?.processor),
                 crewQuarters: mergeWing(init.categories.crewQuarters, preset.categories?.crewQuarters),
                 manufacturing: mergeWing(init.categories.manufacturing, preset.categories?.manufacturing),
             },
-            workerGateLevel: (preset as any).workerGateLevel ?? init.workerGateLevel,
-            workers: { ...init.workers, ...((preset as any).workers || {}) },
-            bridge: { ...init.bridge, ...((preset as any).bridge || {}) },
-            encounters: { ...init.encounters, ...(preset.encounters || {}) },
-            logs: { ...init.logs, ...(preset.logs || {}) },
+            workerGateLevel: preset.workerGateLevel ?? init.workerGateLevel,
+            workers: { ...init.workers, ...(preset.workers ?? {}) },
+            bridge: { ...init.bridge, ...(preset.bridge ?? {}) },
+            encounters: { ...init.encounters, ...(preset.encounters ?? {}) },
+            logs: { ...init.logs, ...(preset.logs ?? {}) },
             lastUpdate: Date.now(),
         };
 

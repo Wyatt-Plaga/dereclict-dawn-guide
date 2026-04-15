@@ -99,12 +99,12 @@ export class UpgradeSystem {
   /** Buy a capacity upgrade for a specific slot in a wing (costs secondary resource) */
   buyCapacityUpgrade(state: GameState, wingId: WingId, slot: ResourceSlot): boolean {
     const wing = state.categories[wingId] as WingCategory;
-    const level = wing.upgrades[capKey(slot)] as number;
-    const cost = capacityUpgradeCost(level);
+    const key = capKey(slot);
+    const cost = capacityUpgradeCost(wing.upgrades[key]);
 
     if (wing.resources.secondary < cost) return false;
     wing.resources.secondary -= cost;
-    (wing.upgrades as any)[capKey(slot)] = level + 1;
+    wing.upgrades[key] += 1;
 
     this.resourceSystem.recalcStats(state);
     return true;
@@ -113,12 +113,12 @@ export class UpgradeSystem {
   /** Buy an efficiency upgrade for a specific slot in a wing (costs tertiary resource) */
   buyEfficiencyUpgrade(state: GameState, wingId: WingId, slot: ResourceSlot): boolean {
     const wing = state.categories[wingId] as WingCategory;
-    const level = wing.upgrades[effKey(slot)] as number;
-    const cost = efficiencyUpgradeCost(level);
+    const key = effKey(slot);
+    const cost = efficiencyUpgradeCost(wing.upgrades[key]);
 
     if (wing.resources.tertiary < cost) return false;
     wing.resources.tertiary -= cost;
-    (wing.upgrades as any)[effKey(slot)] = level + 1;
+    wing.upgrades[key] += 1;
 
     return true;
   }
@@ -126,12 +126,12 @@ export class UpgradeSystem {
   /** Buy a +1 max-workers upgrade for a specific slot in a wing (costs quaternary resource) */
   buyMaxWorkersUpgrade(state: GameState, wingId: WingId, slot: ResourceSlot): boolean {
     const wing = state.categories[wingId] as WingCategory;
-    const level = wing.upgrades[maxWorkersKey(slot)] as number;
-    const cost = maxWorkersUpgradeCost(level);
+    const key = maxWorkersKey(slot);
+    const cost = maxWorkersUpgradeCost(wing.upgrades[key]);
 
     if (wing.resources.quaternary < cost) return false;
     wing.resources.quaternary -= cost;
-    (wing.upgrades as any)[maxWorkersKey(slot)] = level + 1;
+    wing.upgrades[key] += 1;
 
     return true;
   }

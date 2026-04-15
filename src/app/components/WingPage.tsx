@@ -163,9 +163,9 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
 
               if (isAutomated) {
                 // ── Automated slot: worker assignment + upgrades (gated by Lab research) ──
-                const cLevel = wing.upgrades[capKey(slot)] as number;
-                const eLevel = wing.upgrades[effKey(slot)] as number;
-                const mLevel = wing.upgrades[maxWorkersKey(slot)] as number;
+                const cLevel = wing.upgrades[capKey(slot)];
+                const eLevel = wing.upgrades[effKey(slot)];
+                const mLevel = wing.upgrades[maxWorkersKey(slot)];
                 const slotMax = ResourceSystem.getMaxWorkersForSlot(wing, slot);
 
                 return (
@@ -214,9 +214,9 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
               const current = wing.resources[slot];
               const pct = cap > 0 ? (current / cap) * 100 : 0;
               const canAutomate = canEnableSlotAutomation(slot);
-              const cLevel = wing.upgrades[capKey(slot)] as number;
-              const eLevel = wing.upgrades[effKey(slot)] as number;
-              const mLevel = wing.upgrades[maxWorkersKey(slot)] as number;
+              const cLevel = wing.upgrades[capKey(slot)];
+              const eLevel = wing.upgrades[effKey(slot)];
+              const mLevel = wing.upgrades[maxWorkersKey(slot)];
 
               // Non-primary clicks consume the prior-tier resource (mirrors the
               // worker-second cost in ResourceSystem). Disable the click button

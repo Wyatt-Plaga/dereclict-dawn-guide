@@ -9,7 +9,7 @@ import {
 import { RegionDefinition } from '../types/regions';
 import { ENEMY_DEFINITIONS } from '@/game-engine/content/enemies';
 import { REGION_DEFINITIONS } from '@/game-engine/content/regions';
-import { REGION_WING_UNLOCKS } from '@/game-engine/content/wingResources';
+import { REGION_WING_UNLOCKS, WING_ORDER } from '@/game-engine/content/wingResources';
 import { ResourceSystem } from './ResourceSystem';
 import { EventBus } from "../core/EventBus";
 import { EventMap } from "../types/events";
@@ -632,15 +632,12 @@ export class CombatSystem {
     const newState = { ...state };
     const penalty = 0.25;
 
-    const categories = ['reactor', 'processor', 'crewQuarters', 'manufacturing'] as const;
-    const resourceKeys = ['energy', 'insight', 'crew', 'scrap'] as const;
-
-    categories.forEach((cat, i) => {
-      const res = newState.categories[cat].resources;
-      const key = resourceKeys[i];
-      const amount = Math.floor((res as any)[key] * penalty);
-      (res as any)[key] = Math.max(0, (res as any)[key] - amount);
-    });
+    // Apply 25% penalty to each wing's primary resource
+    for (const wingId of WING_ORDER) {
+      const res = newState.categories[wingId].resources;
+      const lost = Math.floor(res.primary * penalty);
+      res.primary = Math.max(0, res.primary - lost);
+    }
 
     newState.combat = {
       ...newState.combat,
