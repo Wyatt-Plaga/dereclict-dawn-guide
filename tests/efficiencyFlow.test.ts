@@ -53,8 +53,8 @@ describe('Full dispatch flow: BUY_EFFICIENCY_UPGRADE', () => {
     const s2 = produce(s1, (draft) => {
       resource.update(draft as GameState, 1);
     });
-    // baseRate × 1 worker × (1 + 1*0.5) over 1 second
-    const expected = REACTOR_PRIMARY_RATE * 1.5;
+    // baseRate × 1 worker × (1 + 1*0.75) over 1 second
+    const expected = REACTOR_PRIMARY_RATE * 1.75;
     expect(s2.categories.reactor.resources.primary).toBeCloseTo(expected, 5);
     expect(s2.categories.reactor.stats.primaryRate).toBeCloseTo(expected, 5);
   });

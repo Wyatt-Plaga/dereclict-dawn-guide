@@ -170,7 +170,7 @@ describe('UpgradeSystem — special catalog upgrades', () => {
   it('updateAllStats recalculates capacity from upgrade levels', () => {
     state.categories.reactor.upgrades.primaryCap = 3;
     system.updateAllStats(state);
-    // baseCapacity=10, geometric 1.14, level 3 → floor(10 × 1.14³) = 14
-    expect(state.categories.reactor.stats.primaryCapacity).toBe(14);
+    // baseCapacity=10, geometric 1.22, level 3 → floor(10 × 1.22³) = 18
+    expect(state.categories.reactor.stats.primaryCapacity).toBe(18);
   });
 });

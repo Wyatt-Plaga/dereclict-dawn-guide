@@ -22,13 +22,13 @@ export interface SlotResourceDef {
   baseCapacity: number;
   baseRate: number;     // produced per worker per second (before efficiency)
   consumeRate: number;  // input consumed per worker per second
-  efficiencyBonus: number;   // output multiplier per eff upgrade level (0.5 = +50%)
+  efficiencyBonus: number;   // output multiplier per eff upgrade level (0.75 = +75%)
 }
 
-/** Geometric growth rate for capacity upgrades */
-export const CAPACITY_GROWTH_RATE = 1.14;
+/** Geometric growth rate for capacity benefit per upgrade level. */
+export const CAPACITY_GROWTH_RATE = 1.22;
 
-/** Computed capacity at a given upgrade level: floor(base × 1.15^level) */
+/** Computed capacity at a given upgrade level: floor(base × CAPACITY_GROWTH_RATE^level) */
 export function computeCapacity(baseCapacity: number, level: number): number {
   return Math.floor(baseCapacity * Math.pow(CAPACITY_GROWTH_RATE, level));
 }
@@ -63,23 +63,23 @@ export interface WingDef {
 
 /** Cost of a capacity upgrade (paid in secondary resource) — Item Capacity scaling */
 export function capacityUpgradeCost(level: number): number {
-  return Math.ceil(5 * Math.pow(1.15, level));
+  return Math.ceil(5 * Math.pow(1.22, level));
 }
 
 /** Cost of an efficiency upgrade (paid in tertiary resource) — Worker Efficiency scaling */
 export function efficiencyUpgradeCost(level: number): number {
-  return Math.ceil(1 * Math.pow(1.40, level));
+  return Math.ceil(1 * Math.pow(1.55, level));
 }
 
 /** Cost of a +1 max-workers upgrade for a slot (paid in quaternary resource) — Worker Capacity scaling */
 export function maxWorkersUpgradeCost(level: number): number {
-  return Math.ceil(1 * Math.pow(1.50, level));
+  return Math.ceil(1 * Math.pow(1.70, level));
 }
 
 /** Cost of a generation-speed upgrade for a slot (paid in the wing's primary
  *  resource). Each level boosts manual + worker rates multiplicatively. */
 export function speedUpgradeCost(level: number): number {
-  return Math.ceil(10 * Math.pow(1.5, level));
+  return Math.ceil(10 * Math.pow(1.70, level));
 }
 
 /** Every manual hold yields exactly one unit. The hold duration is derived from
@@ -94,11 +94,11 @@ export function holdDurationForSlot(def: WingDef, slot: ResourceSlot): number {
 }
 
 /** Multiplier on production / inverse multiplier on hold duration.
- *  Geometric (1.25× per level), shallower than the 1.5×/level cost curve so
+ *  Geometric (1.35× per level), shallower than the 1.7×/level cost curve so
  *  each upgrade takes slightly longer to afford than the last.
- *  L0 = 1×, L1 = 1.25×, L2 ≈ 1.56×, L5 ≈ 3.05×, L10 ≈ 9.31×. */
+ *  L0 = 1×, L1 = 1.35×, L2 ≈ 1.82×, L5 ≈ 4.48×, L10 ≈ 20.11×. */
 export function speedMultiplier(level: number): number {
-  return Math.pow(1.25, level);
+  return Math.pow(1.35, level);
 }
 
 /** Starting per-slot worker cap */
@@ -106,7 +106,7 @@ export const INITIAL_MAX_WORKERS_PER_SLOT = 5;
 
 /** Energy cost to hire one new worker (global pool) */
 export function workerHireEnergyCost(currentWorkers: number): number {
-  return Math.ceil(20 * Math.pow(1.4, currentWorkers));
+  return Math.ceil(20 * Math.pow(1.55, currentWorkers));
 }
 
 /** Energy spent on the reactor page to bring the bridge online. */
@@ -114,7 +114,7 @@ export const BRIDGE_UNLOCK_ENERGY = 25;
 
 /** Relic cost to buy the next +5 max workers (global pool) */
 export function workerMaxUpgradeRelicCost(level: number): number {
-  return 5 * (level + 1);
+  return 8 * (level + 1);
 }
 
 /** Base global max workers (before any relic upgrades) */
@@ -155,7 +155,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 10,
         baseRate: 1.0,
         consumeRate: 0,        // free
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
       secondary: {
         id: 'fuelRods',
@@ -164,7 +164,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 15,
         baseRate: 0.3,
         consumeRate: 0.9,      // energy/s per worker
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
       tertiary: {
         id: 'thermalCores',
@@ -173,7 +173,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 8,
         baseRate: 0.1,
         consumeRate: 0.5,      // fuel rods/s per worker
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
       quaternary: {
         id: 'plasmaConduits',
@@ -182,7 +182,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 6,
         baseRate: 0.06,
         consumeRate: 0.3,      // thermal cores/s per worker
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
     },
   },
@@ -208,7 +208,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 50,
         baseRate: 1.0,
         consumeRate: 0,        // energy cost handled by energyCostPerPrimaryWorker
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
       secondary: {
         id: 'dataBanks',
@@ -217,7 +217,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 10,
         baseRate: 0.2,
         consumeRate: 1.0,      // insight/s per worker
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
       tertiary: {
         id: 'algorithms',
@@ -226,7 +226,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 5,
         baseRate: 0.08,
         consumeRate: 0.3,      // data banks/s per worker
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
       quaternary: {
         id: 'heuristics',
@@ -235,7 +235,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 4,
         baseRate: 0.05,
         consumeRate: 0.2,      // algorithms/s per worker
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
     },
   },
@@ -261,7 +261,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 20,
         baseRate: 0.5,
         consumeRate: 0,
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
       secondary: {
         id: 'barracks',
@@ -270,7 +270,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 8,
         baseRate: 0.1,
         consumeRate: 0.5,      // crew/s per worker
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
       tertiary: {
         id: 'commandTokens',
@@ -279,7 +279,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 5,
         baseRate: 0.04,
         consumeRate: 0.2,      // barracks/s per worker
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
       quaternary: {
         id: 'officers',
@@ -288,7 +288,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 4,
         baseRate: 0.03,
         consumeRate: 0.15,     // command tokens/s per worker
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
     },
   },
@@ -314,7 +314,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 100,
         baseRate: 1.5,
         consumeRate: 0,
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
       secondary: {
         id: 'alloys',
@@ -323,7 +323,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 10,
         baseRate: 0.15,
         consumeRate: 1.5,      // scrap/s per worker
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
       tertiary: {
         id: 'schematics',
@@ -332,7 +332,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 5,
         baseRate: 0.04,
         consumeRate: 0.3,      // alloys/s per worker
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
       quaternary: {
         id: 'prototypes',
@@ -341,7 +341,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         baseCapacity: 4,
         baseRate: 0.03,
         consumeRate: 0.15,     // schematics/s per worker
-        efficiencyBonus: 0.5,
+        efficiencyBonus: 0.75,
       },
     },
   },

@@ -35,7 +35,7 @@ export const FUEL_PUMP_MAX_LEVEL = 50;
 export const FUEL_PUMP_BASE_COST = 500;
 
 /** Geometric growth rate per level for the upgrade cost. */
-export const FUEL_PUMP_COST_GROWTH = 1.1;
+export const FUEL_PUMP_COST_GROWTH = 1.18;
 
 /** Cost in energy to buy the upgrade that takes pump from `level` → `level+1`. */
 export function fuelPumpUpgradeCost(level: number): number {
@@ -43,8 +43,8 @@ export function fuelPumpUpgradeCost(level: number): number {
 }
 
 /** Multiplier on `FUEL_RATE_PER_SECOND` for a given pump level.
- *  Linear 1 → 10 across [0, FUEL_PUMP_MAX_LEVEL]. */
+ *  Linear 1 → 15 across [0, FUEL_PUMP_MAX_LEVEL]. */
 export function fuelPumpMultiplier(level: number): number {
   const clamped = Math.max(0, Math.min(level, FUEL_PUMP_MAX_LEVEL));
-  return 1 + clamped * (9 / FUEL_PUMP_MAX_LEVEL);
+  return 1 + clamped * (14 / FUEL_PUMP_MAX_LEVEL);
 }

@@ -70,10 +70,10 @@ describe('ResourceSystem worker-based production', () => {
     state.categories.reactor.automated.primary = true;
     state.categories.reactor.workers.primary = 1;
     state.categories.reactor.upgrades.primaryEff = 2;
-    // efficiencyBonus = 0.5, so multiplier = 1 + 2 × 0.5 = 2.0
-    // Expected: 1 worker × baseRate × 2.0 × 1s
+    // efficiencyBonus = 0.75, so multiplier = 1 + 2 × 0.75 = 2.5
+    // Expected: 1 worker × baseRate × 2.5 × 1s
     system.update(state, 1);
-    expect(state.categories.reactor.resources.primary).toBeCloseTo(REACTOR_PRIMARY_RATE * 2.0, 5);
+    expect(state.categories.reactor.resources.primary).toBeCloseTo(REACTOR_PRIMARY_RATE * 2.5, 5);
   });
 
   it('partial production when insufficient input', () => {
@@ -109,8 +109,8 @@ describe('ResourceSystem.recalcStats', () => {
   it('updates capacity based on upgrade levels', () => {
     state.categories.reactor.upgrades.primaryCap = 2;
     system.recalcStats(state);
-    // baseCapacity=10, geometric 1.14, level 2 → floor(10 × 1.14²) = 12
-    expect(state.categories.reactor.stats.primaryCapacity).toBe(12);
+    // baseCapacity=10, geometric 1.22, level 2 → floor(10 × 1.22²) = 14
+    expect(state.categories.reactor.stats.primaryCapacity).toBe(14);
   });
 });
 
