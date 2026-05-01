@@ -61,9 +61,10 @@ export interface WingDef {
   unlockThresholds: WingUnlockThresholds;
 }
 
-/** Cost of a capacity upgrade (paid in secondary resource) — Item Capacity scaling */
+/** Cost of a capacity upgrade (paid in secondary resource) — geometric, growing
+ *  slightly faster than the capacity benefit so each upgrade takes a bit longer. */
 export function capacityUpgradeCost(level: number): number {
-  return Math.ceil(5 * Math.pow(1.22, level));
+  return Math.ceil(5 * Math.pow(1.28, level));
 }
 
 /** Cost of an efficiency upgrade (paid in tertiary resource) — Worker Efficiency scaling */
@@ -71,15 +72,17 @@ export function efficiencyUpgradeCost(level: number): number {
   return Math.ceil(1 * Math.pow(1.55, level));
 }
 
-/** Cost of a +1 max-workers upgrade for a slot (paid in quaternary resource) — Worker Capacity scaling */
+/** Cost of a +1 max-workers upgrade for a slot (paid in quaternary resource).
+ *  Linear regime to mirror the linear +1/L benefit, growing per level so each
+ *  next worker slot costs more than the last. L0=1, L1=3, L2=5, L3=7… */
 export function maxWorkersUpgradeCost(level: number): number {
-  return Math.ceil(1 * Math.pow(1.70, level));
+  return 1 + 2 * level;
 }
 
 /** Cost of a generation-speed upgrade for a slot (paid in the wing's primary
- *  resource). Each level boosts manual + worker rates multiplicatively. */
+ *  resource). Geometric, growing faster than the speed benefit (1.35×/L). */
 export function speedUpgradeCost(level: number): number {
-  return Math.ceil(10 * Math.pow(1.70, level));
+  return Math.ceil(10 * Math.pow(1.50, level));
 }
 
 /** Every manual hold yields exactly one unit. The hold duration is derived from
@@ -94,7 +97,7 @@ export function holdDurationForSlot(def: WingDef, slot: ResourceSlot): number {
 }
 
 /** Multiplier on production / inverse multiplier on hold duration.
- *  Geometric (1.35× per level), shallower than the 1.7×/level cost curve so
+ *  Geometric (1.35× per level), shallower than the 1.50×/level cost curve so
  *  each upgrade takes slightly longer to afford than the last.
  *  L0 = 1×, L1 = 1.35×, L2 ≈ 1.82×, L5 ≈ 4.48×, L10 ≈ 20.11×. */
 export function speedMultiplier(level: number): number {
