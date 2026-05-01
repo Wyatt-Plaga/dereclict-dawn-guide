@@ -8,6 +8,7 @@ import { GameProvider } from '@/game-engine/hooks/useGame'
 import { DevModeProvider } from '@/components/providers/dev-mode-provider'
 import { AdvisorProvider } from '@/components/providers/advisor-provider'
 import AdvisorBubble from '@/components/AdvisorBubble'
+import WingUnlockCelebration from '@/components/WingUnlockCelebration'
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -43,6 +44,7 @@ export default function RootLayout({
                   <AdvisorProvider>
                     {children}
                     <AdvisorBubble />
+                    <WingUnlockCelebration />
                   </AdvisorProvider>
                 </GameProvider>
               </DevModeProvider>

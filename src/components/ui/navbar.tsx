@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Zap, CpuIcon, Users, Package, BookOpen, Rocket, Wrench, Gem, FlaskConical, Swords, Microscope } from "lucide-react"
+import { Zap, CpuIcon, Users, Package, BookOpen, Rocket, Wrench, Gem, FlaskConical, Swords, Microscope, Atom } from "lucide-react"
 import { DEV_PRESETS } from "@/game-engine/devPresets"
 import { useSystemStatus } from "@/components/providers/system-status-provider"
 import { useGame } from "@/game-engine/hooks/useGame"
@@ -15,10 +15,10 @@ import { clearCachedState } from "@/game-engine/core/memoryCache"
 
 const navigation = [
   { name: "Reactor", href: "/reactor", icon: Zap },
-  { name: "Laboratory", href: "/laboratory", icon: Microscope },
   { name: "Processor", href: "/processor", icon: CpuIcon },
   { name: "Crew Quarters", href: "/crew-quarters", icon: Users },
   { name: "Manufacturing", href: "/manufacturing", icon: Package },
+  { name: "Laboratory", href: "/laboratory", icon: Microscope },
   { name: "Bridge", href: "/bridge", icon: Rocket },
   { name: "Armory", href: "/loadout", icon: Swords },
   { name: "Logs", href: "/logs", icon: BookOpen },
@@ -51,11 +51,9 @@ export function NavBar() {
   const processorUnlocked = state?.categories?.processor?.unlocked ?? false
   const crewUnlocked = state?.categories?.crewQuarters?.unlocked ?? false
   const manufacturingUnlocked = state?.categories?.manufacturing?.unlocked ?? false
-  const bridgeUnlocked = (state?.laboratory?.workerHiring ?? false) || devMode
-  // Lab shows once 50 energy has been reached, or any research is already done
-  const labUnlocked = (state?.categories?.reactor?.resources?.primary ?? 0) >= 50
-    || (state?.laboratory?.researched?.length ?? 0) > 0
-    || devMode
+  const bridgeUnlocked = (state?.bridge?.unlocked ?? false) || devMode
+  // Lab shows once the player builds the lab (gating mechanic TBD) or in dev
+  const labUnlocked = (state?.laboratory?.unlocked ?? false) || devMode
 
   const filteredNavigation = navigation.filter((item) => {
     switch (item.name) {
@@ -68,7 +66,7 @@ export function NavBar() {
       case 'Bridge':
         return bridgeUnlocked
       case 'Armory':
-        return bridgeUnlocked
+        return (state?.relics ?? 0) >= 1 || devMode
       case 'Processor':
         return processorUnlocked || devMode
       case 'Crew Quarters':
@@ -133,16 +131,32 @@ export function NavBar() {
   /* ------------------------ DEV RESET HANDLER ------------------------- */
   const handleResetGame = async () => {
     try {
-      // Kill the engine without saving so autosave can't re-write
+      // Kill the engine without saving so autosave/beforeunload can't re-write
       engine.destroy()
 
-      // Clear all persistence layers
+      // Clear all persistence layers. LocalForage uses a named instance
+      // ('derelictDawn') for saves — clear that, the default instance, and
+      // any other IndexedDB databases for good measure.
       const localforage = (await import('localforage')).default
+      const dawnStore = localforage.createInstance({ name: 'derelictDawn' })
+      await dawnStore.clear()
       await localforage.clear()
+      if (typeof indexedDB !== 'undefined' && (indexedDB as any).databases) {
+        const dbs = await (indexedDB as any).databases()
+        await Promise.all(
+          dbs.map((db: { name?: string }) =>
+            db.name ? new Promise<void>((resolve) => {
+              const req = indexedDB.deleteDatabase(db.name as string)
+              req.onsuccess = req.onerror = req.onblocked = () => resolve()
+            }) : Promise.resolve()
+          )
+        )
+      }
       localStorage.clear()
+      sessionStorage.clear()
       clearCachedState()
 
-      // Hard reload
+      // Hard reload bypassing cache
       window.location.reload()
     } catch (e) {
       console.error('Failed to reset game', e)
@@ -231,14 +245,17 @@ export function NavBar() {
               {formatNumber(Math.floor(state?.categories?.reactor?.resources?.primary ?? 0))}
             </span>
           </div>
-          {/* Net energy rate */}
-          <div className="text-[10px] font-mono text-muted-foreground ml-6 -mt-1">
-            {netEnergy >= 0 ? (
-              <span className="text-chart-1/70">+{netEnergy.toFixed(1)}/s</span>
-            ) : (
-              <span className="text-red-400">{netEnergy.toFixed(1)}/s</span>
-            )}
-          </div>
+          {/* Net energy rate — only shown once workers exist AND something is
+              actually producing or consuming. Until then "+0.0/s" is noise. */}
+          {(state?.laboratory?.workerHiring ?? false) && (energyProd > 0 || energyConsume > 0) && (
+            <div className="text-[10px] font-mono text-muted-foreground ml-6 -mt-1">
+              {netEnergy >= 0 ? (
+                <span className="text-chart-1/70">+{netEnergy.toFixed(1)}/s</span>
+              ) : (
+                <span className="text-red-400">{netEnergy.toFixed(1)}/s</span>
+              )}
+            </div>
+          )}
           {(devMode || processorUnlocked) && (
           <div className="flex items-center gap-2 group">
             <CpuIcon className="h-4 w-4 text-chart-2 group-hover:text-chart-2/80 transition-colors" />
@@ -263,6 +280,17 @@ export function NavBar() {
               {formatNumber(Math.floor(state?.categories?.manufacturing?.resources?.primary ?? 0))}
             </span>
           </div>)}
+          {(devMode || bridgeUnlocked) && (() => {
+            const rawFuel = state?.bridge?.fuel;
+            const fuelDisplay = (typeof rawFuel === 'number' && Number.isFinite(rawFuel) ? rawFuel : 0).toFixed(2);
+            return (
+              <div className="flex items-center gap-2 group">
+                <Atom className="h-4 w-4 text-emerald-400 group-hover:text-emerald-400/80 transition-colors" />
+                <span className="text-muted-foreground text-xs">FUEL</span>
+                <span className="ml-auto text-emerald-400">{fuelDisplay}</span>
+              </div>
+            );
+          })()}
           {(devMode || (state?.relics || 0) > 0) && (
           <div className="flex items-center gap-2 group">
             <Gem className="h-4 w-4 text-chart-5 group-hover:text-chart-5/80 transition-colors" />

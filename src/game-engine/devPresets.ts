@@ -35,6 +35,52 @@ export interface DevPreset {
     state: any;
 }
 
+const preFirstBattle: DevPreset = {
+    name: 'Pre-First-Battle',
+    description: 'Bridge just unlocked, 1 fuel ready — next jump is the tutorial fight',
+    state: {
+        categories: {
+            reactor: {
+                resources: { primary: 50, secondary: 0, tertiary: 0 },
+                workers: { primary: 1, secondary: 0, tertiary: 0 },
+                upgrades: {
+                    primaryCap: 1, secondaryCap: 0, tertiaryCap: 0,
+                    primaryEff: 0, secondaryEff: 0, tertiaryEff: 0,
+                },
+                stats: { primaryCapacity: 0, primaryRate: 0, secondaryCapacity: 0, secondaryRate: 0, tertiaryCapacity: 0, tertiaryRate: 0 },
+                unlocked: true,
+                secondaryUnlocked: false, tertiaryUnlocked: false,
+                automated: { primary: true, secondary: false, tertiary: false },
+                specialUpgrades: { shielding: 0, shieldBoosts: 0, bridgeUnlocked: 1 },
+            },
+        },
+        workers: { total: 1, max: 5, maxLevel: 0 },
+        bridge: {
+            unlocked: true,
+            currentRegion: 'void',
+            currentTier: 1,
+            completedRegions: [],
+            fuel: 25,
+            fuelWorkers: 0,
+        },
+        encounters: { active: false, history: [] },
+        relics: 0,
+        ammo: {
+            powerCells: { current: 3, tier: 0 },
+            munitions: { current: 0, tier: 0 },
+            dataCores: { current: 0, tier: 0 },
+            repairKits: { current: 0, tier: 0 },
+        },
+        inventory: ['basic-phaser'],
+        loadout: {
+            shield: null,
+            weapons: ['basic-phaser'],
+            utilities: [],
+            stance: null,
+        },
+    },
+};
+
 const postVoid: DevPreset = {
     name: 'Post-Void',
     description: 'Void complete, all wings unlocked, ready for branching regions',
@@ -89,9 +135,11 @@ const postVoid: DevPreset = {
         workerGateLevel: 2,
         workers: { total: 8, max: 10, maxLevel: 1 },
         bridge: {
+            unlocked: true,
             currentRegion: 'nebula',
             currentTier: 1,
             completedRegions: ['void'],
+            fuel: 25,
         },
         encounters: { active: false, history: regionHistory('void', 6) },
         relics: 5,
@@ -110,7 +158,7 @@ const postVoid: DevPreset = {
         },
         laboratory: {
             researched: ['workforce_systems', 'crew_expansion', 'optimization_routines'],
-            workerHiring: true, maxWorkersUpgrades: true, efficiencyUpgrades: true,
+            unlocked: true, workerHiring: true, maxWorkersUpgrades: true, efficiencyUpgrades: true,
         },
     },
 };
@@ -169,9 +217,11 @@ const midGame: DevPreset = {
         workerGateLevel: 4,
         workers: { total: 16, max: 20, maxLevel: 3 },
         bridge: {
+            unlocked: true,
             currentRegion: 'asteroid',
             currentTier: 1,
             completedRegions: ['void', 'nebula'],
+            fuel: 25,
         },
         encounters: {
             active: false,
@@ -197,7 +247,7 @@ const midGame: DevPreset = {
         },
         laboratory: {
             researched: ['workforce_systems', 'crew_expansion', 'optimization_routines'],
-            workerHiring: true, maxWorkersUpgrades: true, efficiencyUpgrades: true,
+            unlocked: true, workerHiring: true, maxWorkersUpgrades: true, efficiencyUpgrades: true,
         },
     },
 };
@@ -256,9 +306,11 @@ const preEndgame: DevPreset = {
         workerGateLevel: 7,
         workers: { total: 23, max: 35, maxLevel: 6 },
         bridge: {
+            unlocked: true,
             currentRegion: 'blackhole',
             currentTier: 1,
             completedRegions: ['void', 'nebula', 'asteroid', 'deepspace'],
+            fuel: 25,
         },
         encounters: {
             active: false,
@@ -292,7 +344,7 @@ const preEndgame: DevPreset = {
         },
         laboratory: {
             researched: ['workforce_systems', 'crew_expansion', 'optimization_routines'],
-            workerHiring: true, maxWorkersUpgrades: true, efficiencyUpgrades: true,
+            unlocked: true, workerHiring: true, maxWorkersUpgrades: true, efficiencyUpgrades: true,
         },
     },
 };
@@ -351,9 +403,11 @@ const maxPreset: DevPreset = {
         workerGateLevel: 11,
         workers: { total: 30, max: 55, maxLevel: 10 },
         bridge: {
+            unlocked: true,
             currentRegion: 'blackhole',
             currentTier: 1,
             completedRegions: ['void', 'nebula', 'asteroid', 'deepspace', 'blackhole'],
+            fuel: 25,
         },
         encounters: {
             active: false,
@@ -389,13 +443,14 @@ const maxPreset: DevPreset = {
         },
         laboratory: {
             researched: ['workforce_systems', 'crew_expansion', 'optimization_routines'],
-            workerHiring: true, maxWorkersUpgrades: true, efficiencyUpgrades: true,
+            unlocked: true, workerHiring: true, maxWorkersUpgrades: true, efficiencyUpgrades: true,
         },
     },
 };
 
 /** All available dev presets */
 export const DEV_PRESETS: DevPreset[] = [
+    preFirstBattle,
     postVoid,
     midGame,
     preEndgame,

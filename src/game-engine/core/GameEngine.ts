@@ -16,6 +16,8 @@ export class GameEngine {
     private isRunning: boolean;
     private saveSystem: SaveSystem;
     private loopInterval: ReturnType<typeof setInterval> | null = null;
+    private beforeUnloadBound = false;
+    private beforeUnloadHandler: (() => void) | null = null;
 
     constructor() {
         const cachedState = getCachedState();
@@ -55,8 +57,15 @@ export class GameEngine {
 
         this.isRunning = true;
         this.lastTick = Date.now();
-        this.saveSystem.startAutoSave(() => this.getState(), 10000);
+        this.saveSystem.startAutoSave(() => this.getState(), 1000);
         this.loopInterval = setInterval(() => this.gameLoop(), 125);
+
+        if (typeof window !== 'undefined' && !this.beforeUnloadBound) {
+            this.beforeUnloadHandler = () => { this.saveGame(); };
+            window.addEventListener('beforeunload', this.beforeUnloadHandler);
+            window.addEventListener('pagehide', this.beforeUnloadHandler);
+            this.beforeUnloadBound = true;
+        }
     }
 
     stop() {
@@ -65,6 +74,12 @@ export class GameEngine {
         if (this.loopInterval) {
             clearInterval(this.loopInterval);
             this.loopInterval = null;
+        }
+        if (typeof window !== 'undefined' && this.beforeUnloadBound && this.beforeUnloadHandler) {
+            window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+            window.removeEventListener('pagehide', this.beforeUnloadHandler);
+            this.beforeUnloadBound = false;
+            this.beforeUnloadHandler = null;
         }
         this.isRunning = false;
     }
@@ -75,6 +90,12 @@ export class GameEngine {
         if (this.loopInterval) {
             clearInterval(this.loopInterval);
             this.loopInterval = null;
+        }
+        if (typeof window !== 'undefined' && this.beforeUnloadBound && this.beforeUnloadHandler) {
+            window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+            window.removeEventListener('pagehide', this.beforeUnloadHandler);
+            this.beforeUnloadBound = false;
+            this.beforeUnloadHandler = null;
         }
         this.isRunning = false;
     }
@@ -216,6 +237,14 @@ export class GameEngine {
             if (cat.upgrades) delete cat.upgrades.workerCap;
             if (cat.stats) delete cat.stats.workerCapacity;
 
+            // Default new speed-upgrade levels to 0 for older saves.
+            if (cat.upgrades) {
+                if (cat.upgrades.primarySpeed === undefined) cat.upgrades.primarySpeed = 0;
+                if (cat.upgrades.secondarySpeed === undefined) cat.upgrades.secondarySpeed = 0;
+                if (cat.upgrades.tertiarySpeed === undefined) cat.upgrades.tertiarySpeed = 0;
+                if (cat.upgrades.quaternarySpeed === undefined) cat.upgrades.quaternarySpeed = 0;
+            }
+
             // Ensure progression flags
             if (cat.secondaryUnlocked === undefined) cat.secondaryUnlocked = false;
             if (cat.tertiaryUnlocked === undefined) cat.tertiaryUnlocked = false;
@@ -262,11 +291,39 @@ export class GameEngine {
             migrateWing(s.categories.manufacturing, false);
         }
 
+        // ─── Laboratory.unlocked (added post-v7): default to "already built"
+        //     for any save where the player previously had access to research
+        //     so we don't silently strip features. ───
+        if (s.laboratory && s.laboratory.unlocked === undefined) {
+            s.laboratory.unlocked =
+                s.laboratory.workerHiring ||
+                s.laboratory.maxWorkersUpgrades ||
+                s.laboratory.efficiencyUpgrades ||
+                (s.laboratory.researched?.length ?? 0) > 0;
+        }
+
         // ─── Bridge fuel fields (added post-v7) ───
         if (s.bridge) {
-            if (s.bridge.fuel === undefined) s.bridge.fuel = 0;
-            if (s.bridge.fuelWorkers === undefined) s.bridge.fuelWorkers = 0;
+            // Bridge.unlocked default: prior saves that already had bridge progress
+            // (any completed regions or fuel earned) keep access; everyone else
+            // builds it explicitly via the reactor page.
+            if (s.bridge.unlocked === undefined) {
+                s.bridge.unlocked =
+                    (s.bridge.completedRegions?.length ?? 0) > 0 ||
+                    (s.bridge.fuel ?? 0) > 0 ||
+                    (s.bridge.fuelPumpLevel ?? 0) > 0;
+            }
+            if (typeof s.bridge.fuel !== 'number' || !Number.isFinite(s.bridge.fuel)) s.bridge.fuel = 0;
+            if (typeof s.bridge.fuelWorkers !== 'number' || !Number.isFinite(s.bridge.fuelWorkers)) s.bridge.fuelWorkers = 0;
             if (s.bridge.fuelAutomated === undefined) s.bridge.fuelAutomated = false;
+            if (typeof s.bridge.fuelPumpLevel !== 'number' || !Number.isFinite(s.bridge.fuelPumpLevel)) s.bridge.fuelPumpLevel = 0;
+            // Strip stale flag from earlier ignite-toggle iteration; the cycle
+            // model uses manualFuelCycleStartMs.
+            if ('manualFuelIgnited' in s.bridge) delete (s.bridge as { manualFuelIgnited?: boolean }).manualFuelIgnited;
+            if (s.bridge.manualFuelCycleStartMs !== undefined &&
+                (typeof s.bridge.manualFuelCycleStartMs !== 'number' || !Number.isFinite(s.bridge.manualFuelCycleStartMs))) {
+                s.bridge.manualFuelCycleStartMs = undefined;
+            }
         }
 
         // ─── Combat field migration (from previous session) ───

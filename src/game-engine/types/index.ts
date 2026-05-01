@@ -46,6 +46,10 @@ export interface GameState {
     };
 
     bridge: {
+        /** Whether the bridge has been activated by the player (gates the
+         *  bridge nav link + page). Built from the reactor page in exchange
+         *  for energy. */
+        unlocked: boolean;
         currentRegion: RegionType;
         currentTier: number;
         completedRegions: string[];
@@ -57,6 +61,9 @@ export interface GameState {
         fuelAutomated: boolean;
         /** Fuel pump upgrade level. Multiplies fuel generation rate. */
         fuelPumpLevel: number;
+        /** Pre-drone manual fuel pump: timestamp (ms) when the current
+         *  fill cycle started, or undefined when no cycle is running. */
+        manualFuelCycleStartMs?: number;
     };
 
     encounters: {
@@ -111,6 +118,7 @@ function defaultWingCategory(wingId: WingId, unlocked: boolean) {
             primaryCap: 0, secondaryCap: 0, tertiaryCap: 0, quaternaryCap: 0,
             primaryEff: 0, secondaryEff: 0, tertiaryEff: 0, quaternaryEff: 0,
             primaryMaxWorkers: 0, secondaryMaxWorkers: 0, tertiaryMaxWorkers: 0, quaternaryMaxWorkers: 0,
+            primarySpeed: 0, secondarySpeed: 0, tertiarySpeed: 0, quaternarySpeed: 0,
         },
         stats: {
             primaryCapacity: def.resources.primary.baseCapacity,
@@ -160,6 +168,7 @@ export const initialGameState: GameState = {
         unread: []
     },
     bridge: {
+        unlocked: false,
         currentRegion: 'void',
         currentTier: 1,
         completedRegions: [],
@@ -210,7 +219,8 @@ export const initialGameState: GameState = {
         },
         radiationStacks: 0,
         enemyCloaked: false,
-        enemyCloakTurns: 0
+        enemyCloakTurns: 0,
+        introDismissed: true
     },
     relics: 0,
     inventory: ['basic-phaser'],
@@ -229,6 +239,7 @@ export const initialGameState: GameState = {
     buffs: [],
     laboratory: {
         researched: [],
+        unlocked: false,
         workerHiring: false,
         maxWorkersUpgrades: false,
         efficiencyUpgrades: false,

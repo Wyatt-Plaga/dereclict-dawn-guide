@@ -252,6 +252,10 @@ export interface CombatState {
   // Cloak: enemy untargetable for N turns
   enemyCloaked: boolean;
   enemyCloakTurns: number;
+
+  /** False right after START_COMBAT — gates the battle intro overlay.
+   *  Flipped true when the player taps "Engage". */
+  introDismissed: boolean;
 }
 
 /**

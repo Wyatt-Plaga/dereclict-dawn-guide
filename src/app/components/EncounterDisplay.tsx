@@ -85,7 +85,7 @@ const EncounterDisplay: React.FC<EncounterDisplayProps> = ({ encounter, onComple
     } else if (isCombatEncounter) {
       Logger.info(LogCategory.COMBAT, 'Combat encounter initiated - redirecting to battle page', LogContext.COMBAT);
       onComplete();
-      setTimeout(() => router.push('/battle'), 100);
+      router.push('/battle');
     } else {
       onComplete();
     }

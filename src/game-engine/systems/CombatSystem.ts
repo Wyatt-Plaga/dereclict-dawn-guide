@@ -456,6 +456,7 @@ export class CombatSystem {
         radiationStacks: 0,
         enemyCloaked: false,
         enemyCloakTurns: 0,
+        introDismissed: true,
       };
     }
 
@@ -463,6 +464,7 @@ export class CombatSystem {
     state.combat.currentEnemy = enemyId;
     state.combat.currentRegion = regionId;
     state.combat.encounterCompleted = false;
+    state.combat.introDismissed = false;
     state.combat.outcome = undefined;
     state.combat.rewards = { energy: 0, insight: 0, crew: 0, scrap: 0, relics: 0 };
     state.combat.lastEnemyActionId = null;
@@ -586,11 +588,14 @@ export class CombatSystem {
     });
 
     if (baseRegion === 'void') {
-      state.relics += 1;
+      // First combat victory ever yields a bigger payout to bootstrap drones + armory.
+      const isFirstVictoryEver = state.encounters.history.filter(h => h.type === 'combat' && h.result === 'victory').length === 1;
+      const relicReward = isFirstVictoryEver ? 2 : 1;
+      state.relics += relicReward;
       if (state.combat.rewards) {
-        state.combat.rewards.relics = (state.combat.rewards.relics || 0) + 1;
+        state.combat.rewards.relics = (state.combat.rewards.relics || 0) + relicReward;
       }
-      CombatLogger.log(state, 'Recovered 1 relic from the wreckage.', 'SYSTEM');
+      CombatLogger.log(state, `Recovered ${relicReward} relic${relicReward > 1 ? 's' : ''} from the wreckage.`, 'SYSTEM');
     }
 
     const VICTORIES_TO_COMPLETE = 5;
@@ -672,7 +677,7 @@ export class CombatSystem {
 
   checkForEncounter(state: GameState, toRegion: RegionType): boolean {
     if (!state.bridge) {
-      state.bridge = { currentRegion: toRegion, currentTier: 1, completedRegions: [], fuel: 0, fuelWorkers: 0, fuelAutomated: false, fuelPumpLevel: 0 };
+      state.bridge = { unlocked: true, currentRegion: toRegion, currentTier: 1, completedRegions: [], fuel: 0, fuelWorkers: 0, fuelAutomated: false, fuelPumpLevel: 0 };
     }
 
     const tier = state.bridge.currentTier ?? 1;

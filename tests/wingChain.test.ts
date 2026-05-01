@@ -112,32 +112,42 @@ describe('Tier unlock chain', () => {
     const reactor = state.categories.reactor;
     const t = WING_DEFS.reactor.unlockThresholds;
 
+    // Reactor tertiary additionally requires worker hiring + a free worker
+    state.laboratory.workerHiring = true;
+    state.workers.total = 1;
+    state.workers.max = 1;
+
     // Nothing unlocked, no resources
-    expect(ResourceSystem.canUnlockTier(reactor, 'reactor', 'secondary')).toBe(false);
-    expect(ResourceSystem.canUnlockTier(reactor, 'reactor', 'tertiary')).toBe(false);
-    expect(ResourceSystem.canUnlockTier(reactor, 'reactor', 'quaternary')).toBe(false);
+    expect(ResourceSystem.canUnlockTier(state, reactor, 'reactor', 'secondary')).toBe(false);
+    expect(ResourceSystem.canUnlockTier(state, reactor, 'reactor', 'tertiary')).toBe(false);
+    expect(ResourceSystem.canUnlockTier(state, reactor, 'reactor', 'quaternary')).toBe(false);
 
     // Secondary becomes available with enough primary
     reactor.resources.primary = t.secondary;
-    expect(ResourceSystem.canUnlockTier(reactor, 'reactor', 'secondary')).toBe(true);
+    expect(ResourceSystem.canUnlockTier(state, reactor, 'reactor', 'secondary')).toBe(true);
 
     // Tertiary needs secondary unlocked AND enough PRIMARY resource
     reactor.resources.primary = t.tertiary;
-    expect(ResourceSystem.canUnlockTier(reactor, 'reactor', 'tertiary')).toBe(false); // not unlocked yet
+    expect(ResourceSystem.canUnlockTier(state, reactor, 'reactor', 'tertiary')).toBe(false); // not unlocked yet
     reactor.secondaryUnlocked = true;
-    expect(ResourceSystem.canUnlockTier(reactor, 'reactor', 'tertiary')).toBe(true);
+    expect(ResourceSystem.canUnlockTier(state, reactor, 'reactor', 'tertiary')).toBe(true);
 
     // Quaternary needs tertiary unlocked AND enough PRIMARY resource
     reactor.resources.primary = t.quaternary;
-    expect(ResourceSystem.canUnlockTier(reactor, 'reactor', 'quaternary')).toBe(false);
+    expect(ResourceSystem.canUnlockTier(state, reactor, 'reactor', 'quaternary')).toBe(false);
     reactor.tertiaryUnlocked = true;
-    expect(ResourceSystem.canUnlockTier(reactor, 'reactor', 'quaternary')).toBe(true);
+    expect(ResourceSystem.canUnlockTier(state, reactor, 'reactor', 'quaternary')).toBe(true);
   });
 
   it('UNLOCK_TIER action gates on prereqs and threshold', () => {
     const action = new ActionSystem();
     const reactor = state.categories.reactor;
     const t = WING_DEFS.reactor.unlockThresholds;
+
+    // Reactor tertiary consumes a free worker, so satisfy that prereq up front
+    state.laboratory.workerHiring = true;
+    state.workers.total = 1;
+    state.workers.max = 1;
 
     // Not enough primary → no-op
     action.processAction(state, { type: 'UNLOCK_TIER', payload: { wing: 'reactor', tier: 'secondary' } });
@@ -146,20 +156,47 @@ describe('Tier unlock chain', () => {
     reactor.resources.primary = t.secondary;
     action.processAction(state, { type: 'UNLOCK_TIER', payload: { wing: 'reactor', tier: 'secondary' } });
     expect(reactor.secondaryUnlocked).toBe(true);
+    // Unlock consumes the threshold cost
+    expect(reactor.resources.primary).toBe(0);
 
     // Try to skip tertiary → quaternary
     reactor.resources.primary = t.quaternary;
     action.processAction(state, { type: 'UNLOCK_TIER', payload: { wing: 'reactor', tier: 'quaternary' } });
     expect(reactor.quaternaryUnlocked).toBe(false); // tertiary not unlocked yet
 
-    // Walk the chain — all gates now use primary
+    // Walk the chain — tertiary additionally consumes one free worker
     reactor.resources.primary = t.tertiary;
     action.processAction(state, { type: 'UNLOCK_TIER', payload: { wing: 'reactor', tier: 'tertiary' } });
     expect(reactor.tertiaryUnlocked).toBe(true);
+    expect(state.workers.total).toBe(0);
 
     reactor.resources.primary = t.quaternary;
     action.processAction(state, { type: 'UNLOCK_TIER', payload: { wing: 'reactor', tier: 'quaternary' } });
     expect(reactor.quaternaryUnlocked).toBe(true);
+  });
+
+  it('UNLOCK_TIER blocks reactor tertiary without a free worker', () => {
+    const action = new ActionSystem();
+    const reactor = state.categories.reactor;
+    const t = WING_DEFS.reactor.unlockThresholds;
+    reactor.secondaryUnlocked = true;
+    reactor.resources.primary = t.tertiary;
+
+    // No worker hiring research, no workers
+    action.processAction(state, { type: 'UNLOCK_TIER', payload: { wing: 'reactor', tier: 'tertiary' } });
+    expect(reactor.tertiaryUnlocked).toBe(false);
+
+    // Research done but no workers hired yet
+    state.laboratory.workerHiring = true;
+    action.processAction(state, { type: 'UNLOCK_TIER', payload: { wing: 'reactor', tier: 'tertiary' } });
+    expect(reactor.tertiaryUnlocked).toBe(false);
+
+    // One free worker → unlock succeeds and consumes it
+    state.workers.total = 1;
+    state.workers.max = 1;
+    action.processAction(state, { type: 'UNLOCK_TIER', payload: { wing: 'reactor', tier: 'tertiary' } });
+    expect(reactor.tertiaryUnlocked).toBe(true);
+    expect(state.workers.total).toBe(0);
   });
 });
 

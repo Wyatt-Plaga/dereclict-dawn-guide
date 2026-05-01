@@ -1,7 +1,8 @@
 import { GameState, WingCategory } from '../types';
 import { BuffType, maxWorkersKey, capStatKey, rateStatKey } from '../types/resources';
-import { WING_DEFS, WingId, WING_ORDER, SLOT_ORDER, SLOT_CONSUMES, ResourceSlot, WORKER_BASE, WORKER_PER_UPGRADE, WORKER_BOSS_GATE_SIZE, INITIAL_MAX_WORKERS_PER_SLOT, computeCapacity } from '../content/wingResources';
-import { FUEL_CAPACITY, FUEL_RATE_PER_SECOND, fuelPumpMultiplier } from '../content/bridgeFuel';
+import { WING_DEFS, WingId, WING_ORDER, SLOT_ORDER, SLOT_CONSUMES, ResourceSlot, WORKER_BASE, WORKER_PER_UPGRADE, WORKER_BOSS_GATE_SIZE, INITIAL_MAX_WORKERS_PER_SLOT, computeCapacity, speedMultiplier } from '../content/wingResources';
+import { speedKey } from '../types/resources';
+import { FUEL_CAPACITY, FUEL_RATE_PER_SECOND, MANUAL_FUEL_CYCLE_MS, MANUAL_FUEL_PER_CYCLE, fuelPumpMultiplier } from '../content/bridgeFuel';
 import Logger, { LogCategory, LogContext } from "@/app/utils/logger";
 import { getResourceAccessor } from '../utils/resourceAccessor';
 
@@ -83,7 +84,9 @@ export class ResourceSystem {
         const slotDef = def.resources[slot];
         const effLevel = wing.upgrades[`${slot}Eff` as keyof typeof wing.upgrades] as number;
         const effMultiplier = 1 + effLevel * slotDef.efficiencyBonus;
-        let produce = workers * slotDef.baseRate * effMultiplier * buffMult * delta;
+        const speedLevel = (wing.upgrades[speedKey(slot)] as number) ?? 0;
+        const speedMult = speedMultiplier(speedLevel);
+        let produce = workers * slotDef.baseRate * effMultiplier * speedMult * buffMult * delta;
 
         // Scale production down if inputs are scarce.
         if (slot === 'primary' && wingId !== 'reactor') {
@@ -145,6 +148,18 @@ export class ResourceSystem {
       const pumpMult = fuelPumpMultiplier(state.bridge.fuelPumpLevel ?? 0);
       const produced = state.bridge.fuelWorkers * FUEL_RATE_PER_SECOND * pumpMult * delta;
       state.bridge.fuel = Math.min(FUEL_CAPACITY, (state.bridge.fuel ?? 0) + produced);
+    }
+    // Pre-drone manual pump: once a cycle has been kicked off, wait for the
+    // 30s timer to elapse, then deposit MANUAL_FUEL_PER_CYCLE fuel and clear
+    // the marker so the player can click again.
+    if (state.bridge && state.bridge.manualFuelCycleStartMs !== undefined) {
+      if (Date.now() - state.bridge.manualFuelCycleStartMs >= MANUAL_FUEL_CYCLE_MS) {
+        state.bridge.fuel = Math.min(
+          FUEL_CAPACITY,
+          (state.bridge.fuel ?? 0) + MANUAL_FUEL_PER_CYCLE,
+        );
+        state.bridge.manualFuelCycleStartMs = undefined;
+      }
     }
   }
 
@@ -212,17 +227,41 @@ export class ResourceSystem {
   /* Progression unlock checks                                               */
   /* ---------------------------------------------------------------------- */
 
+  /** Free (unassigned) workers across all wings + bridge fuel. */
+  static getFreeWorkers(state: GameState): number {
+    const assigned = WING_ORDER.reduce((sum, id) => {
+      const w = state.categories[id] as WingCategory;
+      return sum + w.workers.primary + w.workers.secondary + w.workers.tertiary + w.workers.quaternary;
+    }, 0) + (state.bridge?.fuelWorkers ?? 0);
+    return (state.workers?.total ?? 0) - assigned;
+  }
+
+  /** Thermal cores represent advanced reactor hardware that only comes online
+   *  once the player has crew to install it. Unlocking it consumes one free
+   *  worker globally (see ActionSystem.handleUnlockTier). */
+  static tierConsumesWorker(wingId: WingId, tier: 'secondary' | 'tertiary' | 'quaternary'): boolean {
+    return wingId === 'reactor' && tier === 'tertiary';
+  }
+
   /** Check if tier unlock thresholds are met (used by UI to show buttons).
    *  All tiers gate on the wing's PRIMARY resource — the primary acts as a
-   *  single progression ladder for the whole wing. */
-  static canUnlockTier(wing: WingCategory, wingId: WingId, tier: 'secondary' | 'tertiary' | 'quaternary'): boolean {
+   *  single progression ladder for the whole wing. Reactor's tertiary
+   *  (Thermal Cores) additionally requires worker hiring researched and one
+   *  free worker available, which it will consume on unlock. */
+  static canUnlockTier(state: GameState, wing: WingCategory, wingId: WingId, tier: 'secondary' | 'tertiary' | 'quaternary'): boolean {
     const thresholds = WING_DEFS[wingId].unlockThresholds;
     const primary = wing.resources.primary;
     if (tier === 'secondary') {
       return !wing.secondaryUnlocked && primary >= thresholds.secondary;
     }
     if (tier === 'tertiary') {
-      return !wing.tertiaryUnlocked && wing.secondaryUnlocked && primary >= thresholds.tertiary;
+      if (wing.tertiaryUnlocked || !wing.secondaryUnlocked) return false;
+      if (primary < thresholds.tertiary) return false;
+      if (ResourceSystem.tierConsumesWorker(wingId, tier)) {
+        if (!state.laboratory.workerHiring) return false;
+        if (ResourceSystem.getFreeWorkers(state) < 1) return false;
+      }
+      return true;
     }
     return !wing.quaternaryUnlocked && wing.tertiaryUnlocked && primary >= thresholds.quaternary;
   }

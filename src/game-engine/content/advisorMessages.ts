@@ -56,10 +56,10 @@ export const ADVISOR_MESSAGES: Record<string, AdvisorMessage[]> = {
 
   // ── Early-game story beats — one-shot triggers ────────────────────────
   'early.firstEnergy': [
-    { id: 'firstEnergy-1', text: 'Where... am I?' },
+    { id: 'firstEnergy-1', text: 'Need... more power.' },
   ],
   'early.firstCapacity': [
-    { id: 'firstCap-1', text: "I'm blind. Need to bring power back online." },
+    { id: 'firstCap-1', text: "Need... more power. Bring the rest back online." },
   ],
 
   // ── Early-game ambient — "just saying stuff" ───────────────────────────

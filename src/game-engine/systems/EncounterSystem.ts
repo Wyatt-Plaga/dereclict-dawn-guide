@@ -447,34 +447,46 @@ export class EncounterSystem {
                     const { enemyId } = state.encounters.pendingRematch;
                     state.encounters.pendingRematch = undefined;
 
-                    // No energy cost for rematch — you already paid
-                    // Force a combat encounter with the same enemy
-                    const encounter = this.generateEncounter(state);
-                    encounter.type = 'combat';
-                    state.encounters.active = true;
-                    state.encounters.encounter = encounter;
+                    // No energy cost for rematch — you already paid.
+                    // Combat encounters skip the intermediate /encounter screen
+                    // and route straight to /battle with the intro overlay.
+                    state.encounters.active = false;
+                    state.encounters.encounter = undefined;
                     bus.emit('START_COMBAT', { state, enemyId, regionId: currentRegion });
                     return;
                 }
 
-                // Deduct jump fuel cost — jumps are funded by the bridge
-                // reservoir, not the reactor.
-                if ((state.bridge.fuel ?? 0) < JUMP_FUEL_COST) {
+                // First jump is a guided combat tutorial: 1 fuel, always combat,
+                // always against a Void enemy.
+                const isFirstJump = state.encounters.history.length === 0;
+                const effectiveCost = isFirstJump ? 1 : JUMP_FUEL_COST;
+
+                if ((state.bridge.fuel ?? 0) < effectiveCost) {
                     // Not enough fuel — refuse the jump.
                     return;
                 }
-                state.bridge.fuel = Math.max(0, (state.bridge.fuel ?? 0) - JUMP_FUEL_COST);
+                state.bridge.fuel = Math.max(0, (state.bridge.fuel ?? 0) - effectiveCost);
 
                 const encounter = this.generateEncounter(state);
-                state.encounters.active = true;
-                state.encounters.encounter = encounter;
+                if (isFirstJump) {
+                    encounter.type = 'combat';
+                    encounter.region = 'void';
+                }
 
-                // If combat encounter, emit start combat
+                // Combat encounters skip the /encounter screen and route
+                // directly to /battle, which renders its own intro overlay
+                // showing the actual enemy. Empty/story still use /encounter.
                 if (encounter.type === 'combat') {
-                    const combatEnemyId = this.generateRandomEnemyForRegion(currentRegionKey);
+                    state.encounters.active = false;
+                    state.encounters.encounter = undefined;
+                    const enemyRegionKey = isFirstJump ? 'void' : currentRegionKey;
+                    const combatEnemyId = this.generateRandomEnemyForRegion(enemyRegionKey);
                     if (combatEnemyId) {
                         bus.emit('START_COMBAT', { state: state, enemyId: combatEnemyId, regionId: encounter.region });
                     }
+                } else {
+                    state.encounters.active = true;
+                    state.encounters.encounter = encounter;
                 }
             });
 
@@ -692,39 +704,13 @@ export class EncounterSystem {
                 newState = this.applyBuff(newState, selectedChoice.outcome.buff);
             }
         } else if (encounter.type === 'combat') {
-            // Combat encounters will be handled by the CombatSystem
-            
-            // Log that we're starting combat
-            Logger.info(
-                LogCategory.COMBAT,
-                'Combat encounter detected - initiating combat sequence',
-                LogContext.COMBAT
-            );
-            
-            // Get the combat encounter details
-            const combatEncounter = encounter as BaseEncounter;
-            
-            // Extract region from the encounter, using tier for correct enemy pool
-            const regionId = combatEncounter.region;
-            const tier = newState.bridge.currentTier ?? 1;
-            const regionKey = getRegionKey(regionId, tier);
-
-            // Generate a random enemy from the region
-            const enemyId = this.generateRandomEnemyForRegion(regionKey);
-            
-            if (enemyId && this.eventBus) {
-                // Emit event to start combat
-                this.eventBus.emit('START_COMBAT', { state: newState, enemyId, regionId });
-
-                // Prepare state for combat UI
-                newState.encounters.active = false;
-                newState.encounters.encounter = undefined;
-                newState.combat.active = true;
-
-                // History is NOT recorded here — it's recorded on victory
-                // so retreats don't count as progress
-                return newState;
-            }
+            // Combat encounters are now started directly by INITIATE_JUMP
+            // and skip this completion path. If we somehow get here with a
+            // pending combat encounter, just clear it without re-rolling
+            // a fresh enemy (which would overwrite the active fight).
+            newState.encounters.active = false;
+            newState.encounters.encounter = undefined;
+            return newState;
         }
         
         // Record history with the tiered region key so T1/T2/T3 progress is tracked separately

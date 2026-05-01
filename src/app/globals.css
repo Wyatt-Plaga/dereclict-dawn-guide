@@ -328,3 +328,36 @@ button.system-panel:hover {
   96% { opacity: 0.9; transform: translateX(-1px); }
   98% { opacity: 0.7; transform: translateX(1px) skewX(1deg); }
 }
+
+/* Wing-unlock celebration overlay -------------------------------------------- */
+@keyframes wing-unlock-fade {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.animate-wing-unlock-fade { animation: wing-unlock-fade 5s ease-in-out forwards; }
+
+@keyframes wing-unlock-trace {
+  0%   { clip-path: inset(50% 50% 50% 50%); opacity: 0; }
+  15%  { clip-path: inset(50% 0 50% 0); opacity: 1; }
+  35%  { clip-path: inset(0 0 0 0); opacity: 1; }
+  85%  { clip-path: inset(0 0 0 0); opacity: 1; }
+  100% { clip-path: inset(0 0 0 0); opacity: 0; }
+}
+.animate-wing-unlock-trace { animation: wing-unlock-trace 5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+@keyframes wing-unlock-card {
+  0%   { opacity: 0; transform: scale(0.6); filter: blur(8px); }
+  25%  { opacity: 1; transform: scale(1.05); filter: blur(0); }
+  35%  { transform: scale(1); }
+  85%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.05); }
+}
+.animate-wing-unlock-card { animation: wing-unlock-card 5s ease-out forwards; }
+
+@keyframes wing-unlock-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+.animate-wing-unlock-pulse { animation: wing-unlock-pulse 0.8s ease-in-out infinite; }

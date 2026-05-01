@@ -53,8 +53,6 @@ export interface WingDef {
   color: string;              // tailwind chart color (e.g. 'chart-1')
   clickText: string;          // e.g. "Generate Energy"
   clickAmount: number;        // units added per click (primary resource)
-  /** Per-slot click amounts for manual generation */
-  clickAmounts: Record<ResourceSlot, number>;
   /** Energy consumed per worker per second on the primary resource.
    *  0 for reactor (energy IS the primary). */
   energyCostPerPrimaryWorker: number;
@@ -78,6 +76,31 @@ export function maxWorkersUpgradeCost(level: number): number {
   return Math.ceil(1 * Math.pow(1.50, level));
 }
 
+/** Cost of a generation-speed upgrade for a slot (paid in the wing's primary
+ *  resource). Each level boosts manual + worker rates multiplicatively. */
+export function speedUpgradeCost(level: number): number {
+  return Math.ceil(10 * Math.pow(1.5, level));
+}
+
+/** Every manual hold yields exactly one unit. The hold duration is derived from
+ *  baseRate so a perpetual press equals one worker at L0 efficiency. */
+export const CLICK_AMOUNT = 1;
+
+/** Milliseconds per completed manual hold for a given slot at speed level 0.
+ *  `WingPage` divides this by `speedMultiplier(level)` so speed upgrades make
+ *  the bar fill faster (mirroring how workers produce faster). */
+export function holdDurationForSlot(def: WingDef, slot: ResourceSlot): number {
+  return (CLICK_AMOUNT / def.resources[slot].baseRate) * 1000;
+}
+
+/** Multiplier on production / inverse multiplier on hold duration.
+ *  Geometric (1.25× per level), shallower than the 1.5×/level cost curve so
+ *  each upgrade takes slightly longer to afford than the last.
+ *  L0 = 1×, L1 = 1.25×, L2 ≈ 1.56×, L5 ≈ 3.05×, L10 ≈ 9.31×. */
+export function speedMultiplier(level: number): number {
+  return Math.pow(1.25, level);
+}
+
 /** Starting per-slot worker cap */
 export const INITIAL_MAX_WORKERS_PER_SLOT = 5;
 
@@ -85,6 +108,9 @@ export const INITIAL_MAX_WORKERS_PER_SLOT = 5;
 export function workerHireEnergyCost(currentWorkers: number): number {
   return Math.ceil(20 * Math.pow(1.4, currentWorkers));
 }
+
+/** Energy spent on the reactor page to bring the bridge online. */
+export const BRIDGE_UNLOCK_ENERGY = 25;
 
 /** Relic cost to buy the next +5 max workers (global pool) */
 export function workerMaxUpgradeRelicCost(level: number): number {
@@ -116,10 +142,9 @@ export const WING_DEFS: Record<WingId, WingDef> = {
     color: 'chart-1',
     clickText: 'Generate Energy',
     clickAmount: 1,
-    clickAmounts: { primary: 1, secondary: 1, tertiary: 0.2, quaternary: 0.1 },
     energyCostPerPrimaryWorker: 0,
     unlockThresholds: {
-      secondary: 5, tertiary: 500, quaternary: 5000,
+      secondary: 5, tertiary: 0, quaternary: 50,
       automatePrimary: 5, automateSecondary: 7, automateTertiary: 8, automateQuaternary: 4,
     },
     resources: {
@@ -128,7 +153,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         name: 'Energy',
         description: 'Core power supply for the entire ship.',
         baseCapacity: 10,
-        baseRate: 2.0,
+        baseRate: 1.0,
         consumeRate: 0,        // free
         efficiencyBonus: 0.5,
       },
@@ -138,7 +163,7 @@ export const WING_DEFS: Record<WingId, WingDef> = {
         description: 'Condensed energy cells. Spent to expand storage capacities.',
         baseCapacity: 15,
         baseRate: 0.3,
-        consumeRate: 1.5,      // energy/s per worker
+        consumeRate: 0.9,      // energy/s per worker
         efficiencyBonus: 0.5,
       },
       tertiary: {
@@ -170,7 +195,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
     color: 'chart-2',
     clickText: 'Process Data',
     clickAmount: 0.5,
-    clickAmounts: { primary: 0.5, secondary: 0.3, tertiary: 0.1, quaternary: 0.05 },
     energyCostPerPrimaryWorker: 1.0,
     unlockThresholds: {
       secondary: 50, tertiary: 500, quaternary: 5000,
@@ -224,7 +248,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
     color: 'chart-3',
     clickText: 'Awaken Crew',
     clickAmount: 0.5,
-    clickAmounts: { primary: 0.5, secondary: 0.2, tertiary: 0.1, quaternary: 0.05 },
     energyCostPerPrimaryWorker: 1.0,
     unlockThresholds: {
       secondary: 20, tertiary: 200, quaternary: 2000,
@@ -278,7 +301,6 @@ export const WING_DEFS: Record<WingId, WingDef> = {
     color: 'chart-4',
     clickText: 'Collect Scrap',
     clickAmount: 1,
-    clickAmounts: { primary: 1, secondary: 0.3, tertiary: 0.1, quaternary: 0.05 },
     energyCostPerPrimaryWorker: 1.0,
     unlockThresholds: {
       secondary: 100, tertiary: 1000, quaternary: 10000,

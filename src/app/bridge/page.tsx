@@ -33,6 +33,9 @@ import { useDevMode } from "@/components/providers/dev-mode-provider";
 import {
   FUEL_CAPACITY,
   FUEL_RATE_PER_SECOND,
+  MANUAL_FUEL_CYCLE_MS,
+  MANUAL_FUEL_PER_CYCLE,
+  MANUAL_FUEL_IGNITE_ENERGY_COST,
   JUMP_FUEL_COST,
   FUEL_PUMP_MAX_LEVEL,
   fuelPumpUpgradeCost,
@@ -41,8 +44,70 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { REGION_WING_UNLOCKS } from "@/game-engine/content/wingResources";
 import RegionTree from "./components/RegionTree";
+import { useEffect, useState } from "react";
 
 const JUMPS_PER_REGION = 6;
+
+interface ManualFuelCycleButtonProps {
+  cycleStartMs: number | undefined;
+  canAfford: boolean;
+  onClick: () => void;
+}
+
+function ManualFuelCycleButton({ cycleStartMs, canAfford, onClick }: ManualFuelCycleButtonProps) {
+  // Tick locally while a cycle is running so the fill bar animates smoothly
+  // between game-engine ticks.
+  const [, setNow] = useState(0);
+  const running = cycleStartMs !== undefined;
+  useEffect(() => {
+    if (!running) return;
+    const id = window.setInterval(() => setNow(Date.now()), 80);
+    return () => window.clearInterval(id);
+  }, [running]);
+
+  const elapsed = running ? Date.now() - (cycleStartMs as number) : 0;
+  const progress = Math.min(1, elapsed / MANUAL_FUEL_CYCLE_MS);
+  const disabled = running || !canAfford;
+  const remainingSec = Math.max(0, Math.ceil((MANUAL_FUEL_CYCLE_MS - elapsed) / 1000));
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "relative w-full overflow-hidden rounded border p-3 text-left font-mono text-xs transition-colors mb-2 select-none",
+        running
+          ? "border-primary/60 bg-primary/5 cursor-default"
+          : !canAfford
+            ? "border-muted/20 bg-muted/5 opacity-50 cursor-not-allowed"
+            : "border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary"
+      )}
+    >
+      {running && (
+        <div
+          className="absolute inset-y-0 left-0 bg-primary/25 transition-[width] duration-75 ease-linear pointer-events-none"
+          style={{ width: `${progress * 100}%` }}
+        />
+      )}
+      <div className="relative flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Atom className={cn("h-4 w-4 text-primary", running && "animate-pulse")} />
+          <span className="font-semibold text-primary">
+            {running
+              ? `Refining… ${remainingSec}s · +${MANUAL_FUEL_PER_CYCLE} fuel`
+              : "Refine fuel"}
+          </span>
+        </div>
+        {!running && (
+          <span className="text-muted-foreground">
+            {MANUAL_FUEL_IGNITE_ENERGY_COST} Energy → +{MANUAL_FUEL_PER_CYCLE} fuel
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
 
 const REGION_DISPLAY_NAMES: Record<RegionType, string> = {
   void: "The Void",
@@ -53,7 +118,7 @@ const REGION_DISPLAY_NAMES: Record<RegionType, string> = {
 };
 
 export default function BridgePage() {
-  const { state, dispatch } = useGame();
+  const { state, dispatch, engine } = useGame();
   const { shouldFlicker } = useSystemStatus();
   const router = useRouter();
   const { devMode } = useDevMode();
@@ -132,17 +197,27 @@ export default function BridgePage() {
   const isRematch = !!pendingRematch && pendingRematch.regionKey === currentRegionKey;
 
   // Jump cost & affordability (free for rematch). Jumps are now fuelled
-  // by the bridge fuel reservoir instead of reactor energy.
-  const jumpCost = isRematch ? 0 : JUMP_FUEL_COST;
+  // by the bridge fuel reservoir instead of reactor energy. The very first
+  // jump only costs 1 fuel — a guided opener.
+  const isFirstJump = (state?.encounters?.history?.length ?? 0) === 0;
+  const jumpCost = isRematch ? 0 : isFirstJump ? 1 : JUMP_FUEL_COST;
   const currentEnergy = Math.floor(state?.categories?.reactor?.resources?.primary ?? 0);
-  const currentFuel = state?.bridge?.fuel ?? 0;
+  const rawFuel = state?.bridge?.fuel;
+  const currentFuel = typeof rawFuel === 'number' && Number.isFinite(rawFuel) ? rawFuel : 0;
   const canAffordJump = isRematch || currentFuel >= jumpCost;
 
   const initiateJump = () => {
     if (!canAffordJump) return;
     Logger.info(LogCategory.ACTIONS, "Initiating jump sequence", LogContext.NONE);
     dispatch({ type: "INITIATE_JUMP" });
-    setTimeout(() => router.push("/encounter"), 100);
+    // Engine state updates synchronously inside dispatch — read it directly
+    // so we route to the right page without waiting for the React tick.
+    const next = engine.getState();
+    if (next.combat?.active) {
+      router.push("/battle");
+    } else {
+      router.push("/encounter");
+    }
   };
 
   // Boss warning — next encounter is the boss fight
@@ -170,7 +245,9 @@ export default function BridgePage() {
   const fuelRatePerSec = fuelWorkers * FUEL_RATE_PER_SECOND * fuelPumpMult;
   const fuelRatePerMin = fuelRatePerSec * 60;
   const fuelPct = FUEL_CAPACITY > 0 ? (currentFuel / FUEL_CAPACITY) * 100 : 0;
-  const canAutomateFuel = (state?.laboratory?.workerHiring ?? false) || devMode;
+  // Fuel reservoir shows up whenever the player has access to the bridge.
+  const canAutomateFuel = true;
+  const canBuildDrones = (state?.relics ?? 0) >= 1 || devMode;
   const fuelPumpAtMax = fuelPumpLevel >= FUEL_PUMP_MAX_LEVEL;
   const fuelPumpNextCost = fuelPumpAtMax ? 0 : fuelPumpUpgradeCost(fuelPumpLevel);
   const canAffordFuelPump = !fuelPumpAtMax && currentEnergy >= fuelPumpNextCost;
@@ -316,7 +393,8 @@ export default function BridgePage() {
             )}
           </div>
 
-          {/* ─── Drone Bay ──────────────────────────────────────────── */}
+          {/* ─── Drone Bay (unlocks after first combat victory) ─────── */}
+          {canBuildDrones && (
           <div className="system-panel p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-primary flex items-center gap-2">
@@ -389,6 +467,7 @@ export default function BridgePage() {
               </p>
             )}
           </div>
+          )}
 
           {/* ─── Fuel Reservoir ─────────────────────────────────────── */}
           {canAutomateFuel && (
@@ -409,11 +488,22 @@ export default function BridgePage() {
               </div>
 
               <p className="text-xs text-muted-foreground font-mono mb-4">
-                Fuel powers every jump. Assign drones to refine it while you explore.
+                Fuel powers every jump. {canBuildDrones
+                  ? 'Assign drones to refine it while you explore.'
+                  : 'Hold the refine valve to manually pump fuel — slow, but it works.'}
               </p>
 
               <Progress value={fuelPct} className="h-2 mb-4" />
 
+              {!canBuildDrones && (
+                <ManualFuelCycleButton
+                  cycleStartMs={state?.bridge?.manualFuelCycleStartMs}
+                  canAfford={currentEnergy >= MANUAL_FUEL_IGNITE_ENERGY_COST}
+                  onClick={() => dispatch({ type: 'START_MANUAL_FUEL_CYCLE' })}
+                />
+              )}
+
+              {canBuildDrones && (
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
                   <button
@@ -445,6 +535,7 @@ export default function BridgePage() {
                   <span className="text-xs font-mono font-semibold">{fuelWorkers}/1</span>
                 </div>
               </div>
+              )}
 
               {/* Fuel Pump upgrade — boosts fuel generation rate, paid in energy */}
               <button

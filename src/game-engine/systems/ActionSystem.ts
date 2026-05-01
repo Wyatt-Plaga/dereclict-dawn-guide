@@ -7,7 +7,7 @@ import {
   CraftAmmoAction, UpgradeAmmoCapacityAction,
   AssignWorkerAction, UnassignWorkerAction,
   BuyCapacityUpgradeAction, BuyEfficiencyUpgradeAction,
-  BuyMaxWorkersUpgradeAction,
+  BuyMaxWorkersUpgradeAction, BuySpeedUpgradeAction,
   HireWorkerAction, BuyWorkerCapUpgradeAction,
   EnableAutomationAction, DisableAutomationAction,
   AssignBridgeFuelWorkerAction, UnassignBridgeFuelWorkerAction, SetBridgeFuelAutomationAction,
@@ -15,11 +15,11 @@ import {
 } from '../types/actions';
 import { ALL_PLAYER_ABILITIES } from '@/game-engine/content/playerAbilities';
 import { AMMO_TYPES, getAmmoMax, getAmmoUpgradeRelicCost, AmmoTypeId } from '@/game-engine/content/ammoTypes';
-import { WING_DEFS, WING_ORDER, SLOT_ORDER, SLOT_CONSUMES, WingId } from '@/game-engine/content/wingResources';
-import { FUEL_PUMP_MAX_LEVEL, fuelPumpUpgradeCost } from '@/game-engine/content/bridgeFuel';
+import { WING_DEFS, WING_ORDER, SLOT_ORDER, SLOT_CONSUMES, WingId, speedUpgradeCost, CLICK_AMOUNT, BRIDGE_UNLOCK_ENERGY } from '@/game-engine/content/wingResources';
+import { FUEL_CAPACITY, FUEL_PUMP_MAX_LEVEL, MANUAL_FUEL_IGNITE_ENERGY_COST, fuelPumpUpgradeCost } from '@/game-engine/content/bridgeFuel';
 import { RESEARCH_BY_ID, canResearch } from '@/game-engine/content/research';
 import { ResourceSystem } from './ResourceSystem';
-import { getCapacity } from '@/game-engine/types/resources';
+import { getCapacity, speedKey } from '@/game-engine/types/resources';
 import { getResourceAccessor } from '../utils/resourceAccessor';
 import Logger, { LogCategory, LogContext } from '@/app/utils/logger';
 import { EventBus } from "../core/EventBus";
@@ -51,6 +51,8 @@ export class ActionSystem {
         return this.handleBuyEfficiencyUpgrade(state, action);
       case 'BUY_MAX_WORKERS_UPGRADE':
         return this.handleBuyMaxWorkersUpgrade(state, action);
+      case 'BUY_SPEED_UPGRADE':
+        return this.handleBuySpeedUpgrade(state, action);
       case 'HIRE_WORKER':
         return this.handleHireWorker(state, action);
       case 'BUY_WORKER_CAP_UPGRADE':
@@ -67,8 +69,12 @@ export class ActionSystem {
         return this.handleSetBridgeFuelAutomation(state, action);
       case 'BUY_FUEL_PUMP_UPGRADE':
         return this.handleBuyFuelPumpUpgrade(state);
+      case 'START_MANUAL_FUEL_CYCLE':
+        return this.handleStartManualFuelCycle(state);
       case 'UNLOCK_TIER':
         return this.handleUnlockTier(state, action);
+      case 'UNLOCK_BRIDGE':
+        return this.handleUnlockBridge(state);
       case 'PURCHASE_RESEARCH':
         return this.handlePurchaseResearch(state, action);
       case 'MARK_LOG_READ':
@@ -87,6 +93,9 @@ export class ActionSystem {
         return this.emit(state, 'COMBAT_ACTION', { state, actionId: action.payload.actionId }, LogContext.COMBAT_ACTION);
       case 'RETREAT_FROM_BATTLE':
         return this.emit(state, 'RETREAT_FROM_BATTLE', { state });
+      case 'DISMISS_BATTLE_INTRO':
+        if (state.combat) state.combat.introDismissed = true;
+        return state;
       case 'END_TURN':
         return this.emit(state, 'END_TURN', { state }, LogContext.COMBAT_ACTION);
       case 'EQUIP_ABILITY':
@@ -171,6 +180,20 @@ export class ActionSystem {
       LogContext.UPGRADE_PURCHASE);
   }
 
+  private handleBuySpeedUpgrade(state: GameState, action: BuySpeedUpgradeAction): GameState {
+    const { wing: wingId, slot } = action.payload;
+    const wing = state.categories[wingId] as WingCategory;
+    if (!wing.unlocked) return state;
+    const key = speedKey(slot);
+    const level = (wing.upgrades[key] as number) ?? 0;
+    const cost = speedUpgradeCost(level);
+    // Speed upgrades are paid in the wing's primary resource.
+    if (wing.resources.primary < cost) return state;
+    wing.resources.primary -= cost;
+    (wing.upgrades[key] as number) = level + 1;
+    return state;
+  }
+
   private handleHireWorker(state: GameState, _action: HireWorkerAction): GameState {
     if (!state.laboratory.workerHiring) return state;
     return this.emit(state, 'PURCHASE_UPGRADE',
@@ -209,7 +232,7 @@ export class ActionSystem {
     if (wing.resources[slot] >= cap) return state;
 
     const slotDef = def.resources[slot];
-    const amount = def.clickAmounts[slot];
+    const amount = CLICK_AMOUNT;
 
     // Non-primary slots consume the prior-tier resource per click, mirroring
     // what one worker-second of production would cost.
@@ -286,6 +309,16 @@ export class ActionSystem {
     return state;
   }
 
+  private handleStartManualFuelCycle(state: GameState): GameState {
+    if (!state.bridge) return state;
+    if (state.bridge.manualFuelCycleStartMs !== undefined) return state; // cycle in progress
+    const reactor = state.categories.reactor;
+    if (reactor.resources.primary < MANUAL_FUEL_IGNITE_ENERGY_COST) return state;
+    reactor.resources.primary -= MANUAL_FUEL_IGNITE_ENERGY_COST;
+    state.bridge.manualFuelCycleStartMs = Date.now();
+    return state;
+  }
+
   private handleSetBridgeFuelAutomation(state: GameState, action: SetBridgeFuelAutomationAction): GameState {
     if (!state.bridge) return state;
     if (action.payload.enabled && !state.laboratory.workerHiring) return state;
@@ -304,24 +337,45 @@ export class ActionSystem {
 
     const thresholds = WING_DEFS[wingId].unlockThresholds;
 
-    // All tiers gate on the wing's primary resource (single progression ladder)
+    // All tiers gate on the wing's primary resource (single progression ladder).
+    // The threshold doubles as a cost — unlocking the tier consumes that much
+    // primary resource so progression doesn't come for free.
     const primary = wing.resources.primary;
     if (tier === 'secondary') {
       if (wing.secondaryUnlocked) return state;
       if (primary < thresholds.secondary) return state;
+      wing.resources.primary -= thresholds.secondary;
       wing.secondaryUnlocked = true;
     } else if (tier === 'tertiary') {
       if (wing.tertiaryUnlocked) return state;
       if (!wing.secondaryUnlocked) return state;
       if (primary < thresholds.tertiary) return state;
+      if (ResourceSystem.tierConsumesWorker(wingId, tier)) {
+        if (!state.laboratory.workerHiring) return state;
+        if (ResourceSystem.getFreeWorkers(state) < 1) return state;
+        state.workers.total -= 1;
+      }
+      wing.resources.primary -= thresholds.tertiary;
       wing.tertiaryUnlocked = true;
     } else {
       if (wing.quaternaryUnlocked) return state;
       if (!wing.tertiaryUnlocked) return state;
       if (primary < thresholds.quaternary) return state;
+      wing.resources.primary -= thresholds.quaternary;
       wing.quaternaryUnlocked = true;
     }
 
+    return state;
+  }
+
+  private handleUnlockBridge(state: GameState): GameState {
+    if (state.bridge.unlocked) return state;
+    const reactor = state.categories.reactor as WingCategory;
+    if (reactor.resources.primary < BRIDGE_UNLOCK_ENERGY) return state;
+    reactor.resources.primary -= BRIDGE_UNLOCK_ENERGY;
+    state.bridge.unlocked = true;
+    // Seed 1 fuel so the player can attempt their first jump immediately.
+    if (state.bridge.fuel < 1) state.bridge.fuel = 1;
     return state;
   }
 

@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ResourceSystem } from '@/game-engine/systems/ResourceSystem';
 import { GameState } from '@/game-engine/types';
+import { WING_DEFS } from '@/game-engine/content/wingResources';
 import { freshState } from './helpers';
+
+const REACTOR_PRIMARY_RATE = WING_DEFS.reactor.resources.primary.baseRate;
 
 describe('ResourceSystem worker-based production', () => {
   let system: ResourceSystem;
@@ -18,15 +21,15 @@ describe('ResourceSystem worker-based production', () => {
     state.categories.reactor.workers.primary = 2;
     system.update(state, 1); // 1 second
 
-    // baseRate = 2.0/s, 2 workers, 1 second → 4.0 energy
-    expect(state.categories.reactor.resources.primary).toBeCloseTo(4.0, 1);
+    // 2 workers × baseRate × 1s
+    expect(state.categories.reactor.resources.primary).toBeCloseTo(2 * REACTOR_PRIMARY_RATE, 5);
   });
 
   it('does not exceed capacity', () => {
     state.categories.reactor.automated.primary = true;
     state.categories.reactor.workers.primary = 20;
     state.categories.reactor.resources.primary = 3;
-    // 20 workers × 2.0 baseRate × 1s = 40, but cap is 10
+    // 20 workers × baseRate × 1s should overshoot, but cap is 10
     system.update(state, 1);
     expect(state.categories.reactor.resources.primary).toBe(10);
   });
@@ -68,9 +71,9 @@ describe('ResourceSystem worker-based production', () => {
     state.categories.reactor.workers.primary = 1;
     state.categories.reactor.upgrades.primaryEff = 2;
     // efficiencyBonus = 0.5, so multiplier = 1 + 2 × 0.5 = 2.0
-    // Expected: 1 × 2.0 × 2.0 × 1s = 4.0
+    // Expected: 1 worker × baseRate × 2.0 × 1s
     system.update(state, 1);
-    expect(state.categories.reactor.resources.primary).toBeCloseTo(4.0, 1);
+    expect(state.categories.reactor.resources.primary).toBeCloseTo(REACTOR_PRIMARY_RATE * 2.0, 5);
   });
 
   it('partial production when insufficient input', () => {

@@ -4,14 +4,22 @@
  * Fuel is generated on the Bridge (not a wing) by drones assigned from the
  * shared worker pool. It is the resource spent to INITIATE_JUMP.
  *
- * At 1 worker the reservoir fills at 0.1 fuel / minute, so a jump costing
- * 5 fuel takes 50 minutes of real time to prepare.
+ * One worker (or one perpetual manual pump cycle) yields 1 fuel every 5
+ * minutes, so a jump costing 5 fuel takes 25 minutes of real time at L0.
  */
 
 export const FUEL_CAPACITY = 25;
 
-/** Fuel produced per worker per second (0.1/min = 0.1/60 per second) */
-export const FUEL_RATE_PER_SECOND = 0.1 / 60;
+/** Pre-drone manual pump: each click pays energy and runs a 5-minute fill
+ *  cycle that produces +MANUAL_FUEL_PER_CYCLE on completion. */
+export const MANUAL_FUEL_CYCLE_MS = 300_000;
+export const MANUAL_FUEL_PER_CYCLE = 1;
+
+/** Worker rate matches the manual pump so 1 drone = 1 perpetual pump. */
+export const FUEL_RATE_PER_SECOND = MANUAL_FUEL_PER_CYCLE / (MANUAL_FUEL_CYCLE_MS / 1000);
+
+/** Energy spent to start one fuel pump cycle. */
+export const MANUAL_FUEL_IGNITE_ENERGY_COST = 5;
 
 /** Cost in fuel to initiate a jump, regardless of destination. */
 export const JUMP_FUEL_COST = 5;

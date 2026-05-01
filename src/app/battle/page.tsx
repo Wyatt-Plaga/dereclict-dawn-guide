@@ -17,6 +17,7 @@ import PlayerStatusPanel from "./components/PlayerStatusPanel";
 import EnemyStatusBar from "./components/EnemyStatusBar";
 import CombatActionGrid from "./components/CombatActionGrid";
 import BattleLogDialog from "./components/BattleLogDialog";
+import BattleIntroScreen from "./components/BattleIntroScreen";
 import EnemyMoveList from "@/components/EnemyMoveList";
 import ItemSprite from "@/components/ui/ItemSprite";
 import { useBattleAdvisor } from "@/components/hooks/useBattleAdvisor";
@@ -200,6 +201,23 @@ export default function BattlePage() {
             <p className="text-muted-foreground">Restoring battle telemetry</p>
           </div>
         </main>
+      </GameLoader>
+    );
+  }
+
+  /* ------------------------ BATTLE INTRO --------------------------------- */
+  if (state.combat?.active && !state.combat?.encounterCompleted && state.combat?.introDismissed === false) {
+    return (
+      <GameLoader>
+        <BattleIntroScreen
+          enemyId={enemyId}
+          regionId={state.combat?.currentRegion ?? "void"}
+          onEngage={() => dispatch({ type: "DISMISS_BATTLE_INTRO" })}
+          onRetreat={() => {
+            dispatch({ type: "RETREAT_FROM_BATTLE" });
+            router.push("/bridge");
+          }}
+        />
       </GameLoader>
     );
   }

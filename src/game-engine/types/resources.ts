@@ -44,6 +44,13 @@ export interface WingUpgrades {
   secondaryMaxWorkers: number;
   tertiaryMaxWorkers: number;
   quaternaryMaxWorkers: number;
+  // Generation-speed levels — purchased with the wing's primary resource.
+  // Speeds up manual hold-to-fill clicks AND multiplies worker auto-rate
+  // (multiplicatively with efficiency).
+  primarySpeed: number;
+  secondarySpeed: number;
+  tertiarySpeed: number;
+  quaternarySpeed: number;
 }
 
 /** Computed stats for a wing (derived from upgrades + workers) */
@@ -176,6 +183,11 @@ export function maxWorkersKey(slot: ResourceSlot): keyof WingUpgrades {
   return `${slot}MaxWorkers` as keyof WingUpgrades;
 }
 
+/** Get the generation-speed level key for a slot */
+export function speedKey(slot: ResourceSlot): keyof WingUpgrades {
+  return `${slot}Speed` as keyof WingUpgrades;
+}
+
 /** Get the stats key for a slot's capacity */
 export function capStatKey(slot: ResourceSlot): keyof WingStats {
   return `${slot}Capacity` as keyof WingStats;
@@ -206,6 +218,10 @@ export function getRate(wing: WingCategory, slot: ResourceSlot): number {
 export interface LaboratoryState {
   /** IDs of completed research items */
   researched: string[];
+  /** Whether the lab itself has been built — gated by an explicit unlock
+   *  button on the reactor page (costs energy). Until true, the lab nav
+   *  link and any research are hidden. */
+  unlocked: boolean;
   /** Feature flags set by research — keys match ResearchDef.unlocks */
   workerHiring: boolean;
   maxWorkersUpgrades: boolean;

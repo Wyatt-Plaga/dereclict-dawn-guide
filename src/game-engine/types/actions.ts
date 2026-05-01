@@ -49,6 +49,16 @@ export interface BuyMaxWorkersUpgradeAction {
   };
 }
 
+/** Buy a generation-speed upgrade for a slot (costs the wing's primary resource).
+ *  Speeds up manual hold-to-fill clicks AND multiplies worker auto-rate. */
+export interface BuySpeedUpgradeAction {
+  type: 'BUY_SPEED_UPGRADE';
+  payload: {
+    wing: WingId;
+    slot: ResourceSlot;
+  };
+}
+
 /** Hire a worker into the shared pool (costs energy) */
 export interface HireWorkerAction {
   type: 'HIRE_WORKER';
@@ -108,6 +118,13 @@ export interface BuyFuelPumpUpgradeAction {
   type: 'BUY_FUEL_PUMP_UPGRADE';
 }
 
+/** Pre-drone manual fuel pump: a click pays energy and starts a single
+ *  timed fill cycle. When the cycle completes, fuel is added and the player
+ *  may click again. No-op while a cycle is running. */
+export interface StartManualFuelCycleAction {
+  type: 'START_MANUAL_FUEL_CYCLE';
+}
+
 /** Purchase a one-time research unlock in the Laboratory */
 export interface PurchaseResearchAction {
   type: 'PURCHASE_RESEARCH';
@@ -123,6 +140,11 @@ export interface UnlockTierAction {
     wing: WingId;
     tier: 'secondary' | 'tertiary' | 'quaternary';
   };
+}
+
+/** Activate the bridge — costs energy, gates the bridge page + jumps. */
+export interface UnlockBridgeAction {
+  type: 'UNLOCK_BRIDGE';
 }
 
 export interface PurchaseUpgradeAction {
@@ -181,6 +203,10 @@ export interface RetreatFromBattleAction {
   type: 'RETREAT_FROM_BATTLE';
 }
 
+export interface DismissBattleIntroAction {
+  type: 'DISMISS_BATTLE_INTRO';
+}
+
 export interface EndTurnAction {
   type: 'END_TURN';
 }
@@ -228,6 +254,7 @@ export type GameAction =
   | StoryChoiceAction
   | CombatActionAction
   | RetreatFromBattleAction
+  | DismissBattleIntroAction
   | EndTurnAction
   | EquipAbilityAction
   | UnequipAbilityAction
@@ -238,6 +265,7 @@ export type GameAction =
   | BuyCapacityUpgradeAction
   | BuyEfficiencyUpgradeAction
   | BuyMaxWorkersUpgradeAction
+  | BuySpeedUpgradeAction
   | HireWorkerAction
   | BuyWorkerCapUpgradeAction
   | EnableAutomationAction
@@ -246,7 +274,9 @@ export type GameAction =
   | UnassignBridgeFuelWorkerAction
   | SetBridgeFuelAutomationAction
   | BuyFuelPumpUpgradeAction
+  | StartManualFuelCycleAction
   | UnlockTierAction
+  | UnlockBridgeAction
   | PurchaseResearchAction;
 
 /** @deprecated Use GameAction instead */

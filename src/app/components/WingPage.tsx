@@ -8,17 +8,12 @@ import GameLoader from "@/app/components/GameLoader";
 import WorkerAllocationBar from "@/app/components/WorkerAllocationBar";
 import WingResourceRow from "@/app/components/WingResourceRow";
 import ResourceClickButton from "@/app/components/ResourceClickButton";
-import { WING_DEFS, SLOT_ORDER, SLOT_CONSUMES, WingId, ResourceSlot, capacityUpgradeCost, efficiencyUpgradeCost, maxWorkersUpgradeCost } from "@/game-engine/content/wingResources";
+import { WING_DEFS, SLOT_ORDER, SLOT_CONSUMES, WingId, ResourceSlot, capacityUpgradeCost, efficiencyUpgradeCost, maxWorkersUpgradeCost, speedUpgradeCost, speedMultiplier, CLICK_AMOUNT, holdDurationForSlot } from "@/game-engine/content/wingResources";
 import { ResourceSystem } from "@/game-engine/systems/ResourceSystem";
-import { WingCategory, capKey, effKey, maxWorkersKey, getCapacity, getRate } from "@/game-engine/types/resources";
-import { LucideIcon, ChevronUp, Wrench, Cpu, Package } from "lucide-react";
+import { WingCategory, capKey, effKey, maxWorkersKey, speedKey, getCapacity, getRate } from "@/game-engine/types/resources";
+import { LucideIcon, ChevronUp, Wrench, Zap } from "lucide-react";
 
 type TierName = 'secondary' | 'tertiary' | 'quaternary';
-const TIER_UNLOCK_META: Record<TierName, { icon: LucideIcon; subtext: string }> = {
-  secondary:  { icon: Package, subtext: 'A new resource has been detected' },
-  tertiary:   { icon: Cpu,     subtext: 'Advanced processing available' },
-  quaternary: { icon: Cpu,     subtext: 'Specialist tier available' },
-};
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 
@@ -26,10 +21,12 @@ interface WingPageProps {
   wingId: WingId;
   icon: LucideIcon;
   flickerKey: string;
+  /** Content rendered above the next-tier unlock button. */
+  aboveTierUnlock?: React.ReactNode;
   children?: React.ReactNode;
 }
 
-export default function WingPage({ wingId, icon: Icon, flickerKey, children }: WingPageProps) {
+export default function WingPage({ wingId, icon: Icon, flickerKey, aboveTierUnlock, children }: WingPageProps) {
   const { state, dispatch } = useGame();
   const { shouldFlicker } = useSystemStatus();
 
@@ -90,9 +87,17 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
   if (wing.quaternaryUnlocked) visibleSlots.push('quaternary');
 
   // Check if next tier can be unlocked
-  const canUnlockSecondary = ResourceSystem.canUnlockTier(wing, wingId, 'secondary');
-  const canUnlockTertiary = ResourceSystem.canUnlockTier(wing, wingId, 'tertiary');
-  const canUnlockQuaternary = ResourceSystem.canUnlockTier(wing, wingId, 'quaternary');
+  const canUnlockSecondary = ResourceSystem.canUnlockTier(state, wing, wingId, 'secondary');
+  const canUnlockTertiary = ResourceSystem.canUnlockTier(state, wing, wingId, 'tertiary');
+  const canUnlockQuaternary = ResourceSystem.canUnlockTier(state, wing, wingId, 'quaternary');
+
+  // The "next tier" the player is working toward — shown even before the
+  // threshold is met so the player knows what they're aiming for.
+  const nextTier: TierName | null =
+    !wing.secondaryUnlocked ? 'secondary'
+    : !wing.tertiaryUnlocked ? 'tertiary'
+    : !wing.quaternaryUnlocked ? 'quaternary'
+    : null;
 
   // Check if a slot can have automation enabled right now. Automation is
   // unlocked in one gate by the Workforce Systems research — after that any
@@ -166,6 +171,7 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
                 const cLevel = wing.upgrades[capKey(slot)];
                 const eLevel = wing.upgrades[effKey(slot)];
                 const mLevel = wing.upgrades[maxWorkersKey(slot)];
+                const sLevel = (wing.upgrades[speedKey(slot)] as number) ?? 0;
                 const slotMax = ResourceSystem.getMaxWorkersForSlot(wing, slot);
 
                 return (
@@ -202,6 +208,12 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
                         maxWorkersCurrencyAvailable: wing.resources.quaternary,
                         onBuyMaxWorkers: () => dispatch({ type: 'BUY_MAX_WORKERS_UPGRADE', payload: { wing: wingId, slot } }),
                       } : {})}
+                      speedLevel={sLevel}
+                      speedCost={speedUpgradeCost(sLevel)}
+                      speedMultiplierLabel={`${speedMultiplier(sLevel).toFixed(2)}×`}
+                      speedCurrencyName={def.resources.primary.name}
+                      speedCurrencyAvailable={wing.resources.primary}
+                      onBuySpeed={() => dispatch({ type: 'BUY_SPEED_UPGRADE', payload: { wing: wingId, slot } })}
                       tier={slot}
                       onDisableAutomation={() => dispatch({ type: 'DISABLE_AUTOMATION', payload: { wing: wingId, slot } })}
                     />
@@ -217,6 +229,10 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
               const cLevel = wing.upgrades[capKey(slot)];
               const eLevel = wing.upgrades[effKey(slot)];
               const mLevel = wing.upgrades[maxWorkersKey(slot)];
+              const sLevel = (wing.upgrades[speedKey(slot)] as number) ?? 0;
+              const speedMult = speedMultiplier(sLevel);
+              const speedCost = speedUpgradeCost(sLevel);
+              const canBuySpeed = wing.resources.primary >= speedCost;
 
               // Non-primary clicks consume the prior-tier resource (mirrors the
               // worker-second cost in ResourceSystem). Disable the click button
@@ -224,14 +240,20 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
               const atCap = current >= cap;
               const clickInputSlot = SLOT_CONSUMES[slot];
               const clickInputCost = clickInputSlot
-                ? slotDef.consumeRate * (def.clickAmounts[slot] / slotDef.baseRate)
+                ? slotDef.consumeRate * (CLICK_AMOUNT / slotDef.baseRate)
                 : 0;
               const cannotAfford = clickInputSlot !== undefined
                 && wing.resources[clickInputSlot] < clickInputCost;
               const clickDisabled = atCap || cannotAfford;
-              const costLabel = clickInputSlot
-                ? `-${clickInputCost} ${def.resources[clickInputSlot].name}`
-                : `+${def.clickAmounts[slot]} per click`;
+              const inputName = clickInputSlot ? def.resources[clickInputSlot].name : '';
+              const inputHave = clickInputSlot ? Math.floor(wing.resources[clickInputSlot]) : 0;
+              const costLabel = atCap
+                ? `${slotDef.name} at capacity`
+                : cannotAfford
+                  ? `Need ${clickInputCost} ${inputName} (have ${inputHave})`
+                  : clickInputSlot
+                    ? `-${clickInputCost} ${inputName}`
+                    : `+${CLICK_AMOUNT} per click`;
 
               return (
                 <div key={slot} className={cn("system-panel p-4", isNewSlot && "animate-slot-reveal")}>
@@ -247,12 +269,31 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
                     icon={Icon}
                     label={`Generate ${slotDef.name}`}
                     subLabel={costLabel}
-                    floatText={`+${def.clickAmounts[slot]}`}
+                    subLabelAlert={cannotAfford}
+                    floatText={`+${CLICK_AMOUNT}`}
                     chartColor={def.color}
                     onClick={() => dispatch({ type: 'CLICK_RESOURCE', payload: { category: wingId, slot } })}
                     disabled={clickDisabled}
                     shouldFlicker={shouldFlicker(flickerKey)}
+                    holdDurationMs={holdDurationForSlot(def, slot) / speedMult}
                   />
+
+                  {/* Generation speed upgrade (paid in this wing's primary resource).
+                      Available immediately on every slot — speeds manual hold + workers. */}
+                  <button
+                    onClick={() => dispatch({ type: 'BUY_SPEED_UPGRADE', payload: { wing: wingId, slot } })}
+                    disabled={!canBuySpeed}
+                    className={cn(
+                      "w-full mt-2 flex items-center justify-center gap-1 py-1 rounded text-[10px] font-mono transition-colors",
+                      canBuySpeed
+                        ? `bg-${def.color}/10 text-${def.color} hover:bg-${def.color}/20 border border-${def.color}/20`
+                        : "bg-muted/10 text-muted-foreground/40 cursor-not-allowed border border-muted/10"
+                    )}
+                  >
+                    <Zap className="h-3 w-3" />
+                    Speed Lv.{sLevel} ({speedMult.toFixed(2)}×)
+                    <span className="text-muted-foreground/50">({speedCost} {def.resources.primary.name})</span>
+                  </button>
 
                   {/* Capacity (auto) / efficiency / max-workers upgrades */}
                   {wing.secondaryUnlocked && (
@@ -325,29 +366,67 @@ export default function WingPage({ wingId, icon: Icon, flickerKey, children }: W
               );
             })}
 
-            {/* Tier unlock buttons */}
-            {(['secondary', 'tertiary', 'quaternary'] as TierName[]).map(tier => {
+            {aboveTierUnlock}
+
+            {/* Next-tier unlock button — always visible until all tiers unlocked.
+                Shows the threshold cost + progress so the player knows the goal. */}
+            {nextTier && (() => {
+              const tier = nextTier;
               const canUnlock = { secondary: canUnlockSecondary, tertiary: canUnlockTertiary, quaternary: canUnlockQuaternary }[tier];
-              if (!canUnlock) return null;
-              const { icon: TierIcon, subtext } = TIER_UNLOCK_META[tier];
+              const threshold = def.unlockThresholds[tier];
+              const primary = wing.resources.primary;
+              const primaryName = def.resources.primary.name;
+              const targetName = def.resources[tier].name;
+              const pct = Math.min(100, (primary / threshold) * 100);
+              const consumesWorker = ResourceSystem.tierConsumesWorker(wingId, tier);
+              const needsWorker = consumesWorker && primary >= threshold && (
+                !state.laboratory.workerHiring || freeWorkers < 1
+              );
               return (
                 <button
                   key={tier}
                   onClick={() => dispatch({ type: 'UNLOCK_TIER', payload: { wing: wingId, tier } })}
-                  className={`system-panel p-4 border-${def.color}/40 hover:bg-${def.color}/10 transition-colors animate-unlock-btn-in`}
+                  disabled={!canUnlock}
+                  className={cn(
+                    "system-panel p-4 transition-colors animate-unlock-btn-in",
+                    canUnlock
+                      ? `border-${def.color}/40 hover:bg-${def.color}/10`
+                      : "border-muted/20 opacity-50 cursor-not-allowed grayscale"
+                  )}
                 >
                   <div className="flex items-center justify-center gap-2">
-                    <TierIcon className={`h-5 w-5 text-${def.color} animate-pulse`} />
-                    <span className={`font-mono font-semibold text-${def.color}`}>
-                      Unlock {def.resources[tier].name}
+                    <Icon className={cn(
+                      "h-5 w-5",
+                      canUnlock ? `text-${def.color} animate-pulse` : "text-muted-foreground"
+                    )} />
+                    <span className={cn(
+                      "font-mono font-semibold",
+                      canUnlock ? `text-${def.color}` : "text-muted-foreground"
+                    )}>
+                      Unlock {targetName}
                     </span>
                   </div>
                   <p className="text-[10px] text-muted-foreground text-center mt-1 font-mono">
-                    {subtext}
+                    {canUnlock
+                      ? (consumesWorker
+                          ? `Costs ${threshold} ${primaryName} + 1 free worker`
+                          : `Costs ${threshold} ${primaryName}`)
+                      : needsWorker
+                        ? (state.laboratory.workerHiring
+                            ? `Requires 1 free worker to install`
+                            : `Requires Workforce Systems research`)
+                        : `Costs ${threshold} ${primaryName} (${Math.floor(primary)}/${threshold})`}
                   </p>
+                  {!canUnlock && (
+                    <Progress
+                      value={pct}
+                      className="h-1 bg-muted mt-2"
+                      indicatorClassName={`bg-${def.color}/60`}
+                    />
+                  )}
                 </button>
               );
-            })}
+            })()}
           </div>
 
           {/* Extra content (special upgrades, etc.) */}

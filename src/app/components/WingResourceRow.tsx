@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, ChevronUp, Gauge, Users, Power } from "lucide-react";
+import { Minus, Plus, ChevronUp, Gauge, Users, Power, Zap } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +33,12 @@ interface WingResourceRowProps {
   maxWorkersCurrencyName?: string;
   maxWorkersCurrencyAvailable?: number;
   onBuyMaxWorkers?: () => void;
+  speedLevel?: number;
+  speedCost?: number;
+  speedMultiplierLabel?: string;
+  speedCurrencyName?: string;
+  speedCurrencyAvailable?: number;
+  onBuySpeed?: () => void;
   tier: 'primary' | 'secondary' | 'tertiary' | 'quaternary';
   onDisableAutomation?: () => void;
 }
@@ -44,17 +50,20 @@ export default function WingResourceRow({
   capLevel, capCost, capCurrencyName, capCurrencyAvailable, onBuyCap,
   effLevel, effCost, effCurrencyName, effCurrencyAvailable, onBuyEff,
   maxWorkersLevel, maxWorkersCost, maxWorkersCurrencyName, maxWorkersCurrencyAvailable, onBuyMaxWorkers,
+  speedLevel, speedCost, speedMultiplierLabel, speedCurrencyName, speedCurrencyAvailable, onBuySpeed,
   tier,
   onDisableAutomation,
 }: WingResourceRowProps) {
   const showCap = onBuyCap !== undefined;
   const showEff = onBuyEff !== undefined;
   const showMaxWorkers = onBuyMaxWorkers !== undefined && maxWorkersCost !== undefined;
+  const showSpeed = onBuySpeed !== undefined && speedCost !== undefined;
   const canBuyCap = showCap && capCurrencyAvailable >= capCost;
   const canBuyEff = showEff && effCurrencyAvailable >= effCost;
   const canBuyMaxWorkers = showMaxWorkers && (maxWorkersCurrencyAvailable ?? 0) >= (maxWorkersCost ?? 0);
-  const anyUpgrade = showCap || showEff || showMaxWorkers;
-  const upgradeColCount = [showCap, showEff, showMaxWorkers].filter(Boolean).length;
+  const canBuySpeed = showSpeed && (speedCurrencyAvailable ?? 0) >= (speedCost ?? 0);
+  const anyUpgrade = showCap || showEff || showMaxWorkers || showSpeed;
+  const upgradeColCount = [showCap, showEff, showMaxWorkers, showSpeed].filter(Boolean).length;
   const slotFull = workers >= maxWorkers;
   const plusDisabled = !canAssign || slotFull;
   const pct = capacity > 0 ? (current / capacity) * 100 : 0;
@@ -150,6 +159,7 @@ export default function WingResourceRow({
           upgradeColCount === 1 && "grid-cols-1",
           upgradeColCount === 2 && "grid-cols-2",
           upgradeColCount === 3 && "grid-cols-3",
+          upgradeColCount === 4 && "grid-cols-2 md:grid-cols-4",
         )}>
           {showCap && (
             <button
@@ -204,6 +214,25 @@ export default function WingResourceRow({
               <div className="min-w-0">
                 <div className="text-[10px] font-mono text-primary">Max Crew Lv.{maxWorkersLevel}</div>
                 <div className="text-[9px] text-muted-foreground truncate">{maxWorkersCost} {maxWorkersCurrencyName}</div>
+              </div>
+            </button>
+          )}
+
+          {showSpeed && (
+            <button
+              onClick={onBuySpeed}
+              disabled={!canBuySpeed}
+              className={cn(
+                "flex items-center gap-1.5 p-2 rounded text-left transition-colors",
+                canBuySpeed
+                  ? "bg-primary/5 hover:bg-primary/10 border border-primary/10"
+                  : "bg-muted/5 border border-muted/10 opacity-50 cursor-not-allowed"
+              )}
+            >
+              <Zap className="h-3.5 w-3.5 text-primary shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[10px] font-mono text-primary">Speed Lv.{speedLevel} {speedMultiplierLabel ? `(${speedMultiplierLabel})` : ''}</div>
+                <div className="text-[9px] text-muted-foreground truncate">{speedCost} {speedCurrencyName}</div>
               </div>
             </button>
           )}

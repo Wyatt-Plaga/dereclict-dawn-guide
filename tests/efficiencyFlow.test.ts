@@ -5,8 +5,11 @@ import { ResourceSystem } from '@/game-engine/systems/ResourceSystem';
 import { EventBus } from '@/game-engine/core/EventBus';
 import { EventMap } from '@/game-engine/types/events';
 import { GameState } from '@/game-engine/types';
+import { WING_DEFS } from '@/game-engine/content/wingResources';
 import { freshState } from './helpers';
 import { produce } from 'immer';
+
+const REACTOR_PRIMARY_RATE = WING_DEFS.reactor.resources.primary.baseRate;
 
 describe('Full dispatch flow: BUY_EFFICIENCY_UPGRADE', () => {
   let bus: EventBus<EventMap>;
@@ -50,8 +53,9 @@ describe('Full dispatch flow: BUY_EFFICIENCY_UPGRADE', () => {
     const s2 = produce(s1, (draft) => {
       resource.update(draft as GameState, 1);
     });
-    // baseRate 2.0 × 1 worker × (1 + 1*0.5) = 3.0 in 1 second
-    expect(s2.categories.reactor.resources.primary).toBeCloseTo(3.0, 1);
-    expect(s2.categories.reactor.stats.primaryRate).toBeCloseTo(3.0, 1);
+    // baseRate × 1 worker × (1 + 1*0.5) over 1 second
+    const expected = REACTOR_PRIMARY_RATE * 1.5;
+    expect(s2.categories.reactor.resources.primary).toBeCloseTo(expected, 5);
+    expect(s2.categories.reactor.stats.primaryRate).toBeCloseTo(expected, 5);
   });
 });
